@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "cstdlib": "c",
+        "cstdint": "c",
+        "interpreter.h": "c",
+        "string.h": "c",
+        "data.h": "c",
+        "ring.h": "c",
+        "test_framework.h": "c",
+        "tassert.h": "c"
+    },
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**"
+    ],
+    "C_Cpp.errorSquiggles": "enabled"
+}

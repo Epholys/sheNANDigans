@@ -12,5 +12,15 @@
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/**"
     ],
-    "C_Cpp.errorSquiggles": "enabled"
+    "C_Cpp.errorSquiggles": "enabled",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "off",
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test*.py"
+    ],
+    "python.testing.unittestEnabled": true
 }

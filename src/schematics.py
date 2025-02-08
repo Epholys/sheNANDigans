@@ -1,9 +1,7 @@
 from copy import deepcopy
-from operator import add, xor
 from typing import OrderedDict
 
-from src.circuit import Circuit, Wire
-
+from circuit import Circuit, Wire
 
 schematics = OrderedDict()
 

@@ -1,4 +1,3 @@
-from calendar import c
 from itertools import product
 import unittest
 

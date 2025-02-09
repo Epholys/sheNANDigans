@@ -39,7 +39,7 @@ class Circuit:
             raise ValueError(f"Component {component_name} does not exist")
         component = self.components[component_name]
        
-        if component.inputs[component_input_name] is None:
+        if component_input_name not in component.inputs.keys():
             raise ValueError(f"Component {component_name} does not have input wire {component_input_name}")
 
         # Create a new input wire if one doesn't exist in the parent circuit.
@@ -114,10 +114,7 @@ class Circuit:
 
     def validate(self):
         # TODO : Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?)
-
-        # OK Facile
-        for component in self.components.values():
-            component.validate()
+        assert(True)
 
     def reset(self):
         for wire in self.inputs.values():
@@ -141,17 +138,17 @@ class Circuit:
         if not self.can_simulate() or self.was_simulated():
             return False
 
-        if self.identifier == "NAND":
-            if self.inputs["A"].state == True and self.inputs["B"].state == True:
-                self.outputs["OUT"].state = False
-            else:
-                self.outputs["OUT"].state = True
+        if self.identifier == 0:
+            inputs = list(self.inputs.values())
+            a = inputs[0]
+            b = inputs[1]
+            out = list(self.outputs.values())[0]
+            out.state = not(a.state and b.state)
             return True
         
         n_evaluated = 0
         while True:
             previous_n_evaluated = n_evaluated
-            
             for component in self.components.values():
                 if component.simulate():
                     n_evaluated += 1

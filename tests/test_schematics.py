@@ -1,14 +1,26 @@
+from src import *
+
 from itertools import product
+from typing import OrderedDict
 import unittest
+from parameterized import parameterized_class
 
 from src import schematics
+from src.decoding import CircuitDecoder
+from src.encoding import CircuitEncoder
 
+
+builder = schematics.SchematicsBuilder()
+builder.build_circuits()
+reference = builder.schematics
+
+encoder = CircuitEncoder(reference.copy())
+encoded = encoder.encode()
+decoder = CircuitDecoder(encoded.copy())
+round_trip = decoder.decode()    
+
+@parameterized_class([{'library': reference}, {'library': round_trip}])
 class TestSchematics(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        schematics.add_circuits()
-    
-
     def assert_2_in_1_out(self, gate, gate_logic):
         self.assertEqual(len(gate.inputs), 2)
         inputs = list(gate.inputs.keys())
@@ -30,11 +42,11 @@ class TestSchematics(unittest.TestCase):
 
 
     def test_nand(self):
-        nand_gate = schematics.get_schematic("NAND")        
+        nand_gate = schematics.get_schematic(0, self.library)        
         self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b))
 
     def test_not(self):
-        not_gate = schematics.get_schematic("NOT")        
+        not_gate = schematics.get_schematic(1, self.library)       
         
         self.assertEqual(len(not_gate.inputs), 1)
         input = list(not_gate.inputs.keys())[0]
@@ -49,23 +61,23 @@ class TestSchematics(unittest.TestCase):
             self.assertEqual(not_gate.outputs[output].state, not a)
 
     def test_and(self):
-        and_gate = schematics.get_schematic("AND")        
+        and_gate = schematics.get_schematic(2, self.library)        
         self.assert_2_in_1_out(and_gate, lambda a, b: a and b)
 
     def test_or(self):
-        or_gate = schematics.get_schematic("OR")
+        or_gate = schematics.get_schematic(3, self.library)
         self.assert_2_in_1_out(or_gate, lambda a, b: a or b)
 
     def test_nor(self):
-        nor_gate = schematics.get_schematic("NOR")
+        nor_gate = schematics.get_schematic(4, self.library)
         self.assert_2_in_1_out(nor_gate, lambda a, b: not(a or b))
 
     def test_xor(self):
-        xor_gate = schematics.get_schematic("XOR")
+        xor_gate = schematics.get_schematic(5, self.library)
         self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b)
 
     def test_half_adder(self):
-        half_adder = schematics.get_schematic("HALF_ADDER")
+        half_adder = schematics.get_schematic(6, self.library)
         self.assertEqual(len(half_adder.inputs), 2)
         inputs = list(half_adder.inputs.keys())
         input_a = inputs[0]
@@ -91,7 +103,6 @@ class TestSchematics(unittest.TestCase):
             sum_result = half_adder.outputs[sum_output].state
             carry_result = half_adder.outputs[carry_output].state
             self.assertEqual((sum_result, carry_result), (sum, carry))
-
 
 if __name__ == '__main__':
     unittest.main()

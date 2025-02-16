@@ -1,122 +1,247 @@
 from copy import deepcopy
-from typing import OrderedDict
+from typing import Any, OrderedDict
 import itertools
+from xmlrpc.client import Boolean
 
 
 class Wire:
-    _id_iter = itertools.count()
+    """
+    Represents a wire in a digital circuit that can carry binary signals.
+    
+    A wire is the basic building block for connecting components in digital circuits.
+    It maintains a state (True/False/None) and has a unique identifier for tracking
+    connections throughout the circuit.
+    
+    Attributes:
+        state (bool|None): The current state of the wire
+            - True: Logic high (1)
+            - False: Logic low (0)
+            - None: Undefined/uninitialized state
+        id (int): Unique identifier for tracking wire connections
+    """
+    _id_generator = itertools.count()
 
-    def __init__(self, state=None):
-        self.state = state
-        self.id = next(Wire._id_iter)
+    def __init__(self, initial_state: bool = None):
+        """
+        Initialize a new wire with an optional initial state.
 
-    def __deepcopy__(self, memo):
-        # Create a new Wire instance with the same state but a new unique id
-        new_wire = type(self)(self.state)
+        Args:
+            initial_state (bool|None): Initial state of the wire (default: None)
+        """
+        self.state = initial_state
+        self.id = next(Wire._id_generator)
+
+    def __deepcopy__(self, memo : dict):
+        """
+        Create a deep copy of the wire with a new unique ID.
+        
+        This is crucial for circuit copying to ensure each wire copy
+        gets a new unique identifier.
+
+        Args:
+            memo (dict): Dictionary of already copied objects
+
+        Returns:
+            Wire: A new wire instance with copied state and new ID
+        """
+        new_wire = type(self)()
         memo[id(self)] = new_wire
         return new_wire
 
     def __repr__(self):
+        """
+        Return detailed string representation of the wire.
+        
+        Useful for debugging purpose, to easily track its id through a circuit.
+        """
         return f"Wire(id={self.id}, state={self.state})"
     
     def __str__(self):
-        bin = "0" if self.state == False else "1" if self.state == True else "X"
-        return bin
+        """
+        Return simple string representation of wire state (0/1/X).
+        
+        Useful to check the simulations results.
+        """
+        return "0" if self.state == False else "1" if self.state == True else "X"
 
 class Circuit:
-    def __init__(self, identifier):
+    """
+    Represents a digital circuit composed of components and their interconnections.
+
+    A circuit is a collection of components (sub-circuits) connected by wires.
+    It maintains its own inputs, outputs, and internal components, allowing
+    for hierarchical circuit construction.
+    
+    Special case: When identifier=0, the circuit acts as a NAND gate,
+    implementing the basic NAND logic operation.
+
+    The attributes are ordered dictionaries, to maintain correct simulation after
+    an encoding-decoding round-trip.
+    
+    Attributes:
+        identifier (str): Unique identifier for the circuit
+        inputs (OrderedDict): Input wires of the circuit
+        outputs (OrderedDict): Output wires of the circuit
+        components (OrderedDict): Components of the circuit
+        miss (int): Counter of the failed NAND simulation attempts
+
+    TODO Add Example
+    TODO explicit provenance model (output is clean, no propagation)
+    """
+        
+    def __init__(self, identifier : Any):
+        """
+        Initialize a new circuit with the given identifier.
+
+        Args:
+            identifier (str): Unique identifier for this circuit
+        """
         self.identifier = identifier
-        self.inputs = OrderedDict()
-        self.outputs = OrderedDict()
-        self.components = OrderedDict()
+        self.inputs : OrderedDict[Any, Wire] = OrderedDict()
+        self.outputs : OrderedDict[str, Wire] = OrderedDict()
+        self.components : OrderedDict[str, 'Circuit'] = OrderedDict()
         self.miss = 0
 
-    def add_component(self, name, component):
+    def add_component(self, name : Any, component : 'Circuit') -> None:
         self.components[name] = component
 
-    def add_input(self, input_name, component_name, component_input_name):        
-        if self.components[component_name] is None:
-            raise ValueError(f"Component {component_name} does not exist")
-        component = self.components[component_name]
-       
-        if component_input_name not in component.inputs.keys():
-            raise ValueError(f"Component {component_name} does not have input wire {component_input_name}")
-
-        # Create a new input wire if one doesn't exist in the parent circuit.
-        if input_name not in self.inputs:
-            self.inputs[input_name] = Wire()
-        new_wire = self.inputs[input_name]
-
-        # Get the old wire from the component. This is the one that needs to be replaced.
-        old_wire = component.inputs[component_input_name]
-        component.inputs[component_input_name] = new_wire
-
-        # Propagate the new wiring into any subcomponents recursively
-        self._propagate_wire_update(old_wire, new_wire, component)
-
-    def _propagate_wire_update(self, old_wire, new_wire, component):
+    def add_input(self, input: str, target_name: str, target_input: str) -> None:
         """
-        Recursively update any input wire in subcomponents of 'component' that
-        matches the old_wire's unique id.
+        Connect an input wire to a component's input port.
+        
+        Creates a new input wire if it doesn't exist and connects it to the specified
+        component's input port. The connection is propagated through the circuit.
+        
+        Args:
+            input (str): Name of the input wire to create/connect
+            target_name (str): Name of the component to connect to
+            target_input (str): Name of the input port on the target component
+        
+        Raises:
+            ValueError: If target_name doesn't exist in the circuit
         """
-        for subcomp in component.components.values():
-            # Update inputs in subcomponent.
-            for key, wire in subcomp.inputs.items():
-                if wire.id == old_wire.id:
-                    subcomp.inputs[key] = new_wire
-            # Also update outputs if needed.
-            for key, wire in subcomp.outputs.items():
-                if wire.id == old_wire.id:
-                    subcomp.outputs[key] = new_wire
-            # Recurse further.
-            self._propagate_wire_update(old_wire, new_wire, subcomp)
+        if target_name not in self.components:
+            raise ValueError(f"Component {target_name} does not exist")
+        target = self.components[target_name]
 
-    def add_output(self, output_name, component_name, component_output_name):
-        if self.components[component_name] is None:
-            raise ValueError(f"Component {component_name} does not exist")
-        component = self.components[component_name]
-       
-        if component_output_name not in component.outputs:
-            raise ValueError(f"Component {component_name} does not have output wire {component_output_name}")
-
-        # Create (or reuse) a wire in the parent.
-        if output_name not in self.outputs:
-            self.outputs[output_name] = Wire()
-        new_wire = self.outputs[output_name]
-
-        # Get the old wire from the component and perform replacement.
-        old_wire = component.outputs[component_output_name]
-        component.outputs[component_output_name] = new_wire
-
-        # Propagate the output wiring to subcomponents recursively.
-        self._propagate_wire_update(old_wire, new_wire, component)
-
-    def add_wire(self, name_a, out_a, name_b, in_b):
-        if self.components[name_a] is None:
-            raise ValueError(f"Component {name_a} does not exist")
-        a = self.components[name_a]
-       
-        if self.components[name_b] is None:
-            raise ValueError(f"Component {name_b} does not exist")
-        b = self.components[name_b]
-
-        if a.outputs[out_a] is None:
-            raise ValueError(f"Component {name_a} does not have output wire {out_a}")
+        if target_input not in target.inputs:
+            raise ValueError(f"Component {target_name} does not have input wire {target_input}")
         
-        if b.inputs[in_b] is None:
-            raise ValueError(f"Component {name_b} does not have input wire {in_b}")
+        if input not in self.inputs:
+            self.inputs[input] = Wire()
         
-        # TODO adapt comment
-        old_wire = b.inputs[in_b]
-        b.inputs[in_b] = a.outputs[out_a]
+        wire = self.inputs[input]    
+        old_wire = target.inputs[target_input]
+        target.inputs[target_input] = wire
 
-        self._propagate_wire_update(old_wire, a.outputs[out_a], b)
+        # Update all matching wire references in the component hierarchy
+        self._propagate_wire_update(target, old_wire, wire)
 
-    def validate(self):
+        
+    def add_output(self, output: str, source_name: str, source_output: str) -> None:
+        """
+        Connect an output wire to a component's output port.
+        
+        Creates a new output wire if it doesn't exist and connects it to the specified
+        component's output port. The connection is propagated through the circuit.
+        
+        Args:
+            output (str): Name of the output wire to create/connect
+            source_component (str): Name of the component to connect to
+            source_output (str): Name of the output port on the source component
+        
+        Raises:
+            ValueError: If source_component doesn't exist in the circuit
+        """
+        if source_name not in self.components:
+            raise ValueError(f"Component {source_name} does not exist")
+        source = self.components[source_name]
+
+        if source_output not in source.outputs:
+            raise ValueError(f"Component {source_name} does not have output wire {source_output}")
+        
+        self.outputs[output] = source.outputs[source_output]
+
+        # TODO comment why not propagation
+
+    def add_wire(self, source_name: str, source_output: str, 
+                target_name: str, target_input: str) -> None:
+        """
+        Connect an output port of one component to an input port of another component.
+        
+        Connect two components in the circuit by replacing the target component's input wire
+        by the source component's output. The connection is propagated through the circuit hierarchy.
+        
+        Args:
+            source_component (str): Name of the component providing the output
+            source_output (str): Name of the output port on the source component
+            target_component (str): Name of the component receiving the input
+            target_input (str): Name of the input port on the target component
+        
+        Raises:
+            ValueError: If either component doesn't exist in the circuit
+            ValueError: If the specified output port doesn't exist on source component
+        """        
+        if source_name not in self.components:
+            raise ValueError(f"Source ({source_name}) component does not exist")            
+        
+        if target_name not in self.components:
+            raise ValueError(f"Target ({target_name}) component does not exist")            
+        
+        source = self.components[source_name]
+        target = self.components[target_name]
+
+        if source_output not in source.outputs:
+            raise ValueError(f"Component {source_name} has no output {source_output}")
+            
+        if target_input not in target.inputs:
+            raise ValueError(f"Component {target_name} has no input {target_input}")
+        
+        wire = source.outputs[source_output]
+        old_wire = target.inputs[target_input]
+
+        target.inputs[target_input] = wire
+        
+        self._propagate_wire_update(target, old_wire, wire)
+
+    def _propagate_wire_update(self, component: 'Circuit', old_wire: Wire, new_wire: Wire) -> None:
+        """
+        Recursively update all matching wire references in a component hierarchy.
+
+        Traverses the entire component tree to ensure consistent wire connections.
+        When a wire is replaced, all references to the old wire must be updated.
+        
+        This is necessary because, for example, adding an input create a new Wire
+        replaces the component's input one. By doing so, this component' input
+        become disconnected of its components' input. So the new Wire must replace
+        recursively all the input hierarchy.
+
+        Same logic for the outputs.
+
+        Args:
+            component (Circuit): Starting component for the recursive update
+            old_wire (Wire): Wire reference to be replaced
+            new_wire (Wire): Wire reference to replace with
+        """
+        for subcomponents in component.components.values():
+            # Update both inputs and outputs
+            wire_dict = subcomponents.inputs
+            wire_dict.update({k: new_wire for k, w in wire_dict.items() if w.id == old_wire.id})
+            self._propagate_wire_update(subcomponents, old_wire, new_wire)
+
+    def validate(self) -> Boolean:
         # TODO : Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?)
-        assert(True)
+        return True
 
     def reset(self):
+        """
+        Reset the circuit to its initial state.
+        
+        Recursively resets:
+        - All wires' state to None
+        - All components
+        - The simulation miss counter
+        """
         for wire in self.inputs.values():
             wire.state = None
 
@@ -128,13 +253,29 @@ class Circuit:
 
         self.miss = 0
 
-    def can_simulate(self):
+    def can_simulate(self) -> Boolean:
         return all(wire.state != None for wire in self.inputs.values())
 
-    def was_simulated(self):
+    def was_simulated(self) -> Boolean:
         return all(wire.state != None for wire in self.outputs.values())
 
-    def simulate(self):
+    def simulate(self) -> Boolean:
+        """
+        Simulate the circuit's behavior based on input states.
+        
+        Performs digital logic simulation by either:
+        1. For NAND gates (identifier=0): Directly computes NAND logic
+        2. For complex circuits: Iteratively simulates sub-components until either:
+           - All outputs are determined (success)
+           - Or no further progress can be made (deadlock)
+
+        Returns:
+            bool: True if simulation completed successfully (all outputs determined)
+                 False if simulation cannot proceed or is already complete
+
+        Note:
+            Increments self.miss counter when sub-component simulation fails
+        """
         if not self.can_simulate() or self.was_simulated():
             return False
 

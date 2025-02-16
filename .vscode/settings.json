@@ -14,7 +14,7 @@
     ],
     "C_Cpp.errorSquiggles": "enabled",
     "python.analysis.autoImportCompletions": true,
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "standard",
     "python.testing.unittestArgs": [
         "-v",
         "-s",

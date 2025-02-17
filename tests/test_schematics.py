@@ -1,12 +1,12 @@
 from src import *
 
 from itertools import product
-from typing import Callable, List, OrderedDict
+from typing import Callable, OrderedDict
 import unittest
-from parameterized import parameterized_class
+from parameterized import parameterized_class # type: ignore
 
 from src import schematics
-from src.circuit import Circuit, CircuitId
+from src.circuit import Circuit, CircuitKey
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 
@@ -16,12 +16,15 @@ builder.build_circuits()
 reference = builder.schematics
 
 encoder = CircuitEncoder(reference.copy())
-encoded : List[int] = encoder.encode()
+encoded = encoder.encode()
 decoder = CircuitDecoder(encoded.copy())
-round_trip : OrderedDict[CircuitId, Circuit]  = decoder.decode()    
+round_trip = decoder.decode()    
 
 @parameterized_class([{'library': reference}, {'library': round_trip}])
 class TestSchematics(unittest.TestCase):
+
+    library: OrderedDict[CircuitKey, Circuit]
+
     def assert_2_in_1_out(self, gate : Circuit, gate_logic : Callable[[bool, bool], bool]):
         self.assertEqual(len(gate.inputs), 2)
         inputs = list(gate.inputs.values())

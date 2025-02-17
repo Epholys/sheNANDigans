@@ -1,32 +1,37 @@
+from typing import List
+
+from src.circuit import Circuit, CircuitDict, Wire
+
+
 class CircuitEncoder:
-    def __init__(self, library):
+    def __init__(self, library : CircuitDict):
         self.library = library
         self.circuits_ids = list(library.keys())
         library.popitem(last=False)
 
-    def encode(self):
-        data = []
+    def encode(self) -> List[int]:
+        data : List[int] = []
         for circuit in self.library.values():
             data.extend(self.encode_circuit(circuit))
         return data
 
-    def encode_circuit(self, circuit):
-        data = []
+    def encode_circuit(self, circuit: Circuit) -> List[int]:
+        data : List[int] = []
         data.extend(self.encode_header(circuit))
         for component in circuit.components.values():
             data.extend(self.encode_component(component, circuit))
         data.extend(self.encode_outputs(circuit))
         return data
 
-    def encode_header(self, circuit):
-        data = []
+    def encode_header(self, circuit : Circuit) -> List[int]:
+        data : List[int] = []
         data.append(len(circuit.components))
         data.append(len(circuit.inputs))
         data.append(len(circuit.outputs))
         return data
 
-    def encode_component(self, component, circuit):
-        data = []
+    def encode_component(self, component : Circuit, circuit : Circuit) -> List[int]:
+        data : List[int] = []
         circuits_input_wires_id = [wire.id for wire in circuit.inputs.values()]
 
         # Encode component id
@@ -43,30 +48,26 @@ class CircuitEncoder:
                 subcomponents = circuit.components
                 data.append(1)
                 #print(f"Encoding wire {repr(wire)} of inputs {component.inputs} of component {component.identifier}")
-                wiring = self.encode_component_wiring(subcomponents, wire, True)
+                wiring = self.encode_component_wiring(subcomponents, wire)
                 data.extend(wiring)
         if length_data == len(data):
             raise ValueError(f"Component {component.identifier} has no inputs")
 
         return data
     
-    def encode_outputs(self, circuit):
-        data = []
+    def encode_outputs(self, circuit : Circuit) -> List[int]:
+        data : List[int] = []
         for wire in circuit.outputs.values():
-            wiring = self.encode_component_wiring(circuit.components, wire, True)
+            wiring = self.encode_component_wiring(circuit.components, wire)
             data.extend(wiring)
         return data
 
-    def encode_component_wiring(self, components, wire, inOutputs):
-        data = []
+    def encode_component_wiring(self, components : CircuitDict, wire : Wire) -> List[int]:
+        data : List[int] = []
 
         length_data = len(data)
         for idx, subcomponent in enumerate(components.values()):
-            wires_ids = []
-            if inOutputs:
-                wires_ids = [wire.id for wire in subcomponent.outputs.values()]
-            if not inOutputs:
-                wires_ids = [wire.id for wire in subcomponent.inputs.values()]
+            wires_ids = [wire.id for wire in subcomponent.outputs.values()]
             if wire.id in wires_ids:
                 # index of the subcomponent
                 data.append(idx)

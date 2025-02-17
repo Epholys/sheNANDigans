@@ -1,43 +1,78 @@
 from copy import deepcopy
-from typing import Any, OrderedDict
+from enum import Enum, auto
+from multiprocessing import Value
+from queue import SimpleQueue
+from typing import Any, OrderedDict, Self, TypeAlias
 import itertools
 from xmlrpc.client import Boolean
 
+
+class WireState(Enum):
+    UNKNOWN = auto()
+    OFF =  auto()
+    ON =  auto()
+
+    def __bool__(self) -> bool:
+        match self:
+            case WireState.OFF:
+                return False
+            case WireState.ON:
+                return True
+            case WireState.UNKNOWN:
+                raise ValueError(f"Trying to convert an Unknown state to a boolean.")
+            
+    def __int__(self) -> int:
+        match self:
+            case WireState.OFF:
+                return 0
+            case WireState.ON:
+                return 1
+            case WireState.UNKNOWN:
+                raise ValueError(f"Trying to convert an Unknown state to a boolean.")
+            
+    
+    
 
 class Wire:
     """
     Represents a wire in a digital circuit that can carry binary signals.
     
-    A wire is the basic building block for connecting components in digital circuits.
+    A wire connects the components in the circuits.
     It maintains a state (True/False/None) and has a unique identifier for tracking
     connections throughout the circuit.
     
     Attributes:
-        state (bool|None): The current state of the wire
-            - True: Logic high (1)
-            - False: Logic low (0)
-            - None: Undefined/uninitialized state
+        state (WireState): The current state of the wire
         id (int): Unique identifier for tracking wire connections
     """
     _id_generator = itertools.count()
 
-    def __init__(self, initial_state: bool = None):
+    def __init__(self):
         """
-        Initialize a new wire with an optional initial state.
+        Initialize a new wire with a unique ID.
 
-        Args:
-            initial_state (bool|None): Initial state of the wire (default: None)
+        The ID is useful for having a memorable object ID to quick check
         """
-        self.state = initial_state
-        self.id = next(Wire._id_generator)
+        self._state : WireState = WireState.UNKNOWN
+        self.id : int = next(Wire._id_generator)    
 
-    def __deepcopy__(self, memo : dict):
+
+    @property
+    def state(self) -> WireState:
+        """Get the wire state as an enum"""
+        return self._state
+
+    @state.setter
+    def state(self, value: bool | WireState) -> None:
+        if isinstance(value, bool):
+            self._state = WireState.ON if value else WireState.OFF
+        else:
+            self._state = value
+
+    def __deepcopy__(self, memo : dict[int, Any]) -> Self:
         """
         Create a deep copy of the wire with a new unique ID.
         
-        This is crucial for circuit copying to ensure each wire copy
-        gets a new unique identifier.
-
         Args:
             memo (dict): Dictionary of already copied objects
 
@@ -52,9 +87,9 @@ class Wire:
         """
         Return detailed string representation of the wire.
         
-        Useful for debugging purpose, to easily track its id through a circuit.
+        Useful for debugging purpose, to easily track its ID through a circuit.
         """
-        return f"Wire(id={self.id}, state={self.state})"
+        return f"Wire(id={self.id}, state={self._state})"
     
     def __str__(self):
         """
@@ -62,7 +97,15 @@ class Wire:
         
         Useful to check the simulations results.
         """
-        return "0" if self.state == False else "1" if self.state == True else "X"
+        match self._state:
+            case WireState.OFF:
+                return "0"
+            case WireState.ON:
+                return "1" 
+            case WireState.UNKNOWN:
+                return "X"
+
+CircuitId: TypeAlias = str|int
 
 class Circuit:
     """
@@ -80,16 +123,16 @@ class Circuit:
     
     Attributes:
         identifier (str): Unique identifier for the circuit
-        inputs (OrderedDict): Input wires of the circuit
-        outputs (OrderedDict): Output wires of the circuit
-        components (OrderedDict): Components of the circuit
+        inputs (OrderedDict[Any, Wire]): Input wires of the circuit
+        outputs (OrderedDict[Any, Wire]): Output wires of the circuit
+        components (OrderedDict[Any, Circuit]): Components of the circuit
         miss (int): Counter of the failed NAND simulation attempts
 
     TODO Add Example
     TODO explicit provenance model (output is clean, no propagation)
     """
         
-    def __init__(self, identifier : Any):
+    def __init__(self, identifier : CircuitId):
         """
         Initialize a new circuit with the given identifier.
 
@@ -97,15 +140,15 @@ class Circuit:
             identifier (str): Unique identifier for this circuit
         """
         self.identifier = identifier
-        self.inputs : OrderedDict[Any, Wire] = OrderedDict()
-        self.outputs : OrderedDict[str, Wire] = OrderedDict()
-        self.components : OrderedDict[str, 'Circuit'] = OrderedDict()
+        self.inputs : OrderedDict[CircuitId, Wire] = OrderedDict()
+        self.outputs : OrderedDict[CircuitId, Wire] = OrderedDict()
+        self.components : OrderedDict[CircuitId, Self] = OrderedDict()
         self.miss = 0
 
-    def add_component(self, name : Any, component : 'Circuit') -> None:
+    def add_component(self, name : CircuitId, component : Self) -> None:
         self.components[name] = component
 
-    def add_input(self, input: str, target_name: str, target_input: str) -> None:
+    def add_input(self, input: CircuitId, target_name: CircuitId, target_input: CircuitId) -> None:
         """
         Connect an input wire to a component's input port.
         
@@ -138,7 +181,7 @@ class Circuit:
         self._propagate_wire_update(target, old_wire, wire)
 
         
-    def add_output(self, output: str, source_name: str, source_output: str) -> None:
+    def add_output(self, output: CircuitId, source_name: CircuitId, source_output: CircuitId) -> None:
         """
         Connect an output wire to a component's output port.
         
@@ -164,8 +207,8 @@ class Circuit:
 
         # TODO comment why not propagation
 
-    def add_wire(self, source_name: str, source_output: str, 
-                target_name: str, target_input: str) -> None:
+    def add_wire(self, source_name: CircuitId, source_output: CircuitId, 
+                target_name: CircuitId, target_input: CircuitId) -> None:
         """
         Connect an output port of one component to an input port of another component.
         
@@ -204,19 +247,17 @@ class Circuit:
         
         self._propagate_wire_update(target, old_wire, wire)
 
-    def _propagate_wire_update(self, component: 'Circuit', old_wire: Wire, new_wire: Wire) -> None:
+    def _propagate_wire_update(self, component: Self, old_wire: Wire, new_wire: Wire) -> None:
         """
         Recursively update all matching wire references in a component hierarchy.
 
         Traverses the entire component tree to ensure consistent wire connections.
         When a wire is replaced, all references to the old wire must be updated.
         
-        This is necessary because, for example, adding an input create a new Wire
-        replaces the component's input one. By doing so, this component' input
-        become disconnected of its components' input. So the new Wire must replace
-        recursively all the input hierarchy.
-
-        Same logic for the outputs.
+        This is necessary because adding an input create a new Wire that
+        replaces the component's input. By doing so, this component's input
+        become disconnected of its own components' input. So the new Wire must replace
+        recursively in all the input hierarchy.
 
         Args:
             component (Circuit): Starting component for the recursive update
@@ -224,7 +265,6 @@ class Circuit:
             new_wire (Wire): Wire reference to replace with
         """
         for subcomponents in component.components.values():
-            # Update both inputs and outputs
             wire_dict = subcomponents.inputs
             wire_dict.update({k: new_wire for k, w in wire_dict.items() if w.id == old_wire.id})
             self._propagate_wire_update(subcomponents, old_wire, new_wire)
@@ -233,20 +273,20 @@ class Circuit:
         # TODO : Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?)
         return True
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Reset the circuit to its initial state.
         
         Recursively resets:
-        - All wires' state to None
+        - All wires' state to Unknown
         - All components
         - The simulation miss counter
         """
         for wire in self.inputs.values():
-            wire.state = None
+            wire.state = WireState.UNKNOWN
 
         for wire in self.outputs.values():
-            wire.state = None
+            wire.state = WireState.UNKNOWN
 
         for component in self.components.values():
             component.reset()
@@ -254,10 +294,10 @@ class Circuit:
         self.miss = 0
 
     def can_simulate(self) -> Boolean:
-        return all(wire.state != None for wire in self.inputs.values())
+        return all(wire.state != WireState.UNKNOWN for wire in self.inputs.values())
 
     def was_simulated(self) -> Boolean:
-        return all(wire.state != None for wire in self.outputs.values())
+        return all(wire.state != WireState.UNKNOWN for wire in self.outputs.values())
 
     def simulate(self) -> Boolean:
         """
@@ -280,11 +320,7 @@ class Circuit:
             return False
 
         if self.identifier == 0:
-            inputs = list(self.inputs.values())
-            a = inputs[0]
-            b = inputs[1]
-            out = list(self.outputs.values())[0]
-            out.state = not(a.state and b.state)
+            self._simulate_nand()
             return True
         
         n_evaluated = 0
@@ -300,7 +336,14 @@ class Circuit:
                 break
 
         return self.was_simulated()    
-            
+    
+    def _simulate_nand(self):
+        inputs = list(self.inputs.values())
+        a = inputs[0]
+        b = inputs[1]
+        out = list(self.outputs.values())[0]
+        out.state = not(a.state and b.state)
+
 
     def __repr__(self, indent=0):
         indent_str = ' ' * indent

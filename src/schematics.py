@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import OrderedDict
 
-from circuit import Circuit, Wire
+from circuit import Circuit, CircuitId, Wire
 
 def add_nand(library):
     nand_gate = Circuit(0)
@@ -15,14 +15,14 @@ def add_schematic(circuit, library):
         raise ValueError(f"Circuit {circuit.identifier} already exists")
     library[circuit.identifier] = circuit
 
-def get_schematic(identifier, library):
+def get_schematic(identifier : CircuitId, library : OrderedDict[CircuitId, Circuit]) -> Circuit:
     if library.get(identifier) is None:
         raise ValueError(f"Circuit {identifier} does not exist")
     return deepcopy(library[identifier])
 
 class SchematicsBuilder:
     def __init__(self):
-        self.schematics = OrderedDict()
+        self.schematics : OrderedDict[CircuitId, Circuit] = OrderedDict()
 
     def add_schematic(self, circuit):
         add_schematic(circuit, self.schematics)

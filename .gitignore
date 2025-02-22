@@ -12,3 +12,8 @@ scratchpad.md
 # Python
 *__pycache__*
 nand/
+
+# Images
+*.png
+*.jpg
+*.svg

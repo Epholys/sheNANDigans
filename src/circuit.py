@@ -1,6 +1,6 @@
 from typing import OrderedDict, Self, TypeAlias
 
-from src.wire import Wire, WireState
+from wire import Wire, WireState
 
 CircuitKey: TypeAlias = str|int
 WireDict: TypeAlias = OrderedDict[CircuitKey, Wire]

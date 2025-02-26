@@ -125,3 +125,23 @@ class SchematicsBuilder:
         half_adder.connect_output("CARRY", "AND", "OUT")
 
         self.add_schematic(half_adder)
+
+    def add_full_adder(self):
+        full_adder = Circuit(7)
+        full_adder.add_component("XOR_ONE", self.get_schematic(5))
+        full_adder.add_component("XOR_TWO", self.get_schematic(5))
+        full_adder.add_component("AND_ONE", self.get_schematic(2))
+        full_adder.add_component("AND_TWO", self.get_schematic(2))
+        full_adder.add_component("OR", self.get_schematic(3))
+
+        full_adder.connect_input("A", "XOR_ONE", "A")
+        full_adder.connect_input("B", "XOR_ONE", "B")    
+        full_adder.connect_input("A", "AND_ONE", "A")
+        full_adder.connect_input("B", "AND_ONE", "B")
+        full_adder.connect_input("A", "AND", "A")
+        full_adder.connect_input("B", "AND", "B")
+
+        full_adder.connect_output("SUM", "XOR", "OUT")
+        full_adder.connect_output("CARRY", "AND", "OUT")
+
+        self.add_schematic(full_adder)

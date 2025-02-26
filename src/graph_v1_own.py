@@ -30,7 +30,7 @@ def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str =
         
     return main_graph
 
-def _build_circuit_graph(parent_graph, circuit, prefix, wire_connections, is_main_circuit=False):
+def _build_circuit_graph(parent_graph, circuit: Circuit, prefix, wire_connections, is_main_circuit=False):
     """
     Recursively build a circuit and its components as nested subgraphs.
     

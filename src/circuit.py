@@ -41,7 +41,7 @@ class Circuit:
         self.components : CircuitDict = OrderedDict()
         self.miss = 0
 
-    def add_component(self, name : CircuitKey, component : Self):
+    def add_component(self, name : CircuitKey, component : 'Circuit'):
         self.components[name] = component
 
     def connect_input(self, input: CircuitKey, target_name: CircuitKey, target_input: CircuitKey):
@@ -75,6 +75,8 @@ class Circuit:
         wire = self.inputs[input]    
         old_wire = target.inputs[target_input]
         target.inputs[target_input] = wire
+
+        # TODO ici : enforce que tous les inputs d'un circuit doivent être def avant le prochain circuit
 
         # Update all matching wire references in the component hierarchy
         self._propagate_wire_update(target, old_wire, wire)

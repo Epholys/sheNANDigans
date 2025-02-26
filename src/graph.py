@@ -216,9 +216,10 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     
     # Visualize different circuits
-    visualize_schematic(0, schematics_builder, "nand_gate")
-    visualize_schematic(1, schematics_builder, "not_gate")
-    visualize_schematic(2, schematics_builder, "and_gate")
-    visualize_schematic(3, schematics_builder, "or_gate") 
-    visualize_schematic(5, schematics_builder, "xor_gate")
-    visualize_schematic(6, schematics_builder, "half_adder")
+    # visualize_schematic(0, schematics_builder, "nand_gate")
+    # visualize_schematic(1, schematics_builder, "not_gate")
+    # visualize_schematic(2, schematics_builder, "and_gate")
+    # visualize_schematic(3, schematics_builder, "or_gate") 
+    # visualize_schematic(5, schematics_builder, "xor_gate")
+    # visualize_schematic(6, schematics_builder, "half_adder")
+    visualize_schematic(7, schematics_builder, "full_adder")

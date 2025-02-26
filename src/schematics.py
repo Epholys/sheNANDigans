@@ -38,6 +38,8 @@ class SchematicsBuilder:
         self.add_nor()
         self.add_xor()
         self.add_half_adder()
+        self.add_full_adder()
+        self.add_2bits_adder()
 
     def add_not(self):
         not_gate = Circuit(1)
@@ -136,12 +138,42 @@ class SchematicsBuilder:
 
         full_adder.connect_input("A", "XOR_ONE", "A")
         full_adder.connect_input("B", "XOR_ONE", "B")    
+
         full_adder.connect_input("A", "AND_ONE", "A")
         full_adder.connect_input("B", "AND_ONE", "B")
-        full_adder.connect_input("A", "AND", "A")
-        full_adder.connect_input("B", "AND", "B")
 
-        full_adder.connect_output("SUM", "XOR", "OUT")
-        full_adder.connect_output("CARRY", "AND", "OUT")
+        full_adder.connect_input("Cin", "XOR_TWO", "B")
+        full_adder.connect_input("Cin", "AND_TWO", "B")
+
+        full_adder.connect_output("SUM", "XOR_TWO", "OUT")
+        full_adder.connect_output("Cout", "OR", "OUT")
+
+        full_adder.connect("XOR_ONE", "OUT", "XOR_TWO", "A")
+        full_adder.connect("XOR_ONE", "OUT", "AND_TWO", "A")
+        full_adder.connect("AND_ONE", "OUT", "OR", "A")
+        full_adder.connect("AND_TWO", "OUT", "OR", "B")
 
         self.add_schematic(full_adder)
+
+    def add_2bits_adder(self):
+        two_bits_adder = Circuit(8)
+        two_bits_adder.add_component("ADDER_0", self.get_schematic(7))
+        two_bits_adder.add_component("ADDER_1", self.get_schematic(7))
+
+        two_bits_adder.connect_input("A0", "ADDER_0", "A")
+        two_bits_adder.connect_input("B0", "ADDER_0", "B")
+        
+        two_bits_adder.connect_input("C0", "ADDER_0", "Cin") # ICI PROBLEME ! L'encodage / décodage veut que chaque composants à ses ins les uns à la suite des autres
+
+        two_bits_adder.connect_input("A1", "ADDER_1", "A")
+        two_bits_adder.connect_input("B1", "ADDER_1", "B")
+
+        # two_bits_adder.connect_input("C0", "ADDER_0", "Cin") # ICI PROBLEME ! L'encodage / décodage veut que chaque composants à ses ins les uns à la suite des autres
+
+        two_bits_adder.connect_output("S0", "ADDER_0", "SUM")
+        two_bits_adder.connect_output("S1", "ADDER_1", "SUM")
+        two_bits_adder.connect_output("Cout", "ADDER_1", "Cout")
+
+        two_bits_adder.connect("ADDER_0", "Cout", "ADDER_1", "Cin")
+
+        self.add_schematic(two_bits_adder)

@@ -1,6 +1,6 @@
 from typing import List
 
-from src.circuit import Circuit, CircuitDict, Wire
+from circuit import Circuit, CircuitDict, Wire
 
 
 class CircuitEncoder:

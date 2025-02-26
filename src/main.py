@@ -9,9 +9,8 @@ def main():
     schematics = builder.schematics
 
     partial = deepcopy(schematics)
-    #while len(partial) > 6:
-    #    partial.popitem()
-    # print(only_not)
+    while len(partial) > 9:
+        partial.popitem()
 
     encoder = CircuitEncoder(partial)
     encoded = encoder.encode()
@@ -23,6 +22,8 @@ def main():
 
     round_trip = CircuitEncoder(decoded).encode()
     print(round_trip)
+
+    print(len(round_trip))
 
     assert(encoded == round_trip)
 

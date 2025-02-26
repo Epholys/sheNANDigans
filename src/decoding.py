@@ -54,7 +54,7 @@ class CircuitDecoder:
         if not component_id in self.library.keys():
             raise ValueError(f"Trying to use the undefined component {component_id}")
         component = schematics.get_schematic(component_id, self.library)
-        self.circuit.add_component(idx_component, component)
+        self.circuit.add_component(idx_component, component) # C(0(ADDER0)), 7) ; 
         self.decode_inputs(idx_component, component)
 
     def decode_inputs(self, idx_component  : CircuitKey , component : Circuit):
@@ -65,6 +65,9 @@ class CircuitDecoder:
                 if circuit_in_idx >= self.circuit.n_inputs:
                     raise ValueError(f"{idx_component}-th component of circuit {self.circuit.identifier} asked for the {component_in_idx}-th input, which is not in 0..{self.circuit.n_inputs}")
                 self.circuit.connect_input(circuit_in_idx, idx_component, component_in_idx)
+                # I(0(A0),0(ADDER0),0(A))
+                # I(1(B0),0(ADDER0),1(B))
+                # I(2(A1),0(ADDER0),2(Cin)) ← Ici l'erreur !
             else:
                 other_component_id = self.data.pop(0)
                 other_component_out_idx = self.data.pop(0)

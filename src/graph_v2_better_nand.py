@@ -1,5 +1,8 @@
 import pydot
 from circuit import Circuit, CircuitKey
+from decoding import CircuitDecoder
+from encoding import CircuitEncoder
+from schematics import get_schematic
 
 def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str = "png"):
     """
@@ -249,7 +252,7 @@ def _build_circuit_graph(parent_graph, circuit, prefix, wire_connections, is_mai
     
     return port_nodes
 
-def visualize_schematic(circuit_id, schematics_builder, filename=None, format="png"):
+def visualize_schematic(circuit_id, schematics, filename=None, format="png"):
     """
     Helper function to quickly visualize a schematic from your library.
     
@@ -262,7 +265,7 @@ def visualize_schematic(circuit_id, schematics_builder, filename=None, format="p
     Returns:
         The generated pydot graph
     """
-    circuit = schematics_builder.get_schematic(circuit_id)
+    circuit = get_schematic(circuit_id, schematics)
     return generate_circuit_graph(circuit, filename, format)
 
 # Example usage
@@ -276,11 +279,28 @@ if __name__ == "__main__":
     # Create schematics library
     schematics_builder = schematics.SchematicsBuilder()
     schematics_builder.build_circuits()
+    reference = schematics_builder.schematics
+
+    
+    encoder = CircuitEncoder(reference.copy())
+    encoded = encoder.encode()
+    decoder = CircuitDecoder(encoded.copy())
+    round_trip_1 = decoder.decode()
+
+    encoder = CircuitEncoder(round_trip_1.copy())
+    encoded = encoder.encode()
+    decoder = CircuitDecoder(encoded.copy())
+    round_trip_2 = decoder.decode()    
+
     
     # Visualize different circuits
-    visualize_schematic(0, schematics_builder, "nand_gate_better_nand")
-    visualize_schematic(1, schematics_builder, "not_gate_better_nand")
-    visualize_schematic(2, schematics_builder, "and_gate_better_nand")
-    visualize_schematic(3, schematics_builder, "or_gate_better_nand") 
-    visualize_schematic(5, schematics_builder, "xor_gate_better_nand")
-    visualize_schematic(6, schematics_builder, "half_adder_better_nand")
+    # visualize_schematic(0, reference, "nand_gate_better_nand")
+    # visualize_schematic(1, reference, "not_gate_better_nand")
+    # visualize_schematic(2, reference, "and_gate_better_nand")
+    # visualize_schematic(3, reference, "or_gate_better_nand") 
+    # visualize_schematic(5, reference, "xor_gate_better_nand")
+    # visualize_schematic(6, reference, "half_adder_better_nand")
+    # visualize_schematic(7, reference, "fulladder_nand")
+    visualize_schematic(8, reference, "2bitsadder_better_nand")
+    visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
+    visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")

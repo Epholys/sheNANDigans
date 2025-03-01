@@ -26,6 +26,7 @@ class SchematicsBuilder:
 
     def add_schematic(self, circuit: Circuit):
         add_schematic(circuit, self.schematics)
+        # circuit.sanitize()
     
     def get_schematic(self, id : CircuitKey):
         return get_schematic(id, self.schematics)
@@ -162,13 +163,10 @@ class SchematicsBuilder:
 
         two_bits_adder.connect_input("A0", "ADDER_0", "A")
         two_bits_adder.connect_input("B0", "ADDER_0", "B")
+        two_bits_adder.connect_input("C0", "ADDER_0", "Cin")
         
-        two_bits_adder.connect_input("C0", "ADDER_0", "Cin") # ICI PROBLEME ! L'encodage / décodage veut que chaque composants à ses ins les uns à la suite des autres
-
         two_bits_adder.connect_input("A1", "ADDER_1", "A")
         two_bits_adder.connect_input("B1", "ADDER_1", "B")
-
-        # two_bits_adder.connect_input("C0", "ADDER_0", "Cin") # ICI PROBLEME ! L'encodage / décodage veut que chaque composants à ses ins les uns à la suite des autres
 
         two_bits_adder.connect_output("S0", "ADDER_0", "SUM")
         two_bits_adder.connect_output("S1", "ADDER_1", "SUM")

@@ -8,23 +8,29 @@ def main():
     builder.build_circuits()
     schematics = builder.schematics
 
-    partial = deepcopy(schematics)
-    while len(partial) > 9:
-        partial.popitem()
+    # print(schematics)
 
-    encoder = CircuitEncoder(partial)
+    # partial = deepcopy(schematics)
+    # while len(partial) > 9:
+    #     partial.popitem()
+
+    encoder = CircuitEncoder(schematics)
     encoded = encoder.encode()
     print(encoded)
 
-    decoder = CircuitDecoder(encoded.copy())
+    decoder = CircuitDecoder(encoded)
     decoded = decoder.decode()
     # print(decoded)
 
     round_trip = CircuitEncoder(decoded).encode()
-    print(round_trip)
+
+
+    print(encoded)
+    for idx, (a, b) in enumerate(zip(encoded, round_trip)):
+        if a != b:
+            print(f"Index {idx} is different: {a} != {b}")
 
     print(len(round_trip))
-
     assert(encoded == round_trip)
 
     # BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB

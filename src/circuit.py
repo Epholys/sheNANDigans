@@ -1,10 +1,10 @@
-from typing import OrderedDict, Self, TypeAlias
+from typing import Dict, OrderedDict, Self, TypeAlias
 
 from wire import Wire, WireState
 
 CircuitKey: TypeAlias = str|int
-WireDict: TypeAlias = OrderedDict[CircuitKey, Wire]
-CircuitDict: TypeAlias = OrderedDict[CircuitKey, 'Circuit']
+WireDict: TypeAlias = Dict[CircuitKey, Wire]
+CircuitDict: TypeAlias = Dict[CircuitKey, 'Circuit']
 
 class Circuit:
     """
@@ -75,8 +75,6 @@ class Circuit:
         wire = self.inputs[input]    
         old_wire = target.inputs[target_input]
         target.inputs[target_input] = wire
-
-        # TODO ici : enforce que tous les inputs d'un circuit doivent être def avant le prochain circuit
 
         # Update all matching wire references in the component hierarchy
         self._propagate_wire_update(target, old_wire, wire)

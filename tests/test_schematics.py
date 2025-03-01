@@ -13,14 +13,12 @@ from src.encoding import CircuitEncoder
 
 builder = schematics.SchematicsBuilder()
 builder.build_circuits()
-reference = builder.schematics
+reference_circuits = builder.schematics
 
-encoder = CircuitEncoder(reference.copy())
-encoded = encoder.encode()
-decoder = CircuitDecoder(encoded.copy())
-round_trip = decoder.decode()    
+encoded = CircuitEncoder(reference_circuits).encode()
+round_trip_circuits = CircuitDecoder(encoded).decode()
 
-@parameterized_class([{'library': reference}, {'library': round_trip}])
+@parameterized_class([{'library': reference_circuits}, {'library': round_trip_circuits}])
 class TestSchematics(unittest.TestCase):
 
     library: OrderedDict[CircuitKey, Circuit]
@@ -160,14 +158,6 @@ class TestSchematics(unittest.TestCase):
         # Pour : a=True, b=False -> sum=0b01 -> bit=sum&1=1, carry=(sum>>1)&1=0
         expected_outputs = [(sum & 1, (sum >> 1) & 1, (sum >> 2) & 1) for sum in addition]
 
-        for (inputs, addition_total, outputs) in zip(possible_inputs, addition, expected_outputs):
-            if addition_total == 6:
-                print(f"inputs = {[+(x) for x in inputs]}")
-                print(f"addition = {addition_total}")
-                print(f"outputs = {outputs}")
-                print(f"addition_outputs = {[]}")
-                print("")
-
         for idx, ((a0, b0, a1, b1, c0), (s0, s1, cout)) in enumerate(zip(possible_inputs, expected_outputs)):
             two_bits_adder.reset()
             input_a0.state = a0
@@ -182,17 +172,7 @@ class TestSchematics(unittest.TestCase):
             s1_result = int(s1_output.state)
             carry_result = int(cout_output.state)
 
-            
-            if addition[idx] == 6:
-                print(f"possible_inputs[{idx}] = {[+(x) for x in possible_inputs[idx]]}")
-                print(f"addition[{idx}] = {addition[idx]}")
-                print(f"expected_outputs[{idx}] = {expected_outputs[idx]}")
-                print(f"result = {s0_result + s1_result * 2 + carry_result * 4}")
-                print((s0_result, s1_result, carry_result), (s0, s1, cout))
-
-
-            self.assertEqual((s0_result, s1_result, carry_result), (s0, s1, cout))    
-            print("")
+            self.assertEqual((s0_result, s1_result, carry_result), (s0, s1, cout))            
 
 if __name__ == '__main__':
     unittest.main()

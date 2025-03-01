@@ -5,9 +5,9 @@ from circuit import Circuit, CircuitDict, Wire
 
 class CircuitEncoder:
     def __init__(self, library : CircuitDict):
-        self.library = library
+        self.library = library.copy()
         self.circuits_ids = list(library.keys())
-        library.popitem(last=False)
+        self.library.popitem(last=False)
 
     def encode(self) -> List[int]:
         data : List[int] = []
@@ -47,7 +47,6 @@ class CircuitEncoder:
             else:
                 subcomponents = circuit.components
                 data.append(1)
-                #print(f"Encoding wire {repr(wire)} of inputs {component.inputs} of component {component.identifier}")
                 wiring = self.encode_component_wiring(subcomponents, wire)
                 data.extend(wiring)
         if length_data == len(data):

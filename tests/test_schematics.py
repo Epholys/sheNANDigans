@@ -3,7 +3,7 @@ from src import *
 from itertools import product
 from typing import Callable, OrderedDict
 import unittest
-from parameterized import parameterized_class # type: ignore
+from parameterized import parameterized_class  # type: ignore
 
 from src import schematics
 from src.circuit import Circuit, CircuitKey
@@ -18,17 +18,21 @@ reference_circuits = builder.schematics
 encoded = CircuitEncoder(reference_circuits).encode()
 round_trip_circuits = CircuitDecoder(encoded).decode()
 
-@parameterized_class([{'library': reference_circuits}, {'library': round_trip_circuits}])
-class TestSchematics(unittest.TestCase):
 
+@parameterized_class(
+    [{"library": reference_circuits}, {"library": round_trip_circuits}]
+)
+class TestSchematics(unittest.TestCase):
     library: OrderedDict[CircuitKey, Circuit]
 
-    def assert_2_in_1_out(self, gate : Circuit, gate_logic : Callable[[bool, bool], bool]):
+    def assert_2_in_1_out(
+        self, gate: Circuit, gate_logic: Callable[[bool, bool], bool]
+    ):
         self.assertEqual(len(gate.inputs), 2)
         inputs = list(gate.inputs.values())
         input_a = inputs[0]
         input_b = inputs[1]
-        
+
         self.assertEqual(len(gate.outputs), 1)
         output = list(gate.outputs.values())[0]
 
@@ -42,20 +46,19 @@ class TestSchematics(unittest.TestCase):
             self.assertTrue(gate.simulate(), "Simulation failed")
             self.assertEqual(bool(output.state), expected_output)
 
-
     def test_nand(self):
-        nand_gate = schematics.get_schematic(0, self.library)        
+        nand_gate = schematics.get_schematic(0, self.library)
         self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b))
 
     def test_not(self):
-        not_gate = schematics.get_schematic(1, self.library)       
-        
+        not_gate = schematics.get_schematic(1, self.library)
+
         self.assertEqual(len(not_gate.inputs), 1)
         input = list(not_gate.inputs.values())[0]
-        
+
         self.assertEqual(len(not_gate.outputs), 1)
         output = list(not_gate.outputs.values())[0]
-        
+
         for a in [True, False]:
             not_gate.reset()
             input.state = a
@@ -63,7 +66,7 @@ class TestSchematics(unittest.TestCase):
             self.assertEqual(bool(output.state), not a)
 
     def test_and(self):
-        and_gate = schematics.get_schematic(2, self.library)        
+        and_gate = schematics.get_schematic(2, self.library)
         self.assert_2_in_1_out(and_gate, lambda a, b: a and b)
 
     def test_or(self):
@@ -72,7 +75,7 @@ class TestSchematics(unittest.TestCase):
 
     def test_nor(self):
         nor_gate = schematics.get_schematic(4, self.library)
-        self.assert_2_in_1_out(nor_gate, lambda a, b: not(a or b))
+        self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b))
 
     def test_xor(self):
         xor_gate = schematics.get_schematic(5, self.library)
@@ -84,7 +87,7 @@ class TestSchematics(unittest.TestCase):
         inputs = list(half_adder.inputs.values())
         input_a = inputs[0]
         input_b = inputs[1]
-        
+
         self.assertEqual(len(half_adder.outputs), 2)
         outputs = list(half_adder.outputs.values())
         sum_output = outputs[0]
@@ -113,7 +116,7 @@ class TestSchematics(unittest.TestCase):
         input_a = inputs[0]
         input_b = inputs[1]
         input_cin = inputs[2]
-        
+
         self.assertEqual(len(full_adder.outputs), 2)
         outputs = list(full_adder.outputs.values())
         sum_output = outputs[0]
@@ -134,7 +137,7 @@ class TestSchematics(unittest.TestCase):
 
             sum_result = int(sum_output.state)
             carry_result = int(cout_output.state)
-            self.assertEqual((sum_result, carry_result), (sum, cout))  
+            self.assertEqual((sum_result, carry_result), (sum, cout))
 
     def test_2bits_adder(self):
         two_bits_adder = schematics.get_schematic(8, self.library)
@@ -154,25 +157,33 @@ class TestSchematics(unittest.TestCase):
 
         possible_inputs = list(product([True, False], repeat=5))
         # +(True) = 1, +(False) = 0
-        addition = [+(a0) + +(b0) + +(a1) * 2 + +(b1) * 2 + +(c0) for (a0, b0, a1, b1, c0) in possible_inputs]
+        addition = [
+            +(a0) + +(b0) + +(a1) * 2 + +(b1) * 2 + +(c0)
+            for (a0, b0, a1, b1, c0) in possible_inputs
+        ]
         # Pour : a=True, b=False -> sum=0b01 -> bit=sum&1=1, carry=(sum>>1)&1=0
-        expected_outputs = [(sum & 1, (sum >> 1) & 1, (sum >> 2) & 1) for sum in addition]
+        expected_outputs = [
+            (sum & 1, (sum >> 1) & 1, (sum >> 2) & 1) for sum in addition
+        ]
 
-        for idx, ((a0, b0, a1, b1, c0), (s0, s1, cout)) in enumerate(zip(possible_inputs, expected_outputs)):
+        for idx, ((a0, b0, a1, b1, c0), (s0, s1, cout)) in enumerate(
+            zip(possible_inputs, expected_outputs)
+        ):
             two_bits_adder.reset()
             input_a0.state = a0
             input_b0.state = b0
             input_a1.state = a1
             input_b1.state = b1
             input_c0.state = c0
-            
+
             self.assertTrue(two_bits_adder.simulate(), "Simulation failed")
 
             s0_result = int(s0_output.state)
             s1_result = int(s1_output.state)
             carry_result = int(cout_output.state)
 
-            self.assertEqual((s0_result, s1_result, carry_result), (s0, s1, cout))            
+            self.assertEqual((s0_result, s1_result, carry_result), (s0, s1, cout))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

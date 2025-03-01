@@ -3,6 +3,7 @@ from schematics import SchematicsBuilder
 from encoding import CircuitEncoder
 from decoding import CircuitDecoder
 
+
 def main():
     builder = SchematicsBuilder()
     builder.build_circuits()
@@ -24,18 +25,18 @@ def main():
 
     round_trip = CircuitEncoder(decoded).encode()
 
-
     print(encoded)
     for idx, (a, b) in enumerate(zip(encoded, round_trip)):
         if a != b:
             print(f"Index {idx} is different: {a} != {b}")
 
     print(len(round_trip))
-    assert(encoded == round_trip)
+    assert encoded == round_trip
 
     # BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
     # BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
     # BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+
 
 if __name__ == "__main__":
     main()

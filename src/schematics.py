@@ -3,6 +3,7 @@ from typing import OrderedDict
 
 from circuit import Circuit, CircuitDict, CircuitKey, Wire
 
+
 def add_nand(library: CircuitDict):
     nand_gate = Circuit(0)
     nand_gate.inputs["A"] = Wire()
@@ -10,25 +11,28 @@ def add_nand(library: CircuitDict):
     nand_gate.outputs["OUT"] = Wire()
     add_schematic(nand_gate, library)
 
+
 def add_schematic(circuit: Circuit, library: CircuitDict):
     if library.get(circuit.identifier) is not None:
         raise ValueError(f"Circuit {circuit.identifier} already exists")
     library[circuit.identifier] = circuit
 
-def get_schematic(identifier : CircuitKey, library : CircuitDict) -> Circuit:
+
+def get_schematic(identifier: CircuitKey, library: CircuitDict) -> Circuit:
     if library.get(identifier) is None:
         raise ValueError(f"Circuit {identifier} does not exist")
     return deepcopy(library[identifier])
 
+
 class SchematicsBuilder:
     def __init__(self):
-        self.schematics : CircuitDict = OrderedDict()
+        self.schematics: CircuitDict = OrderedDict()
 
     def add_schematic(self, circuit: Circuit):
         add_schematic(circuit, self.schematics)
         # circuit.sanitize()
-    
-    def get_schematic(self, id : CircuitKey):
+
+    def get_schematic(self, id: CircuitKey):
         return get_schematic(id, self.schematics)
 
     def build_circuits(self):
@@ -83,7 +87,7 @@ class SchematicsBuilder:
         nor_gate.add_component("OR", self.get_schematic(3))
         nor_gate.add_component("NOT", self.get_schematic(1))
 
-        nor_gate.connect_input("A", "OR", "A")    
+        nor_gate.connect_input("A", "OR", "A")
         nor_gate.connect_input("B", "OR", "B")
 
         nor_gate.connect_output("OUT", "NOT", "OUT")
@@ -138,7 +142,7 @@ class SchematicsBuilder:
         full_adder.add_component("OR", self.get_schematic(3))
 
         full_adder.connect_input("A", "XOR_ONE", "A")
-        full_adder.connect_input("B", "XOR_ONE", "B")    
+        full_adder.connect_input("B", "XOR_ONE", "B")
 
         full_adder.connect_input("A", "AND_ONE", "A")
         full_adder.connect_input("B", "AND_ONE", "B")
@@ -164,7 +168,7 @@ class SchematicsBuilder:
         two_bits_adder.connect_input("A0", "ADDER_0", "A")
         two_bits_adder.connect_input("B0", "ADDER_0", "B")
         two_bits_adder.connect_input("C0", "ADDER_0", "Cin")
-        
+
         two_bits_adder.connect_input("A1", "ADDER_1", "A")
         two_bits_adder.connect_input("B1", "ADDER_1", "B")
 

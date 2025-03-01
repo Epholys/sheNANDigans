@@ -20,7 +20,4 @@ class TestEncoding(unittest.TestCase):
             for idx, (a, b) in enumerate(zip(reference_encoding, round_trip_encoding)):
                 if a != b:
                     print(f"Index {idx} is different: {a} != {b}")
-            assert(False)
-            
-
-        
+            assert False

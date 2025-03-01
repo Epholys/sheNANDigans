@@ -1,5 +1,5 @@
 import pydot
-from circuit import Circuit, CircuitKey
+from circuit import Circuit
 from decoding import CircuitDecoder
 from encoding import CircuitEncoder
 from schematics import get_schematic

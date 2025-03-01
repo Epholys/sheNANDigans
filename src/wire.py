@@ -15,7 +15,7 @@ class WireState(Enum):
             case WireState.ON:
                 return True
             case WireState.UNKNOWN:
-                raise ValueError(f"Trying to convert an Unknown state to a boolean.")
+                raise ValueError("Trying to convert an Unknown state to a boolean.")
 
     def __int__(self) -> int:
         match self:
@@ -24,7 +24,7 @@ class WireState(Enum):
             case WireState.ON:
                 return 1
             case WireState.UNKNOWN:
-                raise ValueError(f"Trying to convert an Unknown state to a boolean.")
+                raise ValueError("Trying to convert an Unknown state to a boolean.")
 
 
 class Wire:

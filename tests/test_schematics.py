@@ -1,5 +1,3 @@
-from src import *
-
 from itertools import product
 from typing import Callable, OrderedDict
 import unittest

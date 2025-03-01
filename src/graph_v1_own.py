@@ -1,5 +1,5 @@
 import pydot
-from circuit import Circuit, CircuitKey
+from circuit import Circuit
 
 
 def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str = "png"):

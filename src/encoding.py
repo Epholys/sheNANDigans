@@ -1,4 +1,3 @@
-from re import L
 from typing import List
 
 from circuit import Circuit, CircuitDict, Wire

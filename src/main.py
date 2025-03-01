@@ -1,4 +1,3 @@
-from copy import deepcopy
 from schematics import SchematicsBuilder
 from encoding import CircuitEncoder
 from decoding import CircuitDecoder

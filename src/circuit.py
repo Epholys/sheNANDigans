@@ -1,4 +1,4 @@
-from typing import Dict, OrderedDict, Self, TypeAlias
+from typing import Dict, OrderedDict, TypeAlias
 
 from wire import Wire, WireState
 

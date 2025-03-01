@@ -1,5 +1,5 @@
 import pydot
-from circuit import Circuit, CircuitKey
+from circuit import Circuit
 
 
 def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str = "png"):
@@ -123,15 +123,6 @@ def _build_circuit_graph(parent_graph, circuit, prefix, wire_mapping):
             output_node_id = f"{prefix}_out_{out_key}"
             edge = pydot.Edge(nand_node_id, output_node_id)
             parent_graph.add_edge(edge)
-    else:
-        # Process all component circuits recursively
-        for comp_key, component in circuit.components.items():
-            comp_prefix = f"{prefix}_comp_{comp_key}"
-            comp_port_to_wire = _build_circuit_graph(
-                subgraph, component, comp_prefix, wire_mapping
-            )
-
-            # No need to create edges here - they will be created in _connect_wires_directly
 
     # Add the subgraph to the parent graph
     parent_graph.add_subgraph(subgraph)

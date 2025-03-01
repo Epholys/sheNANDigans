@@ -1,5 +1,4 @@
-from collections import namedtuple
-from typing import List, NamedTuple, OrderedDict, TypeAlias
+from typing import List, NamedTuple, OrderedDict
 
 import schematics
 from circuit import Circuit, CircuitDict, CircuitKey, Wire
@@ -75,7 +74,7 @@ class CircuitDecoder:
 
     def decode_component(self, idx_component: CircuitKey):
         component_id = self.data.pop(0)
-        if not component_id in self.library.keys():
+        if component_id not in self.library.keys():
             raise ValueError(f"Trying to use the undefined component {component_id}")
         component = schematics.get_schematic(component_id, self.library)
         self.circuit.add_component(idx_component, component)

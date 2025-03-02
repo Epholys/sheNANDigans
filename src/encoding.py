@@ -4,75 +4,113 @@ from circuit import Circuit, CircuitDict, Wire
 
 
 class CircuitEncoder:
+    """
+    Encode a circuit library into a list of integers.
+
+    This is a relatively simple, not fully optimized, encoding.
+    It still has some little tricks to reduce the size of the encoding.
+
+    TODO add a reference to the circuit wiring model
+    """
+
     def __init__(self, library: CircuitDict):
-        self.library = library.copy()
-        self.circuits_ids = list(library.keys())
-        self.library.popitem(last=False)
+        self.library: CircuitDict = library.copy()
+        self.encoding: List[int]
+        # TODO add validation for all circuits of library ?
+        # It would minimize safety checks
 
     def encode(self) -> List[int]:
-        data: List[int] = []
+        """
+        library = [circuit_1, circuit_2, ...]
+        Note : circuit_0 is the nand gate, and not encoded as it is supposed here by default
+        """
+        self.encoding = []
         for circuit in self.library.values():
-            data.extend(self.encode_circuit(circuit))
-        return data
+            if circuit.identifier == 0:
+                continue
+            self.encode_circuit(circuit)
+        return self.encoding
 
-    def encode_circuit(self, circuit: Circuit) -> List[int]:
-        data: List[int] = []
-        data.extend(self.encode_header(circuit))
+    def encode_circuit(self, circuit: Circuit):
+        """
+        circuit = [header, components, outputs]
+        """
+        self.encode_header(circuit)
+        self.encode_components(circuit)
+        self.encode_outputs(circuit)
+
+    def encode_header(self, circuit: Circuit):
+        """
+        header = [n_components, n_inputs, n_outputs]
+        n_components is used in decoding to know how many components to read
+        n_inputs is used in decoding for safety check
+        n_outputs is used in decoding to know how many outputs to read
+        """
+        self.encoding.append(len(circuit.components))
+        self.encoding.append(len(circuit.inputs))
+        self.encoding.append(len(circuit.outputs))
+
+    def encode_components(self, circuit: Circuit):
+        """
+        components = [component_0, component_1, ..., component_n]
+        """
         for component in circuit.components.values():
-            data.extend(self.encode_component(component, circuit))
-        data.extend(self.encode_outputs(circuit))
-        return data
+            self.encode_component(component, circuit)
 
-    def encode_header(self, circuit: Circuit) -> List[int]:
-        data: List[int] = []
-        data.append(len(circuit.components))
-        data.append(len(circuit.inputs))
-        data.append(len(circuit.outputs))
-        return data
+    def encode_component(self, component: Circuit, circuit: Circuit):
+        """
+        component = [id, inputs]
+        id is not the identifier of the circuit, but the index of the component in the circuit.
+        But, during decoding this index becomes the identifier of the component.
+        """
+        circuit_ids = list(self.library.keys())
+        self.encoding.append(circuit_ids.index(component.identifier))
 
-    def encode_component(self, component: Circuit, circuit: Circuit) -> List[int]:
-        data: List[int] = []
-        circuits_input_wires_id = [wire.id for wire in circuit.inputs.values()]
+        self.encode_inputs(component, circuit)
 
-        # Encode component id
-        data.append(self.circuits_ids.index(component.identifier))
+    def encode_inputs(self, component: Circuit, circuit: Circuit):
+        """
+        inputs = [input_0, input_1, ..., input_n]
+        input = [provenance, location]
 
-        # Encode input wires
-        length_data = len(data)
-        for wire in component.inputs.values():
-            if wire.id in circuits_input_wires_id:
-                # Provenance
-                data.append(0)
-                data.append(circuits_input_wires_id.index(wire.id))
+        provenance = 0 if the input is a circuit input, 1 if it is a component output
+        location =
+            if provenance = 0:
+                location = index in the circuit inputs
+            if provenance = 1:
+                location = wiring (see encode_component_wiring())
+
+        provenance seems to be useless (we could remove it and encode directly the location with a special value for circuit inputs),
+        but it *will* be useful for the bit-packing optimization.
+        """
+        circuit_input = [wire.id for wire in circuit.inputs.values()]
+
+        for input in component.inputs.values():
+            if input.id in circuit_input:
+                self.encoding.append(0)
+                self.encoding.append(circuit_input.index(input.id))
             else:
-                subcomponents = circuit.components
-                data.append(1)
-                wiring = self.encode_component_wiring(subcomponents, wire)
-                data.extend(wiring)
-        if length_data == len(data):
-            raise ValueError(f"Component {component.identifier} has no inputs")
+                self.encoding.append(1)
+                self.encode_component_wiring(input, circuit.components)
 
-        return data
+    def encode_outputs(self, circuit: Circuit):
+        """
+        outputs = [output_0, output_1, ..., output_n]
+        output = wiring (see encode_component_wiring())
+        """
+        for output in circuit.outputs.values():
+            self.encode_component_wiring(output, circuit.components)
 
-    def encode_outputs(self, circuit: Circuit) -> List[int]:
-        data: List[int] = []
-        for wire in circuit.outputs.values():
-            wiring = self.encode_component_wiring(circuit.components, wire)
-            data.extend(wiring)
-        return data
-
-    def encode_component_wiring(self, components: CircuitDict, wire: Wire) -> List[int]:
-        data: List[int] = []
-
-        length_data = len(data)
+    def encode_component_wiring(self, wire: Wire, components: CircuitDict):
+        """
+        wiring = [component_idx, output_idx]
+        component_idx is the index of the component in the circuit
+        output_idx is the index of the output in the component
+        """
         for idx, subcomponent in enumerate(components.values()):
-            wires_ids = [wire.id for wire in subcomponent.outputs.values()]
-            if wire.id in wires_ids:
-                # index of the subcomponent
-                data.append(idx)
-                # index of the wire in the subcomponent outputs
-                data.append(wires_ids.index(wire.id))
-                break
-        if length_data == len(data):
-            raise ValueError(f"Wire {wire.id} not found in any subcomponent outputs")
-        return data
+            outputs = [wire.id for wire in subcomponent.outputs.values()]
+            if wire.id in outputs:
+                self.encoding.append(idx)
+                self.encoding.append(outputs.index(wire.id))
+                return
+        raise ValueError(f"Wire {wire.id} not found in any subcomponent outputs")

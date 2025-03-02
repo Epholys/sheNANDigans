@@ -1,4 +1,4 @@
-from typing import Dict, OrderedDict, TypeAlias
+from typing import Dict, TypeAlias
 
 from wire import Wire, WireState
 
@@ -184,7 +184,18 @@ class Circuit:
             self._propagate_wire_update(subcomponents, old_wire, new_wire)
 
     def validate(self) -> bool:
-        # TODO : Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?)
+        # TODO
+        # Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?),
+        # outs <-!-> ins
+        # no cycles
+        # https://en.wikipedia.org/wiki/Topological_sorting https://docs.python.org/3/library/graphlib.html
+        # https://networkx.org/documentation/stable/
+        # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.dag.is_directed_acyclic_graph.html#networkx.algorithms.dag.is_directed_acyclic_graph
+        # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.is_weakly_connected.html
+        # no dangling wires
+        # no unused components
+        # all ins and all outs used
+        # ins > 0, outs > 0, composants > 0
         return True
 
     def reset(self):
@@ -262,18 +273,79 @@ class Circuit:
         out = list(self.outputs.values())[0]
         out.state = not (a.state and b.state)
 
-    def __repr__(self, indent: int = 4):
-        """Complete debug string of the Circuit, trying to make it legible with identation"""
+    def __str__(self, indent: int = 0):
+        """
+        Human-readable string representation of the Circuit with clear indentation.
+        Shows basic information about the circuit structure in a compact format.
+        """
         indent_str = " " * indent
-        inputs_str = ", ".join(f"{k}: Wire(id={v.id}" for k, v in self.inputs.items()) + ")"
-        outputs_str = ", ".join(f"{k}: Wire(id={v.id}" for k, v in self.outputs.items()) + ")"
-        components_str = "\n".join(
-            f"\n{indent_str}  {k}:  {v.__repr__(indent + 4)}"
-            for k, v in self.components.items()
-        )  if self.identifier != 0 else ""
-        return (
-            f"\n{indent_str}id={self.identifier}\n"
-            f"{indent_str}inputs=({inputs_str}),\n"
-            f"{indent_str}outputs=({outputs_str}),\n"
-            f"{indent_str}components={components_str}\n"
+
+        # Format input wires
+        inputs_str = ", ".join(f"{k}: W({v.id})" for k, v in self.inputs.items())
+
+        # Format output wires
+        outputs_str = ", ".join(f"{k}: W({v.id})" for k, v in self.outputs.items())
+
+        representation = (
+            f"C(id={self.identifier}, inputs=({inputs_str}), outputs=({outputs_str})"
         )
+
+        # Format components (only for non-NAND gates)
+        if self.identifier != 0:
+            components_list = [
+                f"{k}: {v.__str__(indent + 4)}" for k, v in self.components.items()
+            ]
+            components_str = (
+                "{\n"
+                + indent_str
+                + "  "
+                + f",\n{indent_str}  ".join(components_list)
+                + "\n"
+                + indent_str
+                + "}"
+            )
+            representation += f", components={components_str}"
+
+        representation += ")"
+
+        # Build the final representation
+        return representation
+
+    def __repr__(self, indent: int = 4):
+        """Complete debug string of the Circuit, trying to make it legible with indentation"""
+        indent_str = " " * indent
+
+        # Format input wires
+        inputs_str = ", ".join(f"{k}: Wire(id={v.id})" for k, v in self.inputs.items())
+
+        # Format output wires
+        outputs_str = ", ".join(
+            f"{k}: Wire(id={v.id})" for k, v in self.outputs.items()
+        )
+
+        representation = (
+            f"Circuit(id={self.identifier}"
+            f", inputs=({inputs_str})"
+            f", outputs=({outputs_str})"
+        )
+
+        # Format components (only for non-NAND gates)
+        if self.identifier != 0:
+            components_list = [
+                f"{k}: {v.__repr__(indent + 4)}" for k, v in self.components.items()
+            ]
+            components_str = (
+                "{\n"
+                + indent_str
+                + "  "
+                + f",\n{indent_str}  ".join(components_list)
+                + "\n"
+                + indent_str
+                + "}"
+            )
+            representation += f", components={components_str}"
+
+        representation += ")"
+
+        # Build the final representation
+        return representation

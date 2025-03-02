@@ -21,7 +21,7 @@ class Circuit:
     The attributes are ordered dictionaries, to maintain correct simulation after
     an encoding-decoding round-trip.
 
-    Attributes:
+    Attributes: # TODO change : auto change ?
         identifier (str): Unique identifier for the circuit
         inputs (OrderedDict[Any, Wire]): Input wires of the circuit
         outputs (OrderedDict[Any, Wire]): Output wires of the circuit
@@ -37,9 +37,9 @@ class Circuit:
         Initialize a new circuit with the given identifier.
         """
         self.identifier = identifier
-        self.inputs: WireDict = OrderedDict()
-        self.outputs: WireDict = OrderedDict()
-        self.components: CircuitDict = OrderedDict()
+        self.inputs: WireDict = dict()
+        self.outputs: WireDict = dict()
+        self.components: CircuitDict = dict()
         self.miss = 0
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
@@ -262,19 +262,18 @@ class Circuit:
         out = list(self.outputs.values())[0]
         out.state = not (a.state and b.state)
 
-    def __repr__(self, indent: int = 0):
+    def __repr__(self, indent: int = 4):
         """Complete debug string of the Circuit, trying to make it legible with identation"""
         indent_str = " " * indent
-        inputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.inputs.items())
-        outputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.outputs.items())
-        components_str = ",\n".join(
-            f"\n{indent_str}  {k}:\n  {v.__repr__(indent + 4)}"
+        inputs_str = ", ".join(f"{k}: Wire(id={v.id}" for k, v in self.inputs.items()) + ")"
+        outputs_str = ", ".join(f"{k}: Wire(id={v.id}" for k, v in self.outputs.items()) + ")"
+        components_str = "\n".join(
+            f"\n{indent_str}  {k}:  {v.__repr__(indent + 4)}"
             for k, v in self.components.items()
-        )
+        )  if self.identifier != 0 else ""
         return (
-            f"{indent_str}Circuit(id={self.identifier},\n"
-            f"{indent_str}  inputs=OrderedDict({inputs_str}),\n"
-            f"{indent_str}  outputs=OrderedDict({outputs_str}),\n"
-            f"{indent_str}  components=OrderedDict({components_str})\n"
-            f"{indent_str})"
+            f"\n{indent_str}id={self.identifier}\n"
+            f"{indent_str}inputs=({inputs_str}),\n"
+            f"{indent_str}outputs=({outputs_str}),\n"
+            f"{indent_str}components={components_str}\n"
         )

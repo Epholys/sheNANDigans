@@ -39,7 +39,7 @@ class CircuitDecoder:
         self.data = data.copy()
         self.library: CircuitDict = OrderedDict()
 
-        self.add_nand()
+        self.add_nand()  # TODO merge with schematics.addnand
 
         self.idx = 0
 

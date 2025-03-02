@@ -8,6 +8,8 @@ def main():
     builder.build_circuits()
     schematics = builder.schematics
 
+    print(str(schematics[8]))
+
     # print(schematics)
 
     # partial = deepcopy(schematics)

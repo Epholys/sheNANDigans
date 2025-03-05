@@ -11,6 +11,7 @@ class _InputParameters(NamedTuple):
     The rational is that the inputs' order must be preserved from the encoded circuit,
     but the encoded inputs are not necessarily in order. As such, we stash them and connect them later.
     """
+
     input_index: int
     component_key: CircuitKey
     component_input: int
@@ -22,6 +23,7 @@ class DecodedCircuit(Circuit):
 
     It contains data that is not in the Circuit class, but is necessary to decode a circuit.
     """
+
     def __init__(self, identifier: CircuitKey):
         super().__init__(identifier)
         self.n_components = 0
@@ -56,11 +58,12 @@ class DecodedCircuit(Circuit):
 class CircuitDecoder:
     """
     Decode the data into circuits.
-    
+
     Please look at the CircuitEncoder to understand the encoding format.
 
     One point important to reiterate is that the names of the circuits, inputs, and outputs are lost during the encoding. They are replaced by the index in which their appear. But the order, that defines the functionality, is preserved.
     """
+
     def __init__(self, data: List[int]):
         self.data = data.copy()
         self.library: CircuitDict = OrderedDict()
@@ -124,7 +127,6 @@ class CircuitDecoder:
                 raise ValueError(
                     f"Provenance {provenance} is not recognized. It must be 0 (circuit's inputs) or 1 (another component inputs)."
                 )
-               
 
     def decode_circuit_provenance(self, input_idx: int, component_idx: CircuitKey):
         """
@@ -149,7 +151,7 @@ class CircuitDecoder:
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of component {source_id}, which does not exists."
             )
         source = self.library[source_id]
-        
+
         source_output_idx = self.data.pop(0)
         if source_output_idx > len(source.outputs):
             raise ValueError(
@@ -172,11 +174,11 @@ class CircuitDecoder:
                 raise ValueError(
                     f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output to come from its {source_idx}-th component, which is not in 0..{self.circuit.n_components}."
                 )
-            
+
             source_output_idx = self.data.pop(0)
             try:
                 self.circuit.connect_output(output_idx, source_idx, source_output_idx)
             except ValueError as _:
-               raise ValueError(
+                raise ValueError(
                     f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component, which does not exists."
-                )    
+                )

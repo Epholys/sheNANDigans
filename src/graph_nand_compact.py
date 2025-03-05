@@ -2,7 +2,7 @@ import pydot
 from circuit import Circuit
 from decoding import CircuitDecoder
 from encoding import CircuitEncoder
-from schematics import get_schematic, get_schematic_idx
+from schematics import get_schematic_idx
 
 
 def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str = "png"):
@@ -23,9 +23,7 @@ def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str =
     )
 
     # Create the circuit representation directly (not as a subgraph)
-    _build_circuit_graph(
-        main_graph, circuit, ""
-    )
+    _build_circuit_graph(main_graph, circuit, "")
 
     # If filename is provided, save the graph
     if filename:
@@ -36,9 +34,7 @@ def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str =
     return main_graph
 
 
-def _build_circuit_graph(
-    parent_graph, circuit, prefix
-):
+def _build_circuit_graph(parent_graph, circuit, prefix):
     """
     Recursively build a circuit and its components as nested subgraphs.
 
@@ -144,7 +140,6 @@ def _build_circuit_graph(
                     else:
                         target_node = component_ports[comp_key][("in", comp_in_key)]
 
-
                     parent_graph.add_edge(
                         pydot.Edge(port_nodes[("in", circuit_in_key)], target_node)
                     )
@@ -157,13 +152,10 @@ def _build_circuit_graph(
         for comp_key, component in circuit.components.items():
             for comp_out_key, comp_wire in component.outputs.items():
                 if comp_wire.id == wire_id:
-                    
                     source_node = component_ports[comp_key][("out", comp_out_key)]
 
                     parent_graph.add_edge(
-                        pydot.Edge(
-                            source_node, port_nodes[("out", circuit_out_key)]
-                        )
+                        pydot.Edge(source_node, port_nodes[("out", circuit_out_key)])
                     )
 
     # Connect component outputs to other component inputs
@@ -179,10 +171,8 @@ def _build_circuit_graph(
                             ("out", src_out_key)
                         ]
 
-                        target_node = component_ports[tgt_comp_key][
-                            ("in", tgt_in_key)
-                        ]
-                        
+                        target_node = component_ports[tgt_comp_key][("in", tgt_in_key)]
+
                         parent_graph.add_edge(pydot.Edge(source_node, target_node))
 
     # Add the subgraph to the parent graph if this is not the main circuit

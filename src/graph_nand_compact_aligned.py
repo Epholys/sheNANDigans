@@ -164,7 +164,7 @@ def _build_circuit_graph(
         for nid in input_ids:
             subgraph_input.add_node(pydot.Node(nid))
         graph_to_use.add_subgraph(subgraph_input)
-    
+
     if output_ids:
         subgraph_output = pydot.Subgraph("subgraph_output_" + prefix)
         subgraph_output.set_rank("max")

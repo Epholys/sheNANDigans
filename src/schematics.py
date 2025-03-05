@@ -23,6 +23,7 @@ def get_schematic(identifier: CircuitKey, library: CircuitDict) -> Circuit:
         raise ValueError(f"Circuit {identifier} does not exist")
     return deepcopy(library[identifier])
 
+
 def get_schematic_idx(idx: int, library: CircuitDict) -> Circuit:
     circuit = list(library.values())[idx]
     if circuit is None:

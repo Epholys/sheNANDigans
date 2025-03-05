@@ -8,7 +8,12 @@ class CircuitEncoder:
     Encode a circuit library into a list of integers.
 
     This is a relatively simple, not fully optimized, encoding.
-    It still has some little tricks to reduce the size of the encoding.
+    But it has some little tricks to reduce the size of the encoding.
+
+    The encoding itself is described in the encoding methods, as it's done in one pass.
+
+    The encoding is destructive, in the way that the names of the components, inputs and outputs are not encoded.
+    Instead, their indexes are encoded, and these will become the new "names" during decoding.  But the order, that defines the functionality, is preserved.
 
     TODO add a reference to the circuit wiring model
     """

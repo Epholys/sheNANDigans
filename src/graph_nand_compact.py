@@ -332,5 +332,5 @@ if __name__ == "__main__":
     # visualize_schematic(6, reference, "half_adder_better_nand")
     # visualize_schematic(7, reference, "fulladder_nand")
     visualize_schematic(8, reference, "2bitsadder_better_nand")
-    visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
-    visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")
+    # visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
+    # visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")

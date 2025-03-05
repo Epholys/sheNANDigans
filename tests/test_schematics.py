@@ -45,11 +45,11 @@ class TestSchematics(unittest.TestCase):
             self.assertEqual(bool(output.state), expected_output)
 
     def test_nand(self):
-        nand_gate = schematics.get_schematic(0, self.library)
+        nand_gate = schematics.get_schematic_idx(0, self.library)
         self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b))
 
     def test_not(self):
-        not_gate = schematics.get_schematic(1, self.library)
+        not_gate = schematics.get_schematic_idx(1, self.library)
 
         self.assertEqual(len(not_gate.inputs), 1)
         input = list(not_gate.inputs.values())[0]
@@ -64,23 +64,23 @@ class TestSchematics(unittest.TestCase):
             self.assertEqual(bool(output.state), not a)
 
     def test_and(self):
-        and_gate = schematics.get_schematic(2, self.library)
+        and_gate = schematics.get_schematic_idx(2, self.library)
         self.assert_2_in_1_out(and_gate, lambda a, b: a and b)
 
     def test_or(self):
-        or_gate = schematics.get_schematic(3, self.library)
+        or_gate = schematics.get_schematic_idx(3, self.library)
         self.assert_2_in_1_out(or_gate, lambda a, b: a or b)
 
     def test_nor(self):
-        nor_gate = schematics.get_schematic(4, self.library)
+        nor_gate = schematics.get_schematic_idx(4, self.library)
         self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b))
 
     def test_xor(self):
-        xor_gate = schematics.get_schematic(5, self.library)
+        xor_gate = schematics.get_schematic_idx(5, self.library)
         self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b)
 
     def test_half_adder(self):
-        half_adder = schematics.get_schematic(6, self.library)
+        half_adder = schematics.get_schematic_idx(6, self.library)
         self.assertEqual(len(half_adder.inputs), 2)
         inputs = list(half_adder.inputs.values())
         input_a = inputs[0]
@@ -108,7 +108,7 @@ class TestSchematics(unittest.TestCase):
             self.assertEqual((sum_result, carry_result), (sum, carry))
 
     def test_full_adder(self):
-        full_adder = schematics.get_schematic(7, self.library)
+        full_adder = schematics.get_schematic_idx(7, self.library)
         self.assertEqual(len(full_adder.inputs), 3)
         inputs = list(full_adder.inputs.values())
         input_a = inputs[0]
@@ -138,7 +138,7 @@ class TestSchematics(unittest.TestCase):
             self.assertEqual((sum_result, carry_result), (sum, cout))
 
     def test_2bits_adder(self):
-        two_bits_adder = schematics.get_schematic(8, self.library)
+        two_bits_adder = schematics.get_schematic_idx(8, self.library)
         self.assertEqual(len(two_bits_adder.inputs), 5)
         inputs = list(two_bits_adder.inputs.values())
         input_a0 = inputs[0]

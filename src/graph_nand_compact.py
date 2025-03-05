@@ -2,7 +2,7 @@ import pydot
 from circuit import Circuit
 from decoding import CircuitDecoder
 from encoding import CircuitEncoder
-from schematics import get_schematic
+from schematics import get_schematic, get_schematic_idx
 
 
 def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str = "png"):
@@ -22,12 +22,9 @@ def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str =
         f"Circuit_{circuit.identifier}", graph_type="digraph", rankdir="LR"
     )
 
-    # Track wire connections to avoid duplicates
-    wire_connections = set()
-
     # Create the circuit representation directly (not as a subgraph)
     _build_circuit_graph(
-        main_graph, circuit, "", wire_connections, is_main_circuit=True
+        main_graph, circuit, ""
     )
 
     # If filename is provided, save the graph
@@ -40,7 +37,7 @@ def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str =
 
 
 def _build_circuit_graph(
-    parent_graph, circuit, prefix, wire_connections, is_main_circuit=False
+    parent_graph, circuit, prefix
 ):
     """
     Recursively build a circuit and its components as nested subgraphs.
@@ -56,73 +53,18 @@ def _build_circuit_graph(
         A dictionary mapping (port_type, port_key) to node_id
     """
     # Create nodes for this level
+
     port_nodes = {}
 
-    # Special case for NAND gate (base component)
-    if circuit.identifier == 0:
-        # Create ports for NAND gate I/O
-        for in_key, wire in circuit.inputs.items():
-            node_id = f"{prefix}_in_{in_key}"
-            port_nodes[("in", in_key)] = node_id
-            parent_graph.add_node(
-                pydot.Node(
-                    node_id,
-                    label=f"{in_key}",
-                    shape="circle",
-                    style="filled",
-                    fillcolor="#aaffaa",
-                )
-            )
-
-        # Add the NAND node
-        nand_node_id = f"{prefix}_nand_gate"
-        parent_graph.add_node(
-            pydot.Node(
-                nand_node_id,
-                label="NAND",
-                shape="box",
-                style="filled",
-                fillcolor="#ccccff",
-            )
-        )
-
-        # Add output port
-        out_key = next(iter(circuit.outputs))
-        out_node_id = f"{prefix}_out_{out_key}"
-        port_nodes[("out", out_key)] = out_node_id
-        parent_graph.add_node(
-            pydot.Node(
-                out_node_id,
-                label=f"{out_key}",
-                shape="circle",
-                style="filled",
-                fillcolor="#ffaaaa",
-            )
-        )
-
-        # Connect inputs to the NAND node
-        for in_key, wire in circuit.inputs.items():
-            parent_graph.add_edge(pydot.Edge(port_nodes[("in", in_key)], nand_node_id))
-
-        # Connect the NAND node to the output
-        parent_graph.add_edge(pydot.Edge(nand_node_id, port_nodes[("out", out_key)]))
-
-        return port_nodes
-
-    # For non-NAND circuits, create a subgraph unless it's the main circuit
-    if not is_main_circuit:
-        circuit_name = f"cluster_{prefix}_{circuit.identifier}"
-        subgraph = pydot.Cluster(
-            circuit_name,
-            label=f"Circuit {circuit.identifier}",
-            style="rounded,filled",
-            fillcolor="#f0f0f0",
-            color="#000000",
-        )
-        graph_to_use = subgraph
-    else:
-        # For main circuit, use the parent graph directly
-        graph_to_use = parent_graph
+    circuit_name = f"cluster_{prefix}_{circuit.identifier}"
+    subgraph = pydot.Cluster(
+        circuit_name,
+        label=f"Circuit {circuit.identifier}",
+        style="rounded,filled",
+        fillcolor="#f0f0f0",
+        color="#000000",
+    )
+    graph_to_use = subgraph
 
     # Add input nodes
     for in_key, wire in circuit.inputs.items():
@@ -185,7 +127,7 @@ def _build_circuit_graph(
         else:
             # For non-NAND components, process them recursively as subgraphs
             component_ports[comp_key] = _build_circuit_graph(
-                graph_to_use, component, comp_prefix, wire_connections
+                graph_to_use, component, comp_prefix
             )
 
     # Create direct connections between circuit inputs and component inputs
@@ -202,16 +144,10 @@ def _build_circuit_graph(
                     else:
                         target_node = component_ports[comp_key][("in", comp_in_key)]
 
-                    connection = (
-                        wire_id,
-                        port_nodes[("in", circuit_in_key)],
-                        target_node,
+
+                    parent_graph.add_edge(
+                        pydot.Edge(port_nodes[("in", circuit_in_key)], target_node)
                     )
-                    if connection not in wire_connections:
-                        parent_graph.add_edge(
-                            pydot.Edge(port_nodes[("in", circuit_in_key)], target_node)
-                        )
-                        wire_connections.add(connection)
 
     # Connect component outputs to circuit outputs
     for circuit_out_key, wire in circuit.outputs.items():
@@ -221,24 +157,14 @@ def _build_circuit_graph(
         for comp_key, component in circuit.components.items():
             for comp_out_key, comp_wire in component.outputs.items():
                 if comp_wire.id == wire_id:
-                    # For NAND gates, connect directly from the NAND node
-                    if component.identifier == 0:
-                        source_node = component_ports[comp_key][("out", comp_out_key)]
-                    else:
-                        source_node = component_ports[comp_key][("out", comp_out_key)]
+                    
+                    source_node = component_ports[comp_key][("out", comp_out_key)]
 
-                    connection = (
-                        wire_id,
-                        source_node,
-                        port_nodes[("out", circuit_out_key)],
-                    )
-                    if connection not in wire_connections:
-                        parent_graph.add_edge(
-                            pydot.Edge(
-                                source_node, port_nodes[("out", circuit_out_key)]
-                            )
+                    parent_graph.add_edge(
+                        pydot.Edge(
+                            source_node, port_nodes[("out", circuit_out_key)]
                         )
-                        wire_connections.add(connection)
+                    )
 
     # Connect component outputs to other component inputs
     for src_comp_key, src_component in circuit.components.items():
@@ -247,43 +173,25 @@ def _build_circuit_graph(
 
             # Find all components that use this wire as input
             for tgt_comp_key, tgt_component in circuit.components.items():
-                if src_comp_key == tgt_comp_key:
-                    continue  # Skip self-connections
-
                 for tgt_in_key, tgt_wire in tgt_component.inputs.items():
                     if tgt_wire.id == src_wire_id:
-                        # For NAND gates, use the direct node references
-                        if src_component.identifier == 0:
-                            source_node = component_ports[src_comp_key][
-                                ("out", src_out_key)
-                            ]
-                        else:
-                            source_node = component_ports[src_comp_key][
-                                ("out", src_out_key)
-                            ]
+                        source_node = component_ports[src_comp_key][
+                            ("out", src_out_key)
+                        ]
 
-                        if tgt_component.identifier == 0:
-                            target_node = component_ports[tgt_comp_key][
-                                ("in", tgt_in_key)
-                            ]
-                        else:
-                            target_node = component_ports[tgt_comp_key][
-                                ("in", tgt_in_key)
-                            ]
-
-                        connection = (src_wire_id, source_node, target_node)
-                        if connection not in wire_connections:
-                            parent_graph.add_edge(pydot.Edge(source_node, target_node))
-                            wire_connections.add(connection)
+                        target_node = component_ports[tgt_comp_key][
+                            ("in", tgt_in_key)
+                        ]
+                        
+                        parent_graph.add_edge(pydot.Edge(source_node, target_node))
 
     # Add the subgraph to the parent graph if this is not the main circuit
-    if not is_main_circuit:
-        parent_graph.add_subgraph(subgraph)
+    parent_graph.add_subgraph(subgraph)
 
     return port_nodes
 
 
-def visualize_schematic(circuit_id, schematics, filename=None, format="png"):
+def visualize_schematic(circuit_idx, schematics, filename=None, format="png"):
     """
     Helper function to quickly visualize a schematic from your library.
 
@@ -296,7 +204,7 @@ def visualize_schematic(circuit_id, schematics, filename=None, format="png"):
     Returns:
         The generated pydot graph
     """
-    circuit = get_schematic(circuit_id, schematics)
+    circuit = get_schematic_idx(circuit_idx, schematics)
     return generate_circuit_graph(circuit, filename, format)
 
 
@@ -331,6 +239,6 @@ if __name__ == "__main__":
     # visualize_schematic(5, reference, "xor_gate_better_nand")
     # visualize_schematic(6, reference, "half_adder_better_nand")
     # visualize_schematic(7, reference, "fulladder_nand")
-    visualize_schematic(8, reference, "2bitsadder_better_nand")
+    visualize_schematic(8, reference, "2bitsadder_better_nand_test", "svg")
     # visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
     # visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")

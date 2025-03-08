@@ -70,40 +70,19 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
     # A mapping between all the components and their ports
     components_ports : ComponentsPorts = _build_components_graph(circuit.components, graph, prefix)
     
-
-
     # Create connections between circuit inputs and component inputs.
     # For each input in the circuit, search in all components the corresponding input wire.
     _connect_inputs(circuit, circuit_ports, components_ports, graph)
 
     # Connect component outputs to circuit outputs.
     # For each output in the circuit, search in all components the corresponding output wire.
-    for circuit_output_name, output_wire in circuit.outputs.items():
-        for component_name, component in circuit.components.items():
-            for component_output_name, component_wire in component.outputs.items():
-                if component_wire.id == output_wire.id:
-                    source_node = components_ports[component_name][component_output_name]
-                    target_node = circuit_ports[circuit_output_name]
+    _connect_outputs(circuit, circuit_ports, components_ports, graph)
 
-                    parent_graph.add_edge(
-                        pydot.Edge(source_node, target_node)
-                    )
 
     # Connect component outputs to other component inputs.
     # For each components' output, search in all components the corresponding input wire.
-    for source_component_name, source_component in circuit.components.items():
-        for source_output_name, source_output_wire in source_component.outputs.items():
+    _connect_components(circuit, circuit_ports, components_ports, graph)
 
-            for target_component_name, tgt_component in circuit.components.items():
-                if source_component_name == target_component_name:
-                    continue
-
-                for target_input_name, target_input_wire in tgt_component.inputs.items():
-                    if target_input_wire.id == source_output_wire.id:
-                        source_node = components_ports[source_component_name][source_output_name]
-                        target_node = components_ports[target_component_name][target_input_name]
-
-                        parent_graph.add_edge(pydot.Edge(source_node, target_node))
 
     # Add the subgraph to the parent graph if this is not the main circuit
     parent_graph.add_subgraph(graph)
@@ -143,6 +122,7 @@ def _build_components_graph(components: CircuitDict, graph: pydot.Graph, prefix:
     
     return component_ports
 
+
 def _build_nand_node(nand: Circuit, graph: pydot.Graph, name : str) -> CircuitPorts:
     graph.add_node(
         pydot.Node(
@@ -166,15 +146,53 @@ def _build_nand_node(nand: Circuit, graph: pydot.Graph, name : str) -> CircuitPo
 
 def _connect_inputs(circuit: Circuit, circuit_ports: CircuitPorts, components_ports: ComponentsPorts, graph: pydot.Graph):
     for circuit_input_name, input_wire in circuit.inputs.items():
-        for component_name, component in circuit.components.items(): 
-            for component_input_name, component_wire in component.inputs.items():
-                if component_wire.id == input_wire.id:
-                    source_node = circuit_ports[circuit_input_name]
-                    target_node = components_ports[component_name][component_input_name]
+        for component_name, component in circuit.components.items():
+            matching_inputs = (
+                input_name
+                for input_name, wire in component.inputs.items()
+                if wire.id == input_wire.id
+            )
+            
+            for component_input_name in matching_inputs:
+                source_node = circuit_ports[circuit_input_name]
+                target_node = components_ports[component_name][component_input_name]
+                graph.add_edge(pydot.Edge(source_node, target_node))
 
-                    graph.add_edge(
-                        pydot.Edge(source_node, target_node)
-                    )
+def _connect_outputs(circuit: Circuit, circuit_ports: CircuitPorts, components_ports: ComponentsPorts, graph: pydot.Graph):
+    for circuit_output_name, output_wire in circuit.outputs.items():
+        for component_name, component in circuit.components.items():
+            matching_outputs = (
+                output_name
+                for output_name, wire in component.outputs.items()
+                if wire.id == output_wire.id
+            )
+            
+            for component_output_name in matching_outputs:
+                source_node = components_ports[component_name][component_output_name]
+                target_node = circuit_ports[circuit_output_name]
+
+                graph.add_edge(
+                    pydot.Edge(source_node, target_node)
+                )
+
+def _connect_components(circuit: Circuit, circuit_ports: CircuitPorts, components_ports: ComponentsPorts, graph: pydot.Graph):
+    for source_name, source in circuit.components.items():
+        for target_name, target in circuit.components.items():
+            if source_name == target_name:
+                continue
+
+            for source_output_name, source_output_wire in source.outputs.items():
+                # Find all target inputs with matching wire id in the destination component.
+                matching_inputs = (
+                    target_input_name
+                    for target_input_name, target_input_wire in target.inputs.items() 
+                    if target_input_wire.id == source_output_wire.id
+                )
+
+                for target_input_name in matching_inputs:
+                    source_node = components_ports[source_name][source_output_name]
+                    target_node = components_ports[target_name][target_input_name]
+                    graph.add_edge(pydot.Edge(source_node, target_node))
 
 def visualize_schematic(circuit_idx : int, schematics : CircuitDict, filename : str, format : str ="png") -> pydot.Graph:
     """

@@ -1,10 +1,15 @@
+from ast import In
 from typing import Dict, TypeAlias
 
 from wire import Wire, WireState
 
-CircuitKey: TypeAlias = str | int
-WireDict: TypeAlias = Dict[CircuitKey, Wire]
-CircuitDict: TypeAlias = Dict[CircuitKey, "Circuit"]
+type Key = str | int
+type CircuitKey = Key
+type InputKey = Key
+type OutputKey = Key
+type InputWireDict = Dict[InputKey, Wire]
+type OutputWireDict = Dict[OutputKey, Wire]
+type CircuitDict = Dict[CircuitKey, "Circuit"]
 
 
 class Circuit:
@@ -37,8 +42,8 @@ class Circuit:
         Initialize a new circuit with the given identifier.
         """
         self.identifier = identifier
-        self.inputs: WireDict = dict()
-        self.outputs: WireDict = dict()
+        self.inputs: InputWireDict = dict()
+        self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
         self.miss = 0
 
@@ -46,7 +51,7 @@ class Circuit:
         self.components[name] = component
 
     def connect_input(
-        self, input: CircuitKey, target_name: CircuitKey, target_input: CircuitKey
+        self, input: InputKey, target_name: CircuitKey, target_input: InputKey
     ):
         """
         Connect an input wire to a component's input port.
@@ -85,7 +90,7 @@ class Circuit:
         self._propagate_wire_update(target, old_wire, wire)
 
     def connect_output(
-        self, output: CircuitKey, source_name: CircuitKey, source_output: CircuitKey
+        self, output: OutputKey, source_name: CircuitKey, source_output: OutputKey
     ):
         """
         Connect an output wire to a component's output port.
@@ -117,9 +122,9 @@ class Circuit:
     def connect(
         self,
         source_name: CircuitKey,
-        source_output: CircuitKey,
+        source_output: OutputKey,
         target_name: CircuitKey,
-        target_input: CircuitKey,
+        target_input: InputKey,
     ):
         """
         Connect an output port of one component to an input port of another component.

@@ -19,7 +19,7 @@ def generate_circuit_graph(circuit: Circuit, filename: str = None, format: str =
     """
     # Create the main graph
     main_graph = pydot.Dot(
-        f"Circuit_{circuit.identifier}", graph_type="digraph", rankdir="LR"
+        f"Circuit_{circuit.identifier}", graph_type="digraph", rankdir="LR", ranksep="10"
     )
 
     # Track wire connections to avoid duplicates

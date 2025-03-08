@@ -1,5 +1,4 @@
-from ast import In
-from typing import Dict, TypeAlias
+from typing import Dict
 
 from wire import Wire, WireState
 

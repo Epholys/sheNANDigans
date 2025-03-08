@@ -9,6 +9,7 @@ type InputKey = Key
 type OutputKey = Key
 type InputWireDict = Dict[InputKey, Wire]
 type OutputWireDict = Dict[OutputKey, Wire]
+type PortWireDict = InputWireDict | OutputWireDict
 type CircuitDict = Dict[CircuitKey, "Circuit"]
 
 

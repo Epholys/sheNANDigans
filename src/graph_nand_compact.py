@@ -1,6 +1,6 @@
 from ast import Dict
 from enum import Enum, auto
-from typing import Any, Tuple
+from typing import Any, Tuple, TypeAlias
 import pydot
 from circuit import Circuit, CircuitDict, CircuitKey
 from decoding import CircuitDecoder
@@ -47,9 +47,9 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
     Returns:
         A dictionary mapping (port_type, port_key) to node_id
     """
-    # Create nodes for this level
-
-    ports: dict[CircuitKey, str] = {}
+    # A port is an input or output of a circuit
+    # ports maps the input/output key to the Node ID
+    circuit_ports: dict[CircuitKey, str] = {}
 
     circuit_name = f"cluster_{prefix}_{circuit.identifier}"
     graph = pydot.Cluster(
@@ -61,13 +61,13 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
     )
 
     # Add input nodes
-    for in_key, wire in circuit.inputs.items():
-        node_id = f"{prefix}_in_{in_key}"
-        ports[in_key] = node_id
+    for component_input_name in circuit.inputs.keys():
+        node_id = f"{prefix}_in_{component_input_name}"
+        circuit_ports[component_input_name] = node_id
         graph.add_node(
             pydot.Node(
                 node_id,
-                label=f"{in_key}",
+                label=f"{component_input_name}",
                 shape="circle",
                 style="filled",
                 fillcolor="#aaffaa",
@@ -75,31 +75,29 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
         )
 
     # Add output nodes
-    for out_key, wire in circuit.outputs.items():
-        node_id = f"{prefix}_out_{out_key}"
-        ports[out_key] = node_id
+    for output in circuit.outputs.keys():
+        node_id = f"{prefix}_out_{output}"
+        circuit_ports[output] = node_id
         graph.add_node(
             pydot.Node(
                 node_id,
-                label=f"{out_key}",
+                label=f"{output}",
                 shape="circle",
                 style="filled",
                 fillcolor="#ffaaaa",
             )
         )
 
-    # Process all component circuits recursively
-    component_ports : dict[CircuitKey, Any] = {}
+    # A mapping between all the components and their ports
+    component_ports : dict[CircuitKey, dict[CircuitKey, str]] = {}
 
     # Build all component subgraphs
-    for comp_key, component in circuit.components.items():
-        comp_prefix = f"{prefix}_comp_{comp_key}"
+    for component_name, component in circuit.components.items():
+        component_prefix = f"{prefix}_comp_{component_name}"
 
-        # If component is a NAND gate, add its nodes directly to this graph
-        # (not as a subgraph) while maintaining proper connections
         if component.identifier == 0:
-            # Create a simple NAND gate node
-            nand_node_id = f"{comp_prefix}_nand_gate"
+            # If component is a NAND gate, add itself as a node directly to this graph
+            nand_node_id = f"{component_prefix}_nand_gate"
             graph.add_node(
                 pydot.Node(
                     nand_node_id,
@@ -110,73 +108,66 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
                 )
             )
 
-            # Create a mapping for this component's ports
-            component_port_nodes = {
+            # As it is a compact graph, the inputs and outputs of NAND gates are "collapsed" into the gate itself
+            nand_ports = {
                 in_key: nand_node_id for in_key in component.inputs.keys()
             }
-            component_port_nodes.update(
+            nand_ports.update(
                 {out_key: nand_node_id for out_key in component.outputs.keys()}
             )
-            component_ports[comp_key] = component_port_nodes
+            component_ports[component_name] = nand_ports
         else:
-            # For non-NAND components, process them recursively as subgraphs
-            component_ports[comp_key] = _build_circuit_graph(
-                graph, component, comp_prefix
+            # For non-NAND components, process them recursively.
+            component_ports[component_name] = _build_circuit_graph(
+                graph, component, component_prefix
             )
 
-    # Create direct connections between circuit inputs and component inputs
-    for input, wire in circuit.inputs.items():
-        wire_id = wire.id
-
-        # Connect to all matching component inputs
-        for comp_key, component in circuit.components.items():
-            for comp_in_key, comp_wire in component.inputs.items():
-                if comp_wire.id == wire_id:
-                    # For NAND gates, connect directly to the NAND node
-                    if component.identifier == 0:
-                        target_node = component_ports[comp_key][comp_in_key]
-                    else:
-                        target_node = component_ports[comp_key][comp_in_key]
+    # Create connections between circuit inputs and component inputs.
+    # For each input in the circuit, search in all components the corresponding input wire.
+    for circuit_input_name, input_wire in circuit.inputs.items():
+        for component_name, component in circuit.components.items(): 
+            for component_input_name, component_wire in component.inputs.items():
+                if component_wire.id == input_wire.id:
+                    source_node = circuit_ports[circuit_input_name]
+                    target_node = component_ports[component_name][component_input_name]
 
                     parent_graph.add_edge(
-                        pydot.Edge(ports[input], target_node)
+                        pydot.Edge(source_node, target_node)
                     )
 
-    # Connect component outputs to circuit outputs
-    for circuit_out_key, wire in circuit.outputs.items():
-        wire_id = wire.id
-
-        # Find which component produces this output
-        for comp_key, component in circuit.components.items():
-            for comp_out_key, comp_wire in component.outputs.items():
-                if comp_wire.id == wire_id:
-                    source_node = component_ports[comp_key][comp_out_key]
+    # Connect component outputs to circuit outputs.
+    # For each output in the circuit, search in all components the corresponding output wire.
+    for circuit_output_name, output_wire in circuit.outputs.items():
+        for component_name, component in circuit.components.items():
+            for component_output_name, component_wire in component.outputs.items():
+                if component_wire.id == output_wire.id:
+                    source_node = component_ports[component_name][component_output_name]
+                    target_node = circuit_ports[circuit_output_name]
 
                     parent_graph.add_edge(
-                        pydot.Edge(source_node, ports[circuit_out_key])
+                        pydot.Edge(source_node, circuit_ports[circuit_output_name])
                     )
 
-    # Connect component outputs to other component inputs
-    for src_comp_key, src_component in circuit.components.items():
-        for src_out_key, src_wire in src_component.outputs.items():
-            src_wire_id = src_wire.id
+    # Connect component outputs to other component inputs.
+    # For each components' output, search in all components the corresponding input wire.
+    for source_component_name, source_component in circuit.components.items():
+        for source_output_name, source_output_wire in source_component.outputs.items():
 
-            # Find all components that use this wire as input
-            for tgt_comp_key, tgt_component in circuit.components.items():
-                for tgt_in_key, tgt_wire in tgt_component.inputs.items():
-                    if tgt_wire.id == src_wire_id:
-                        source_node = component_ports[src_comp_key][
-                            src_out_key
-                        ]
+            for target_component_name, tgt_component in circuit.components.items():
+                if source_component_name == target_component_name:
+                    continue
 
-                        target_node = component_ports[tgt_comp_key][tgt_in_key]
+                for target_input_name, target_input_wire in tgt_component.inputs.items():
+                    if target_input_wire.id == source_output_wire.id:
+                        source_node = component_ports[source_component_name][source_output_name]
+                        target_node = component_ports[target_component_name][target_input_name]
 
                         parent_graph.add_edge(pydot.Edge(source_node, target_node))
 
     # Add the subgraph to the parent graph if this is not the main circuit
     parent_graph.add_subgraph(graph)
 
-    return ports
+    return circuit_ports
 
 
 def visualize_schematic(circuit_idx : int, schematics : CircuitDict, filename : str, format : str ="png") -> pydot.Graph:

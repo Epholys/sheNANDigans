@@ -1,18 +1,24 @@
-from ast import Dict
-from enum import Enum, auto
-from typing import Any, Tuple, TypeAlias
 import pydot
-from circuit import Circuit, CircuitDict, CircuitKey, InputKey, InputWireDict, PortWireDict
+from circuit import (
+    Circuit,
+    CircuitDict,
+    CircuitKey,
+    PortWireDict,
+)
 from decoding import CircuitDecoder
 from encoding import CircuitEncoder
 from schematics import SchematicsBuilder, get_schematic_idx
 
+
 class GraphOptions:
-    def __init__(self, is_compact : bool, is_aligned : bool):
+    def __init__(self, is_compact: bool, is_aligned: bool):
         self.is_compact = is_compact
         self.is_aligned = is_aligned
 
-def generate_circuit_graph(circuit: Circuit, options: GraphOptions, filename: str, format: str = "png") -> pydot.Graph:
+
+def generate_circuit_graph(
+    circuit: Circuit, options: GraphOptions, filename: str, format: str = "png"
+) -> pydot.Graph:
     """
     Generate a hierarchical visualization of a circuit.
 
@@ -26,7 +32,10 @@ def generate_circuit_graph(circuit: Circuit, options: GraphOptions, filename: st
     """
     # Create the main graph
     graph = pydot.Dot(
-        f"Circuit_{circuit.identifier}", graph_type="digraph", rankdir="LR", label=circuit.identifier
+        f"Circuit_{circuit.identifier}",
+        graph_type="digraph",
+        rankdir="LR",
+        label=circuit.identifier,
     )
 
     # Create the circuit representation directly (not as a subgraph)
@@ -39,10 +48,18 @@ def generate_circuit_graph(circuit: Circuit, options: GraphOptions, filename: st
 
     return graph
 
+
 type CircuitPorts = dict[CircuitKey, str]
 type ComponentsPorts = dict[CircuitKey, CircuitPorts]
 
-def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: str, options : GraphOptions, is_main_graph : bool = False) -> CircuitPorts:
+
+def _build_circuit_graph(
+    parent_graph: pydot.Graph,
+    circuit: Circuit,
+    prefix: str,
+    options: GraphOptions,
+    is_main_graph: bool = False,
+) -> CircuitPorts:
     """
     Recursively build a circuit and its components as nested subgraphs.
 
@@ -59,7 +76,7 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
 
     if is_main_graph:
         graph = parent_graph
-    else :
+    else:
         circuit_name = f"cluster_{prefix}_{circuit.identifier}"
         graph = pydot.Cluster(
             circuit_name,
@@ -73,15 +90,25 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
 
     # Add ports nodes
     if options.is_aligned:
-        circuit_ports.update(_add_ports_nodes(circuit.inputs, graph, f"{prefix}_in", "#aaffaa", "min"))
-        circuit_ports.update(_add_ports_nodes(circuit.outputs, graph, f"{prefix}_out", "#ffaaaa", "max"))
+        circuit_ports.update(
+            _add_ports_nodes(circuit.inputs, graph, f"{prefix}_in", "#aaffaa", "min")
+        )
+        circuit_ports.update(
+            _add_ports_nodes(circuit.outputs, graph, f"{prefix}_out", "#ffaaaa", "max")
+        )
     else:
-        circuit_ports.update(_add_ports_nodes(circuit.inputs, graph, f"{prefix}_in", "#aaffaa"))
-        circuit_ports.update(_add_ports_nodes(circuit.outputs, graph, f"{prefix}_out", "#ffaaaa"))
+        circuit_ports.update(
+            _add_ports_nodes(circuit.inputs, graph, f"{prefix}_in", "#aaffaa")
+        )
+        circuit_ports.update(
+            _add_ports_nodes(circuit.outputs, graph, f"{prefix}_out", "#ffaaaa")
+        )
 
     # A mapping between all the components and their ports
-    components_ports : ComponentsPorts = _build_components_graph(circuit.components, circuit_ports, graph, prefix, options)
-    
+    components_ports: ComponentsPorts = _build_components_graph(
+        circuit.components, circuit_ports, graph, prefix, options
+    )
+
     # Create connections between circuit inputs and component inputs.
     # For each input in the circuit, search in all components the corresponding input wire.
     _connect_inputs(circuit, circuit_ports, components_ports, graph)
@@ -90,11 +117,9 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
     # For each output in the circuit, search in all components the corresponding output wire.
     _connect_outputs(circuit, circuit_ports, components_ports, graph)
 
-
     # Connect component outputs to other component inputs.
     # For each components' output, search in all components the corresponding input wire.
     _connect_components(circuit, circuit_ports, components_ports, graph)
-
 
     # Add the subgraph to the parent graph if this is not the main circuit
     if not is_main_graph:
@@ -102,7 +127,14 @@ def _build_circuit_graph(parent_graph: pydot.Graph, circuit: Circuit, prefix: st
 
     return circuit_ports
 
-def _add_ports_nodes(ports: PortWireDict, graph: pydot.Graph, prefix: str, color: str, rank : str | None = None) -> CircuitPorts:
+
+def _add_ports_nodes(
+    ports: PortWireDict,
+    graph: pydot.Graph,
+    prefix: str,
+    color: str,
+    rank: str | None = None,
+) -> CircuitPorts:
     port_node_ids: CircuitPorts = {}
 
     for port in ports.keys():
@@ -127,13 +159,19 @@ def _add_ports_nodes(ports: PortWireDict, graph: pydot.Graph, prefix: str, color
 
     return port_node_ids
 
-def _build_components_graph(components: CircuitDict, circuit_ports: CircuitPorts, graph: pydot.Graph, prefix: str, options : GraphOptions) -> ComponentsPorts:
+
+def _build_components_graph(
+    components: CircuitDict,
+    circuit_ports: CircuitPorts,
+    graph: pydot.Graph,
+    prefix: str,
+    options: GraphOptions,
+) -> ComponentsPorts:
     component_ports: ComponentsPorts = {}
-    
+
     if len(components) == 0 and not options.is_compact:
         # We are at the nand level
         _build_nand_circuit(circuit_ports, graph, prefix)
-
 
     for component_name, component in components.items():
         component_prefix = f"{prefix}_comp_{component_name}"
@@ -141,27 +179,27 @@ def _build_components_graph(components: CircuitDict, circuit_ports: CircuitPorts
         if component.identifier == 0 and options.is_compact:
             # If the component is a NAND gate and we want a compact graph, let's do a shortcut:
             # We do not build the NAND graph but just the NAND box with in/out directly on it
-            component_ports[component_name] = _build_nand_component(component, graph, component_prefix)
+            component_ports[component_name] = _build_nand_component(
+                component, graph, component_prefix
+            )
         else:
             # For non-NAND components, process them recursively.
             component_ports[component_name] = _build_circuit_graph(
                 graph, component, component_prefix, options
             )
-    
+
     return component_ports
 
-def _build_nand_component(nand: Circuit, graph: pydot.Graph, name : str) -> CircuitPorts:
+
+def _build_nand_component(nand: Circuit, graph: pydot.Graph, name: str) -> CircuitPorts:
     _add_nand_node(graph, name)
 
     # As it is a compact graph, the inputs and outputs of NAND gates are "collapsed" into the gate itself
-    nand_ports : CircuitPorts = {
-        in_key: name for in_key in nand.inputs.keys()
-    }
-    nand_ports.update(
-        {out_key: name for out_key in nand.outputs.keys()}
-    )
+    nand_ports: CircuitPorts = {in_key: name for in_key in nand.inputs.keys()}
+    nand_ports.update({out_key: name for out_key in nand.outputs.keys()})
 
     return nand_ports
+
 
 def _build_nand_circuit(circuit_ports: CircuitPorts, graph: pydot.Graph, name: str):
     _add_nand_node(graph, name)
@@ -170,15 +208,10 @@ def _build_nand_circuit(circuit_ports: CircuitPorts, graph: pydot.Graph, name: s
     a = ports[0]
     b = ports[1]
     out = ports[2]
-    graph.add_edge(
-        pydot.Edge(a, name)
-    )
-    graph.add_edge(
-        pydot.Edge(b, name)
-    )
-    graph.add_edge(
-        pydot.Edge(name, out)
-    )
+    graph.add_edge(pydot.Edge(a, name))
+    graph.add_edge(pydot.Edge(b, name))
+    graph.add_edge(pydot.Edge(name, out))
+
 
 def _add_nand_node(graph: pydot.Graph, name: str):
     graph.add_node(
@@ -192,7 +225,12 @@ def _add_nand_node(graph: pydot.Graph, name: str):
     )
 
 
-def _connect_inputs(circuit: Circuit, circuit_ports: CircuitPorts, components_ports: ComponentsPorts, graph: pydot.Graph):
+def _connect_inputs(
+    circuit: Circuit,
+    circuit_ports: CircuitPorts,
+    components_ports: ComponentsPorts,
+    graph: pydot.Graph,
+):
     for circuit_input_name, input_wire in circuit.inputs.items():
         for component_name, component in circuit.components.items():
             matching_inputs = (
@@ -200,13 +238,19 @@ def _connect_inputs(circuit: Circuit, circuit_ports: CircuitPorts, components_po
                 for input_name, wire in component.inputs.items()
                 if wire.id == input_wire.id
             )
-            
+
             for component_input_name in matching_inputs:
                 source_node = circuit_ports[circuit_input_name]
                 target_node = components_ports[component_name][component_input_name]
                 graph.add_edge(pydot.Edge(source_node, target_node))
 
-def _connect_outputs(circuit: Circuit, circuit_ports: CircuitPorts, components_ports: ComponentsPorts, graph: pydot.Graph):
+
+def _connect_outputs(
+    circuit: Circuit,
+    circuit_ports: CircuitPorts,
+    components_ports: ComponentsPorts,
+    graph: pydot.Graph,
+):
     for circuit_output_name, output_wire in circuit.outputs.items():
         for component_name, component in circuit.components.items():
             matching_outputs = (
@@ -214,16 +258,20 @@ def _connect_outputs(circuit: Circuit, circuit_ports: CircuitPorts, components_p
                 for output_name, wire in component.outputs.items()
                 if wire.id == output_wire.id
             )
-            
+
             for component_output_name in matching_outputs:
                 source_node = components_ports[component_name][component_output_name]
                 target_node = circuit_ports[circuit_output_name]
 
-                graph.add_edge(
-                    pydot.Edge(source_node, target_node)
-                )
+                graph.add_edge(pydot.Edge(source_node, target_node))
 
-def _connect_components(circuit: Circuit, circuit_ports: CircuitPorts, components_ports: ComponentsPorts, graph: pydot.Graph):
+
+def _connect_components(
+    circuit: Circuit,
+    circuit_ports: CircuitPorts,
+    components_ports: ComponentsPorts,
+    graph: pydot.Graph,
+):
     for source_name, source in circuit.components.items():
         for target_name, target in circuit.components.items():
             if source_name == target_name:
@@ -233,7 +281,7 @@ def _connect_components(circuit: Circuit, circuit_ports: CircuitPorts, component
                 # Find all target inputs with matching wire id in the destination component.
                 matching_inputs = (
                     target_input_name
-                    for target_input_name, target_input_wire in target.inputs.items() 
+                    for target_input_name, target_input_wire in target.inputs.items()
                     if target_input_wire.id == source_output_wire.id
                 )
 
@@ -242,7 +290,14 @@ def _connect_components(circuit: Circuit, circuit_ports: CircuitPorts, component
                     target_node = components_ports[target_name][target_input_name]
                     graph.add_edge(pydot.Edge(source_node, target_node))
 
-def visualize_schematic(circuit_idx : int, schematics : CircuitDict, options : GraphOptions, filename : str, format : str ="png") -> pydot.Graph:
+
+def visualize_schematic(
+    circuit_idx: int,
+    schematics: CircuitDict,
+    options: GraphOptions,
+    filename: str,
+    format: str = "png",
+) -> pydot.Graph:
     """
     Helper function to quickly visualize a schematic from your library.
 
@@ -291,9 +346,17 @@ if __name__ == "__main__":
     # visualize_schematic(7, reference, "fulladder_nand")
     compact = True
     aligned = True
-    visualize_schematic(8, reference, GraphOptions(compact, aligned), "X_compact_aligned", "svg")
-    visualize_schematic(8, reference, GraphOptions(compact, not aligned), "X_compact_flow", "svg")
-    visualize_schematic(8, reference, GraphOptions(not compact, aligned), "X_large_aligned", "svg")
-    visualize_schematic(8, reference, GraphOptions(not compact, not aligned), "X_large_flow", "svg")
+    visualize_schematic(
+        8, reference, GraphOptions(compact, aligned), "X_compact_aligned", "svg"
+    )
+    visualize_schematic(
+        8, reference, GraphOptions(compact, not aligned), "X_compact_flow", "svg"
+    )
+    visualize_schematic(
+        8, reference, GraphOptions(not compact, aligned), "X_large_aligned", "svg"
+    )
+    visualize_schematic(
+        8, reference, GraphOptions(not compact, not aligned), "X_large_flow", "svg"
+    )
     # visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
     # visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")

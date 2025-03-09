@@ -1,246 +1,211 @@
-from typing import List, Tuple
 import pydot
-from circuit import (
-    Circuit,
-    CircuitDict,
-    PortWireDict,
-)
-from decoding import CircuitDecoder
-from encoding import CircuitEncoder
-from schematics import SchematicsBuilder, get_schematic_idx
+from circuit import Circuit, CircuitDict
+from schematics import get_schematic_idx
+from typing import List, Tuple, Set
 
 
-def generate_circuit_graph(
+def generate_raw_circuit_graph(
     circuit: Circuit, filename: str, format: str = "png"
 ) -> pydot.Graph:
-    """ """
+    """
+    Generate a simplified graph showing only the connections between circuit inputs/outputs
+    and NAND gates, without hierarchical representation.
+    
+    Args:
+        circuit: The circuit to visualize
+        filename: Output filename (without extension)
+        format: Output format (png, svg, pdf, etc.)
+        
+    Returns:
+        The generated pydot graph object
+    """
     # Create the main graph
     graph = pydot.Dot(
-        f"Circuit_{circuit.identifier}",
+        f"Raw_Circuit_{circuit.identifier}",
         graph_type="digraph",
         rankdir="LR",
-        label=circuit.identifier,
+        label=f"Raw Circuit {circuit.identifier}",
     )
-
-    # Create the circuit representation directly (not as a subgraph)
-    _build_circuit_graph(graph, circuit, {}, "", True)
-
-    # If filename is provided, save the graph
+    
+    # Extract all components and connections
+    all_components, input_connections, output_connections, internal_connections = _extract_circuit_details(circuit)
+    
+    # Add all nodes to the graph
+    _add_circuit_io_nodes(graph, circuit)
+    _add_component_nodes(graph, all_components)
+    
+    # Add all connections
+    _add_all_connections(graph, input_connections, output_connections, internal_connections)
+    
+    # Save the graph
     output_file = f"{filename}.{format}"
     graph.write(output_file, format=format)
-    print(f"Graph saved to {output_file}")
-
+    print(f"Raw graph saved to {output_file}")
+    
     return graph
 
 
-type Nodes = dict[int, Tuple[str | None, str | None]]
-type InputNodes = Nodes
-type OutputNodes = Nodes
-type PortNodes = Tuple[InputNodes, OutputNodes]
-
-
-def _build_circuit_graph(
-    graph: pydot.Graph,
-    circuit: Circuit,
-    parent_nodes: PortNodes,
-    prefix: str,
-    is_main_graph: bool,
-) -> PortNodes:
+def _extract_circuit_details(circuit: Circuit) -> Tuple[
+    List[Tuple[str, Circuit]],  # all_components
+    List[Tuple[str, str, int]],  # input_connections (input_id, component_id, wire_id)
+    List[Tuple[str, str, int]],  # output_connections (component_id, output_id, wire_id)
+    List[Tuple[str, str, int]]   # internal_connections (from_component, to_component, wire_id)
+]:
     """
-    Recursively build a circuit and its components as nested subgraphs.
-
-    Args:
-        parent_graph: The parent graph to add this circuit to
-        circuit: The circuit to visualize
-        prefix: A prefix to make node IDs unique
-
-    Returns:
-        A dictionary mapping (port_type, port_key) to node_id
+    Extracts all components and their connections from a circuit.
+    Flattens the hierarchy to get only NAND gates and connections.
     """
-    # A port is an input or output of a circuit
-    # ports maps the input/output key to the Node ID
-
-    # Add ports nodes
-    nodes = parent_nodes
-    if is_main_graph:
-        inputs_nodes: InputNodes = _add_ports_nodes(
-            circuit.inputs, graph, f"{prefix}_in", "#aaffaa", True
-        )
-        outputs_nodes: OutputNodes = _add_ports_nodes(
-            circuit.outputs, graph, f"{prefix}_out", "#ffaaaa", False
-        )
-        nodes: PortNodes = (inputs_nodes, outputs_nodes)
-        print(f"main graph nodes = {nodes}")
-
-
-    # A mapping between all the components and their ports
-    components_nodes: List[PortNodes] = _build_components_graph(circuit, nodes, graph, prefix)
-
-    print(f"component nodes : {components_nodes}")
-
-    nodes = _collapse_ports(nodes, components_nodes, graph)
-
+    # Gather all components (including nested ones)
+    all_nands: List[Tuple[str, Circuit]] = []
+    input_connections: List[Tuple[str, str, int]] = []
+    output_connections: List[Tuple[str, str, int]] = []
+    internal_connections: List[Tuple[str, str, int]] = []
     
+    
+    def _explore_circuit(circuit: Circuit, prefix: str = ""):
+        """Recursively explore the circuit to extract all NAND gates and connections"""
+        # Process nested components
+        for component_name, component in circuit.components.items():
+            name = f"{prefix}_{component_name}"
+            
+            if component.identifier == 0:  # NAND gate
+                all_nands.append((name, component))
+            else:
+                _explore_circuit(component, name)
+    
+    # First pass: gather all NAND components
+    _explore_circuit(circuit)
+    
+    # Second pass: Extract main circuit input connections
+    for in_name, in_wire in circuit.inputs.items():
+        # Find components that use this input wire
+        for comp_id, comp in all_nands:
+            for comp_in_name, comp_in_wire in comp.inputs.items():
+                if comp_in_wire.id == in_wire.id and in_wire.id:
+                    input_connections.append((f"in_{in_name}", comp_id, in_wire.id))
+    
+    # Third pass: Extract main circuit output connections
+    for out_name, out_wire in circuit.outputs.items():
+        # Find components that produce this output wire
+        for comp_id, comp in all_nands:
+            for comp_out_name, comp_out_wire in comp.outputs.items():
+                if comp_out_wire.id == out_wire.id and out_wire.id:
+                    output_connections.append((comp_id, f"out_{out_name}", out_wire.id))
+    
+    # Fourth pass: Extract internal connections between components
+    for src_id, src_comp in all_nands:
+        for src_out_name, src_out_wire in src_comp.outputs.items():
+            for dst_id, dst_comp in all_nands:
+                if src_id != dst_id:  # Don't connect to self
+                    for dst_in_name, dst_in_wire in dst_comp.inputs.items():
+                        if dst_in_wire.id == src_out_wire.id and src_out_wire.id:
+                            internal_connections.append((src_id, dst_id, src_out_wire.id))
+    
+    return all_nands, input_connections, output_connections, internal_connections
 
-    if is_main_graph:
-        (input_nodes, output_nodes) = nodes
-        for input in input_nodes.values():
-            if input[0] and input[1]:
-                graph.add_edge(pydot.Edge(input[0], input[1]))
 
-        for output in output_nodes.values():
-            if output[0] and output[1]:
-                graph.add_edge(pydot.Edge(output[0], output[1]))
-
-    return nodes
-
-
-def _add_ports_nodes(
-    ports: PortWireDict, graph: pydot.Graph, prefix: str, color: str, is_input: bool
-) -> Nodes:
-    wires: Nodes = {}
-
-    for port, wire in ports.items():
-        node_id = f"{prefix}_{port}"
-
-        if is_input:
-            wires[wire.id] = (node_id, None)
-        else:
-            wires[wire.id] = (None, node_id)
-
+def _add_circuit_io_nodes(graph: pydot.Graph, circuit: Circuit):
+    """Add input and output nodes for the main circuit"""
+    # Add input nodes
+    input_nodes = []
+    for in_name in circuit.inputs.keys():
+        node = f"in_{in_name}"
+        input_nodes.append(node)
         graph.add_node(
             pydot.Node(
-                node_id,
-                label=f"{port}",
+                node,
+                label=f"{in_name}",
                 shape="circle",
                 style="filled",
-                fillcolor=color,
+                fillcolor="#aaffaa",
+            )
+        )
+    input_subgraph = pydot.Subgraph("input_subgraphs", rank="min")
+    for node in input_nodes:
+        input_subgraph.add_node(pydot.Node(node))
+    graph.add_subgraph(input_subgraph)
+    
+    # Add output nodes
+    output_nodes = []
+    for out_name in circuit.outputs.keys():
+        node = f"out_{out_name}"
+        output_nodes.append(node)
+        graph.add_node(
+            pydot.Node(
+                node,
+                label=f"{out_name}",
+                shape="circle",
+                style="filled",
+                fillcolor="#ffaaaa",
+            )
+        )
+    output_subgraph = pydot.Subgraph("output_subgraph", rank="max")
+    for node in output_nodes:
+        output_subgraph.add_node(pydot.Node(node))
+    graph.add_subgraph(output_subgraph)
+
+
+
+def _add_component_nodes(graph: pydot.Graph, components: List[Tuple[str, Circuit]]):
+    """Add nodes for all components (NAND gates)"""
+    for comp_id, comp in components:
+        graph.add_node(
+            pydot.Node(
+                comp_id,
+                label="NAND",
+                shape="box",
+                style="filled",
+                fillcolor="#ccccff",
             )
         )
 
-    return wires
 
-
-def _build_components_graph(
-    circuit: Circuit,
-    circuit_nodes: PortNodes,
+def _add_all_connections(
     graph: pydot.Graph,
-    prefix: str,
-) -> List[PortNodes]:
-    nodes: List[PortNodes] = []
-
-    if len(circuit.components) == 0:
-        # We are at the nand level
-        nodes = _build_nand_circuit(circuit, graph, f"{prefix}_nand")
-        print(f"nand nodes : {nodes}")
-
-    for component_name, component in circuit.components.items():
-        component_prefix = f"{prefix}_comp_{component_name}"
-
-        nodes.append(_build_circuit_graph(
-            graph, component, circuit_nodes, component_prefix, False
-        ))
-
-
-    return nodes
-
-
-def _build_nand_circuit(nand: Circuit, graph: pydot.Graph, name: str) -> List[PortNodes]:
-    _add_nand_node(graph, name)
-
-    inputs_nodes: InputNodes = {}
-    inputs = list(nand.inputs.values())
-    assert len(inputs) == 2
-    a = inputs[0]
-    inputs_nodes[a.id] = (None, name)
-    b = inputs[1]
-    inputs_nodes[b.id] = (None, name)
-
-    output_node: OutputNodes = {}
-    output = list(nand.outputs.values())
-    assert len(output) == 1
-    out = output[0]
-    output_node[out.id] = (name, None)
-
-    return [(inputs_nodes, output_node)]
-
-
-def _add_nand_node(graph: pydot.Graph, name: str):
-    graph.add_node(
-        pydot.Node(
-            name,
-            label="NAND",
-            shape="box",
-            style="filled",
-            fillcolor="#ccccff",
-        )
-    )
-
-
-def _collapse_ports(circuit_nodes: PortNodes, components_nodes: List[PortNodes], graph: pydot.Graph) -> PortNodes:
-    circuit_inputs, circuit_outputs = circuit_nodes
+    input_connections: List[Tuple[str, str, int]],
+    output_connections: List[Tuple[str, str, int]],
+    internal_connections: List[Tuple[str, str, int]]
+):
+    """Add all connections to the graph"""
+    # Add connections from inputs to components
+    for src, dst, _ in input_connections:
+        graph.add_edge(pydot.Edge(src, dst))
     
-    inputs_nodes : InputNodes = {}
-    for circuit_wire, circuit_input in circuit_inputs.items():
-        for component_nodes in components_nodes:
-            (component_inputs, _) = component_nodes
-            for component_wire, component_input in component_inputs.items():
-                if circuit_wire == component_wire:
-                    inputs_nodes[circuit_wire] = (circuit_input[0], component_input[1])                
+    # Add connections from components to outputs
+    for src, dst, _ in output_connections:
+        graph.add_edge(pydot.Edge(src, dst))
+    
+    # Add connections between components
+    for src, dst, _ in internal_connections:
+        graph.add_edge(pydot.Edge(src, dst))
 
-    outputs_nodes : OutputNodes = {}
-    for circuit_wire, circuit_output in circuit_outputs.items():
-        for component_nodes in components_nodes:
-            (_, component_outputs) = component_nodes
-            for component_wire, component_output in component_outputs.items():
-                if circuit_wire == component_wire:
-                    outputs_nodes[circuit_wire] = (component_output[0], circuit_output[1])
 
-    print(f"Starting connecting components : component nodes : {components_nodes}")
-
-    for source_nodes in components_nodes:
-        for target_nodes in components_nodes:
-            if source_nodes == target_nodes:
-                continue
-
-            print(f"source_nodes = {source_nodes}\ntarget_nodes = {target_nodes}")
-
-            (_, source_outputs) = source_nodes
-            for source_wire, source_node in source_outputs.items():
-                (target_inputs, _) = target_nodes
-                for target_wire, target_node in target_inputs.items():
-                    if source_wire == target_wire and source_node[0] and target_node[1]:
-                        graph.add_edge(
-                            pydot.Edge(source_node[0], target_node[1])
-                        )
-
-    return (inputs_nodes, outputs_nodes)
-
-def visualize_schematic(
+def visualize_raw_schematic(
     circuit_idx: int,
     schematics: CircuitDict,
     filename: str,
-    format: str = "png",
+    format: str = "png"
 ) -> pydot.Graph:
     """
-    Helper function to quickly visualize a schematic from your library.
-
+    Helper function to quickly visualize a raw schematic from your library.
+    
     Args:
-        circuit_id: ID of the circuit to visualize
-        schematics_builder: Instance of SchematicsBuilder with circuits
-        filename: Optional output filename (without extension)
+        circuit_idx: Index of the circuit to visualize
+        schematics: Dictionary of circuits
+        filename: Output filename (without extension)
         format: Output format (png, svg, pdf, etc.)
-
+        
     Returns:
         The generated pydot graph
     """
     circuit = get_schematic_idx(circuit_idx, schematics)
-    return generate_circuit_graph(circuit, filename, format)
+    return generate_raw_circuit_graph(circuit, filename, format)
 
 
 # Example usage
 if __name__ == "__main__":
     import os
+    from schematics import SchematicsBuilder
 
     # Set Graphviz path if needed
     os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin"
@@ -250,16 +215,9 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     reference = schematics_builder.schematics
 
-    encoder = CircuitEncoder(reference.copy())
-    encoded = encoder.encode()
-    decoder = CircuitDecoder(encoded.copy())
-    round_trip_1 = decoder.decode()
-
-    encoder = CircuitEncoder(round_trip_1.copy())
-    encoded = encoder.encode()
-    decoder = CircuitDecoder(encoded.copy())
-    round_trip_2 = decoder.decode()
-
-    visualize_schematic(2, reference, "compact", "svg")
-    # visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
-    # visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")
+    # Generate raw graphs for different circuits
+    for idx in range(9):  # Visualize first 9 circuits
+        try:
+            visualize_raw_schematic(idx, reference, f"raw_circuit_{idx}", "svg")
+        except Exception as e:
+            print(f"Error visualizing circuit {idx}: {e}")

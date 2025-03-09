@@ -119,7 +119,7 @@ def _build_circuit_graph(
 
     # Connect component outputs to other component inputs.
     # For each components' output, search in all components the corresponding input wire.
-    _connect_components(circuit, circuit_ports, components_ports, graph)
+    _connect_components(circuit, components_ports, graph)
 
     # Add the subgraph to the parent graph if this is not the main circuit
     if not is_main_graph:
@@ -268,7 +268,6 @@ def _connect_outputs(
 
 def _connect_components(
     circuit: Circuit,
-    circuit_ports: CircuitPorts,
     components_ports: ComponentsPorts,
     graph: pydot.Graph,
 ):
@@ -337,26 +336,8 @@ if __name__ == "__main__":
     round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    # visualize_schematic(0, reference, "nand_gate_better_nand")
-    # visualize_schematic(1, reference, "not_gate_better_nand")
-    # visualize_schematic(2, reference, "and_gate_better_nand")
-    # visualize_schematic(3, reference, "or_gate_better_nand")
-    # visualize_schematic(5, reference, "xor_gate_better_nand")
-    # visualize_schematic(6, reference, "half_adder_better_nand")
-    # visualize_schematic(7, reference, "fulladder_nand")
-    compact = True
-    aligned = True
-    visualize_schematic(
-        8, reference, GraphOptions(compact, aligned), "X_compact_aligned", "svg"
-    )
-    visualize_schematic(
-        8, reference, GraphOptions(compact, not aligned), "X_compact_flow", "svg"
-    )
-    visualize_schematic(
-        8, reference, GraphOptions(not compact, aligned), "X_large_aligned", "svg"
-    )
-    visualize_schematic(
-        8, reference, GraphOptions(not compact, not aligned), "X_large_flow", "svg"
-    )
-    # visualize_schematic(8, round_trip_1, "2bitsadder_roundtrip_1_better_nand")
-    # visualize_schematic(8, round_trip_2, "2bitsadder_roundtrip_2_better_nand")
+    for idx in range(9):  # Visualize first 9 circuits
+        try:
+            visualize_schematic(idx, reference, GraphOptions(is_compact=True, is_aligned=True), f"circuit_{idx}", "svg")
+        except Exception as e:
+            print(f"Error visualizing circuit {idx}: {e}")

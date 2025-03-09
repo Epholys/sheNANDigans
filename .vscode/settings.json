@@ -13,7 +13,7 @@
         "${workspaceFolder}/**"
     ],
     "C_Cpp.errorSquiggles": "enabled",
-    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoImportCompletions": false,
     "python.analysis.typeCheckingMode": "standard",
     "python.testing.unittestArgs": [
         "-v",

@@ -338,6 +338,12 @@ if __name__ == "__main__":
     # Visualize different circuits
     for idx in range(9):  # Visualize first 9 circuits
         try:
-            visualize_schematic(idx, reference, GraphOptions(is_compact=True, is_aligned=True), f"circuit_{idx}", "svg")
+            visualize_schematic(
+                idx,
+                reference,
+                GraphOptions(is_compact=True, is_aligned=True),
+                f"circuit_{idx}",
+                "svg",
+            )
         except Exception as e:
             print(f"Error visualizing circuit {idx}: {e}")

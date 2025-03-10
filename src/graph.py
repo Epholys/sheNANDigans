@@ -5,8 +5,6 @@ from circuit import (
     CircuitKey,
     PortWireDict,
 )
-from decoding import CircuitDecoder
-from encoding import CircuitEncoder
 from schematics import SchematicsBuilder, get_schematic_idx
 
 
@@ -336,7 +334,7 @@ if __name__ == "__main__":
     # round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    for idx in [9]:  # Visualize first 9 circuits
+    for idx in [10]:  # Visualize first 9 circuits
         try:
             visualize_schematic(
                 idx,

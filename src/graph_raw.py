@@ -266,36 +266,15 @@ if __name__ == "__main__":
     reference = schematics_builder.schematics
 
     # Generate raw graphs for different circuits
-    for idx in range(9):  # Visualize first 9 circuits
+    for idx in [10]:  # Visualize first 9 circuits
         try:
             is_nested = True
             is_aligned = True
             visualize_schematic(
                 idx,
-                GraphOptions(is_nested, is_aligned),
-                reference,
-                f"raw_circuit_{idx}_refact_nested_aligned",
-                "svg",
-            )
-            visualize_schematic(
-                idx,
                 GraphOptions(not is_nested, is_aligned),
                 reference,
-                f"raw_circuit_{idx}_refact_flat_aligned",
-                "svg",
-            )
-            visualize_schematic(
-                idx,
-                GraphOptions(is_nested, not is_aligned),
-                reference,
-                f"raw_circuit_{idx}_refact_nested_mis",
-                "svg",
-            )
-            visualize_schematic(
-                idx,
-                GraphOptions(not is_nested, not is_aligned),
-                reference,
-                f"raw_circuit_{idx}_refact_flat_mis",
+                f"raw_circuit_{idx}",
                 "svg",
             )
         except Exception as e:

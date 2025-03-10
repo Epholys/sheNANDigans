@@ -1,10 +1,9 @@
 from itertools import product
-from typing import Callable, List, OrderedDict
-import unittest
-from parameterized import parameterized_class  # type: ignore
+from typing import Callable, List
 
+import pytest
 from src import schematics
-from src.circuit import Circuit, CircuitKey
+from src.circuit import Circuit
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 
@@ -17,21 +16,17 @@ encoded = CircuitEncoder(reference_circuits).encode()
 round_trip_circuits = CircuitDecoder(encoded).decode()
 
 
-@parameterized_class(
-    [{"library": reference_circuits}, {"library": round_trip_circuits}]
-)
-class TestSchematics(unittest.TestCase):
-    library: OrderedDict[CircuitKey, Circuit]
-
+@pytest.mark.parametrize("library", [reference_circuits, round_trip_circuits])
+class TestSchematics:
     def assert_2_in_1_out(
         self, gate: Circuit, gate_logic: Callable[[bool, bool], bool]
     ):
-        self.assertEqual(len(gate.inputs), 2)
+        assert len(gate.inputs) == 2
         inputs = list(gate.inputs.values())
         input_a = inputs[0]
         input_b = inputs[1]
 
-        self.assertEqual(len(gate.outputs), 1)
+        assert len(gate.outputs) == 1
         output = list(gate.outputs.values())[0]
 
         possible_inputs = list(product([True, False], repeat=2))
@@ -41,42 +36,42 @@ class TestSchematics(unittest.TestCase):
             gate.reset()
             input_a.state = a
             input_b.state = b
-            self.assertTrue(gate.simulate(), "Simulation failed")
-            self.assertEqual(bool(output.state), expected_output)
+            assert gate.simulate()
+            assert bool(output.state) == expected_output
 
-    def test_nand(self):
-        nand_gate = schematics.get_schematic_idx(0, self.library)
+    def test_nand(self, library):
+        nand_gate = schematics.get_schematic_idx(0, library)
         self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b))
 
-    def test_not(self):
-        not_gate = schematics.get_schematic_idx(1, self.library)
+    def test_not(self, library):
+        not_gate = schematics.get_schematic_idx(1, library)
 
-        self.assertEqual(len(not_gate.inputs), 1)
+        assert len(not_gate.inputs) == 1
         input = list(not_gate.inputs.values())[0]
 
-        self.assertEqual(len(not_gate.outputs), 1)
+        assert len(not_gate.outputs) == 1
         output = list(not_gate.outputs.values())[0]
 
         for a in [True, False]:
             not_gate.reset()
             input.state = a
-            self.assertTrue(not_gate.simulate())
-            self.assertEqual(bool(output.state), not a)
+            assert not_gate.simulate()
+            assert bool(output.state) == (not a)
 
-    def test_and(self):
-        and_gate = schematics.get_schematic_idx(2, self.library)
+    def test_and(self, library):
+        and_gate = schematics.get_schematic_idx(2, library)
         self.assert_2_in_1_out(and_gate, lambda a, b: a and b)
 
-    def test_or(self):
-        or_gate = schematics.get_schematic_idx(3, self.library)
+    def test_or(self, library):
+        or_gate = schematics.get_schematic_idx(3, library)
         self.assert_2_in_1_out(or_gate, lambda a, b: a or b)
 
-    def test_nor(self):
-        nor_gate = schematics.get_schematic_idx(4, self.library)
+    def test_nor(self, library):
+        nor_gate = schematics.get_schematic_idx(4, library)
         self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b))
 
-    def test_xor(self):
-        xor_gate = schematics.get_schematic_idx(5, self.library)
+    def test_xor(self, library):
+        xor_gate = schematics.get_schematic_idx(5, library)
         self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b)
 
     def assert_numeric_operations(
@@ -88,10 +83,10 @@ class TestSchematics(unittest.TestCase):
         number_to_outputs: Callable[[int], List[bool]],
         operation: Callable[[List[int]], int],
     ):
-        self.assertEqual(len(circuit.inputs), n_inputs)
+        assert len(circuit.inputs) == n_inputs
         input_wires = list(circuit.inputs.values())
 
-        self.assertEqual(len(circuit.outputs), n_outputs)
+        assert len(circuit.outputs) == n_outputs
         output_wires = list(circuit.outputs.values())
 
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
@@ -110,14 +105,13 @@ class TestSchematics(unittest.TestCase):
             for input_wire, input in zip(input_wires, possible_input):
                 input_wire.state = input
 
-            self.assertTrue(circuit.simulate(), "Simulation failed")
+            assert circuit.simulate(), "Simulation failed"
 
             actual_outputs = [bool(wire.state) for wire in output_wires]
+            assert actual_outputs == expected_outputs
 
-            self.assertEqual(actual_outputs, expected_outputs)
-
-    def test_half_adder(self):
-        half_adder = schematics.get_schematic_idx(6, self.library)
+    def test_half_adder(self, library):
+        half_adder = schematics.get_schematic_idx(6, library)
 
         # Inputs : a, b
         # Operation : a + b
@@ -125,7 +119,7 @@ class TestSchematics(unittest.TestCase):
         # Ex: a=1, b=0 / 1 + 0 = 2 = 0b01 / sum:1, carry:0
 
         def inputs_to_numbers(inputs: List[bool]):
-            self.assertEqual(len(inputs), 2)
+            assert len(inputs) == 2
             return [+(b) for b in inputs]
 
         def number_to_output(number: int):
@@ -137,28 +131,33 @@ class TestSchematics(unittest.TestCase):
             half_adder, 2, 2, inputs_to_numbers, number_to_output, sum
         )
 
-    def test_full_adder(self):
-        full_adder = schematics.get_schematic_idx(7, self.library)
+    def test_full_adder(self, library):
+        full_adder = schematics.get_schematic_idx(7, library)
+
         # Inputs : a, b, cin
         # Operation : a + b + cin
         # Output : sum, cout
         # Ex: a=1, b=0, cin=1 / 1 + 0 + 1 = 2 = 0b10 / sum:0, cout:1
 
+        n_inputs = 3
+        n_outputs = 2
+
         def inputs_to_numbers(inputs: List[bool]):
-            self.assertEqual(len(inputs), 3)
+            assert len(inputs) == n_inputs
             return [+(b) for b in inputs]
 
-        def number_to_output(number: int):
-            sum = number & 1
-            carry = (number >> 1) & 1
-            return [bool(x) for x in [sum, carry]]
-
         self.assert_numeric_operations(
-            full_adder, 3, 2, inputs_to_numbers, number_to_output, sum
+            full_adder,
+            n_inputs,
+            n_outputs,
+            inputs_to_numbers,
+            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+            operation=sum,
         )
 
-    def test_2bits_adder(self):
-        two_bits_adder = schematics.get_schematic_idx(8, self.library)
+    def test_2bits_adder(self, library):
+        two_bits_adder = schematics.get_schematic_idx(8, library)
+
         # Inputs : a0, b0, c0, a1, b1
         # Outputs: s0, s1, cout
         # Input Numbers  : A = 0b_a1_a0 ; B = 0b_b1_b0 ; Carry = c0
@@ -171,32 +170,37 @@ class TestSchematics(unittest.TestCase):
         # Operation : 1 + 2 + 1 = 4 = 0b100
         # Outputs = s0=0 ; s1=1 ; cout=1
 
-        def inputs_to_numbers(inputs: List[bool]):
-            self.assertEqual(len(inputs), 5)
-            a0 = +(inputs[0])
-            b0 = +(inputs[1])
-            c0 = +(inputs[2])
-            a1 = +(inputs[3])
-            b1 = +(inputs[4])
+        n_inputs = 5
+        n_outputs = 3
 
-            a = a1 * 2 + a0
-            b = b1 * 2 + b0
+        def inputs_to_numbers(inputs: List[bool]):
+            assert len(inputs) == n_inputs
+
+            # a0 a1
+            a = [inputs[i] for i in [0, 3]]
+
+            # b0 b1
+            b = [inputs[i] for i in [1, 4]]
+
+            c0 = +(inputs[2])
+
+            a = bools_to_int(a)
+            b = bools_to_int(b)
 
             return [a, b, c0]
 
-        def number_to_output(number: int):
-            cout = (number >> 2) & 1
-            s1 = (number >> 1) & 1
-            s0 = number & 1
-
-            return [bool(x) for x in [s0, s1, cout]]
-
         self.assert_numeric_operations(
-            two_bits_adder, 5, 3, inputs_to_numbers, number_to_output, sum
+            two_bits_adder,
+            n_inputs,
+            n_outputs,
+            inputs_to_numbers,
+            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+            operation=sum,
         )
 
-    def test_4bits_adder(self):
-        four_bits_adder = schematics.get_schematic_idx(9, self.library)
+    def test_4bits_adder(self, library):
+        four_bits_adder = schematics.get_schematic_idx(9, library)
+
         # Inputs : a0, b0, c0, a1, b1, a2, b2, a3, b3
         # Outputs: s0, s1, s2, s3, cout
         # Input Numbers  : A = 0b_a3_a2_a1_a0 ; B = 0b_b3_b2_b1_b0 ; Carry = c0
@@ -209,36 +213,82 @@ class TestSchematics(unittest.TestCase):
         # Operation : 5 + 14 + 0 = 19 = 0b01011
         # Outputs = s0=1 ; s1=1, s2=0, s3=1 ; cout=0
 
-        def inputs_to_numbers(inputs: List[bool]):
-            self.assertEqual(len(inputs), 9)
-            a0 = +(inputs[0])
-            b0 = +(inputs[1])
-            c0 = +(inputs[2])
-            a1 = +(inputs[3])
-            b1 = +(inputs[4])
-            a2 = +(inputs[5])
-            b2 = +(inputs[6])
-            a3 = +(inputs[7])
-            b3 = +(inputs[8])
+        n_inputs = 9
+        n_outputs = 5
 
-            a = a3 * 8 + a2 * 4 + a1 * 2 + a0
-            b = b3 * 8 + b2 * 4 + b1 * 2 + b0
+        def inputs_to_numbers(inputs: List[bool]):
+            assert len(inputs) == n_inputs
+
+            # a0 a1 a2 a3
+            a = [inputs[i] for i in [0, 3, 5, 7]]
+
+            # b0 b1 b2 b3
+            b = [inputs[i] for i in [1, 4, 6, 8]]
+
+            c0 = +(inputs[2])
+
+            a = bools_to_int(a)
+            b = bools_to_int(b)
 
             return [a, b, c0]
 
-        def number_to_output(number: int):
-            cout = (number >> 4) & 1
-            s3 = (number >> 3) & 1
-            s2 = (number >> 2) & 1
-            s1 = (number >> 1) & 1
-            s0 = number & 1
+        self.assert_numeric_operations(
+            four_bits_adder,
+            n_inputs,
+            n_outputs,
+            inputs_to_numbers,
+            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+            operation=sum,
+        )
 
-            return [bool(x) for x in [s0, s1, s2, s3, cout]]
+    @pytest.mark.slow
+    def test_8bits_adder(self, library):
+        eight_bits_adder = schematics.get_schematic_idx(10, library)
+
+        # See other adders
+
+        n_inputs = 17
+        n_outputs = 9
+
+        def inputs_to_numbers(inputs: List[bool]):
+            assert len(inputs) == n_inputs
+
+            # interleaved and c0 : a0 b0 c0 a1 b1 ... a7 b7
+
+            # a0 ... a7
+            a_indices: List[int] = [0, *range(3, 16, 2)]
+            a = [inputs[i] for i in a_indices]
+
+            # b0 ... b7
+            b_indices: List[int] = [1, *range(4, 17, 2)]
+            b = [inputs[i] for i in b_indices]
+
+            c0 = +(inputs[2])
+
+            a = bools_to_int(a)
+            b = bools_to_int(b)
+
+            return [a, b, c0]
 
         self.assert_numeric_operations(
-            four_bits_adder, 9, 5, inputs_to_numbers, number_to_output, sum
+            eight_bits_adder,
+            n_inputs,
+            n_outputs,
+            inputs_to_numbers,
+            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+            operation=sum,
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
+def bools_to_int(bools: List[bool]):
+    """
+    bools from low to high
+    """
+    return sum(b * (2**n) for n, b in enumerate(bools))
+
+
+def int_to_bools(x: int, n: int) -> List[bool]:
+    """
+    bools from low to high
+    """
+    return [(x >> shift) & 1 > 0 for shift in range(n)]

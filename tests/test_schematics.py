@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Callable, OrderedDict
+from typing import Callable, List, OrderedDict
 import unittest
 from parameterized import parameterized_class  # type: ignore
 
@@ -79,108 +79,121 @@ class TestSchematics(unittest.TestCase):
         xor_gate = schematics.get_schematic_idx(5, self.library)
         self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b)
 
+    def assert_numeric_operations(
+        self,
+        circuit: Circuit,
+        n_inputs: int,
+        n_outputs: int,
+        inputs_to_numbers: Callable[[List[bool]], List[int]],
+        number_to_outputs: Callable[[int], List[bool]],
+        operation: Callable[[List[int]], int],
+    ):
+        self.assertEqual(len(circuit.inputs), n_inputs)
+        input_wires = list(circuit.inputs.values())
+
+        self.assertEqual(len(circuit.outputs), n_outputs)
+        output_wires = list(circuit.outputs.values())
+
+        all_possible_inputs = list(product([True, False], repeat=n_inputs))
+
+        all_expected_outputs: List[List[bool]] = []
+        for possible_input in all_possible_inputs:
+            input_numbers = inputs_to_numbers(list(possible_input))
+            operation_result = operation(input_numbers)
+            all_expected_outputs.append(number_to_outputs(operation_result))
+
+        for possible_input, expected_outputs in zip(
+            all_possible_inputs, all_expected_outputs
+        ):
+            circuit.reset()
+
+            for input_wire, input in zip(input_wires, possible_input):
+                input_wire.state = input
+
+            self.assertTrue(circuit.simulate(), "Simulation failed")
+
+            actual_outputs = [bool(wire.state) for wire in output_wires]
+
+            self.assertEqual(actual_outputs, expected_outputs)
+
     def test_half_adder(self):
         half_adder = schematics.get_schematic_idx(6, self.library)
-        self.assertEqual(len(half_adder.inputs), 2)
-        inputs = list(half_adder.inputs.values())
-        input_a = inputs[0]
-        input_b = inputs[1]
 
-        self.assertEqual(len(half_adder.outputs), 2)
-        outputs = list(half_adder.outputs.values())
-        sum_output = outputs[0]
-        carry_output = outputs[1]
+        # Inputs : a, b
+        # Operation : a + b
+        # Output : sum, carry
+        # Ex: a=1, b=0 / 1 + 0 = 2 = 0b01 / sum:1, carry:0
 
-        possible_inputs = list(product([True, False], repeat=2))
-        # +(True) = 1, +(False) = 0
-        addition = [+(a) + (+b) for (a, b) in possible_inputs]
-        # Pour : a=True, b=False -> sum=0b01 -> bit=sum&1=1, carry=(sum>>1)&1=0
-        expected_outputs = [(sum & 1, (sum >> 1) & 1) for sum in addition]
+        def inputs_to_numbers(inputs: List[bool]):
+            self.assertEqual(len(inputs), 2)
+            return [+(b) for b in inputs]
 
-        for (a, b), (sum, carry) in zip(possible_inputs, expected_outputs):
-            half_adder.reset()
-            input_a.state = a
-            input_b.state = b
-            self.assertTrue(half_adder.simulate(), "Simulation failed")
+        def number_to_output(number: int):
+            sum = number & 1
+            carry = (number >> 1) & 1
+            return [bool(x) for x in [sum, carry]]
 
-            sum_result = int(sum_output.state)
-            carry_result = int(carry_output.state)
-            self.assertEqual((sum_result, carry_result), (sum, carry))
+        self.assert_numeric_operations(
+            half_adder, 2, 2, inputs_to_numbers, number_to_output, sum
+        )
 
     def test_full_adder(self):
         full_adder = schematics.get_schematic_idx(7, self.library)
-        self.assertEqual(len(full_adder.inputs), 3)
-        inputs = list(full_adder.inputs.values())
-        input_a = inputs[0]
-        input_b = inputs[1]
-        input_cin = inputs[2]
+        # Inputs : a, b, cin
+        # Operation : a + b + cin
+        # Output : sum, cout
+        # Ex: a=1, b=0, cin=1 / 1 + 0 + 1 = 2 = 0b10 / sum:0, cout:1
 
-        self.assertEqual(len(full_adder.outputs), 2)
-        outputs = list(full_adder.outputs.values())
-        sum_output = outputs[0]
-        cout_output = outputs[1]
+        def inputs_to_numbers(inputs: List[bool]):
+            self.assertEqual(len(inputs), 3)
+            return [+(b) for b in inputs]
 
-        possible_inputs = list(product([True, False], repeat=3))
-        # +(True) = 1, +(False) = 0
-        addition = [+(a) + (+b) + (+cin) for (a, b, cin) in possible_inputs]
-        # Pour : a=True, b=False -> sum=0b01 -> bit=sum&1=1, carry=(sum>>1)&1=0
-        expected_outputs = [(sum & 1, (sum >> 1) & 1) for sum in addition]
+        def number_to_output(number: int):
+            sum = number & 1
+            carry = (number >> 1) & 1
+            return [bool(x) for x in [sum, carry]]
 
-        for (a, b, cin), (sum, cout) in zip(possible_inputs, expected_outputs):
-            full_adder.reset()
-            input_a.state = a
-            input_b.state = b
-            input_cin.state = cin
-            self.assertTrue(full_adder.simulate(), "Simulation failed")
-
-            sum_result = int(sum_output.state)
-            carry_result = int(cout_output.state)
-            self.assertEqual((sum_result, carry_result), (sum, cout))
+        self.assert_numeric_operations(
+            full_adder, 3, 2, inputs_to_numbers, number_to_output, sum
+        )
 
     def test_2bits_adder(self):
         two_bits_adder = schematics.get_schematic_idx(8, self.library)
-        self.assertEqual(len(two_bits_adder.inputs), 5)
-        inputs = list(two_bits_adder.inputs.values())
-        input_a0 = inputs[0]
-        input_b0 = inputs[1]
-        input_c0 = inputs[2]
-        input_a1 = inputs[3]
-        input_b1 = inputs[4]
+        # Inputs : a0, b0, c0, a1, b1
+        # Outputs: s0, s1, cout
+        # Input Numbers  : A = 0b_a1_a0 ; B = 0b_b1_b0 ; Carry = c0
+        # Output Numbers : S = 0b_cout_s1_s0
+        # Operation : A + B + Carry = S
+        # Ex: a0=1, a1=0, cin=1, b1=1, b0=0
+        # A = 0b01 = 1
+        # B = 0b10 = 2
+        # Carry = 0b1 = 1
+        # Operation : 1 + 2 + 1 = 4 = 0b100
+        # Outputs = s0=0 ; s1=1 ; cout=1
 
-        self.assertEqual(len(two_bits_adder.outputs), 3)
-        outputs = list(two_bits_adder.outputs.values())
-        s0_output = outputs[0]
-        s1_output = outputs[1]
-        cout_output = outputs[2]
+        def inputs_to_numbers(inputs: List[bool]):
+            self.assertEqual(len(inputs), 5)
+            a0 = +(inputs[0])
+            b0 = +(inputs[1])
+            c0 = +(inputs[2])
+            a1 = +(inputs[3])
+            b1 = +(inputs[4])
 
-        possible_inputs = list(product([True, False], repeat=5))
-        # +(True) = 1, +(False) = 0
-        addition = [
-            +(a0) + +(b0) + +(a1) * 2 + +(b1) * 2 + +(c0)
-            for (a0, b0, a1, b1, c0) in possible_inputs
-        ]
-        # Pour : a=True, b=False -> sum=0b01 -> bit=sum&1=1, carry=(sum>>1)&1=0
-        expected_outputs = [
-            (sum & 1, (sum >> 1) & 1, (sum >> 2) & 1) for sum in addition
-        ]
+            a = a1 * 2 + a0
+            b = b1 * 2 + b0
 
-        for idx, ((a0, b0, a1, b1, c0), (s0, s1, cout)) in enumerate(
-            zip(possible_inputs, expected_outputs)
-        ):
-            two_bits_adder.reset()
-            input_a0.state = a0
-            input_b0.state = b0
-            input_a1.state = a1
-            input_b1.state = b1
-            input_c0.state = c0
+            return [a, b, c0]
 
-            self.assertTrue(two_bits_adder.simulate(), "Simulation failed")
+        def number_to_output(number: int):
+            cout = (number >> 2) & 1
+            s1 = (number >> 1) & 1
+            s0 = number & 1
 
-            s0_result = int(s0_output.state)
-            s1_result = int(s1_output.state)
-            carry_result = int(cout_output.state)
+            return [bool(x) for x in [s0, s1, cout]]
 
-            self.assertEqual((s0_result, s1_result, carry_result), (s0, s1, cout))
+        self.assert_numeric_operations(
+            two_bits_adder, 5, 3, inputs_to_numbers, number_to_output, sum
+        )
 
 
 if __name__ == "__main__":

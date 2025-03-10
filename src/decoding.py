@@ -145,18 +145,18 @@ class CircuitDecoder:
         """
         Decode the 'input_idx'-th input of the 'component_idx'-th component of the circuit, originating from another component's outputs.
         """
-        source_idx = self.data.pop(0)
-        if source_idx >= len(self.circuit.components):
-            raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of {source_idx}-th component , which does not exists."
-            )
-        source = self.circuit.components[source_idx]
+        (source, source_idx, source_output_idx) = self.decode_component_wiring()
 
-        source_output_idx = self.data.pop(0)
-        if source_output_idx > len(source.outputs):
+        if source is None or source_idx is None:
             raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {source_output_idx}-th output of component {source_id}, which is not in 0..{len(source.outputs)}."
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of {source_idx}-th component , which is not in 0..{self.circuit.n_components}."
             )
+
+        if source_output_idx is None:
+            raise ValueError(
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {source_output_idx}-th output of component {source_idx}, which is not in 0..{len(source.outputs)}."
+            )
+
         self.circuit.connect(
             source_idx,
             source_output_idx,
@@ -169,17 +169,33 @@ class CircuitDecoder:
         Decode the outputs of the current decoded circuit. They must come from one its component.
         """
         for output_idx in range(0, self.circuit.n_outputs):
-            source_idx = self.data.pop(0)
-            if source_idx >= self.circuit.n_components:
+            (source, source_idx, source_output_idx) = self.decode_component_wiring()
+
+            if source is None or source_idx is None:
                 raise ValueError(
                     f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output to come from its {source_idx}-th component, which is not in 0..{self.circuit.n_components}."
                 )
-            source = self.circuit.components[source_idx]
 
-            source_output_idx = self.data.pop(0)
-            if source_output_idx > len(source.outputs):
+            if source_output_idx is None:
                 raise ValueError(
-                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component, which does not exists."
+                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component,  which is not in 0..{len(source.outputs)}."
                 )
 
             self.circuit.connect_output(output_idx, source_idx, source_output_idx)
+
+    def decode_component_wiring(self):
+        """
+        Decode the wiring between components: the component index and its output index.
+        The 'None' are here to indicate error so that the callers can raise an Exception with a meaningful message.
+        """
+        source_idx = self.data.pop(0)
+
+        if source_idx >= len(self.circuit.components):
+            return (None, None, None)
+        source = self.circuit.components[source_idx]
+
+        source_output_idx = self.data.pop(0)
+        if source_output_idx > len(source.outputs):
+            return (source, source_idx, None)
+
+        return (source, source_idx, source_output_idx)

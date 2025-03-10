@@ -4,8 +4,14 @@ from schematics import get_schematic_idx
 from typing import List, Tuple
 
 
-def generate_raw_circuit_graph(
-    circuit: Circuit, filename: str, format: str = "png"
+class GraphOptions:
+    def __init__(self, is_nested: bool, is_aligned: bool):
+        self.is_nested = is_nested
+        self.is_aligned = is_aligned
+
+
+def generate_circuit_graph(
+    circuit: Circuit, options: GraphOptions, filename: str, format: str = "png"
 ) -> pydot.Graph:
     """
     Generate a simplified graph showing only the connections between circuit inputs/outputs
@@ -24,17 +30,17 @@ def generate_raw_circuit_graph(
         f"Raw_Circuit_{circuit.identifier}",
         graph_type="digraph",
         rankdir="LR",
-        label=f"Raw Circuit {circuit.identifier}",
+        label=circuit.identifier,
     )
 
     # Extract all components and connections
     all_components, input_connections, output_connections, internal_connections = (
-        _extract_circuit_details(circuit)
+        _extract_circuit_details(circuit, graph, options)
     )
 
     # Add all nodes to the graph
-    _add_circuit_io_nodes(graph, circuit)
-    _add_component_nodes(graph, all_components)
+    _add_circuit_io_nodes(graph, circuit, options)
+    # _add_component_nodes(graph, all_components)
 
     # Add all connections
     _add_all_connections(
@@ -50,7 +56,7 @@ def generate_raw_circuit_graph(
 
 
 def _extract_circuit_details(
-    circuit: Circuit,
+    circuit: Circuit, graph: pydot.Graph, options: GraphOptions
 ) -> Tuple[
     List[Tuple[str, Circuit]],  # all_components
     List[Tuple[str, str, int]],  # input_connections (input_id, component_id, wire_id)
@@ -69,19 +75,39 @@ def _extract_circuit_details(
     output_connections: List[Tuple[str, str, int]] = []
     internal_connections: List[Tuple[str, str, int]] = []
 
-    def _explore_circuit(circuit: Circuit, prefix: str = ""):
+    def _explore_circuit(
+        circuit: Circuit,
+        graph: pydot.Graph,
+        must_nest: bool,
+        first_call: bool = True,
+        prefix: str = "",
+    ):
         """Recursively explore the circuit to extract all NAND gates and connections"""
         # Process nested components
+        parent_graph = graph
+        if not first_call and must_nest:
+            graph = pydot.Cluster(
+                f"{prefix}_cluster",
+                label=f"Circuit {circuit.identifier}",
+                style="rounded,filled",
+                fillcolor="#f0f0f0",
+                color="#000000",
+            )
+
         for component_name, component in circuit.components.items():
             name = f"{prefix}_{component_name}"
 
             if component.identifier == 0:  # NAND gate
                 all_nands.append((name, component))
+                _add_nand_node(graph, name)
             else:
-                _explore_circuit(component, name)
+                _explore_circuit(component, graph, options.is_nested, False, name)
+
+        if not first_call and must_nest:
+            parent_graph.add_subgraph(graph)
 
     # First pass: gather all NAND components
-    _explore_circuit(circuit)
+    _explore_circuit(circuit, graph, True)
 
     # Second pass: Extract main circuit input connections
     for in_name, in_wire in circuit.inputs.items():
@@ -113,7 +139,7 @@ def _extract_circuit_details(
     return all_nands, input_connections, output_connections, internal_connections
 
 
-def _add_circuit_io_nodes(graph: pydot.Graph, circuit: Circuit):
+def _add_circuit_io_nodes(graph: pydot.Graph, circuit: Circuit, options: GraphOptions):
     """Add input and output nodes for the main circuit"""
     # Add input nodes
     input_nodes = []
@@ -129,10 +155,11 @@ def _add_circuit_io_nodes(graph: pydot.Graph, circuit: Circuit):
                 fillcolor="#aaffaa",
             )
         )
-    input_subgraph = pydot.Subgraph("input_subgraphs", rank="min")
-    for node in input_nodes:
-        input_subgraph.add_node(pydot.Node(node))
-    graph.add_subgraph(input_subgraph)
+    if options.is_aligned:
+        input_subgraph = pydot.Subgraph("input_subgraphs", rank="min")
+        for node in input_nodes:
+            input_subgraph.add_node(pydot.Node(node))
+        graph.add_subgraph(input_subgraph)
 
     # Add output nodes
     output_nodes = []
@@ -148,10 +175,11 @@ def _add_circuit_io_nodes(graph: pydot.Graph, circuit: Circuit):
                 fillcolor="#ffaaaa",
             )
         )
-    output_subgraph = pydot.Subgraph("output_subgraph", rank="max")
-    for node in output_nodes:
-        output_subgraph.add_node(pydot.Node(node))
-    graph.add_subgraph(output_subgraph)
+    if options.is_aligned:
+        output_subgraph = pydot.Subgraph("output_subgraph", rank="max")
+        for node in output_nodes:
+            output_subgraph.add_node(pydot.Node(node))
+        graph.add_subgraph(output_subgraph)
 
 
 def _add_component_nodes(graph: pydot.Graph, components: List[Tuple[str, Circuit]]):
@@ -166,6 +194,19 @@ def _add_component_nodes(graph: pydot.Graph, components: List[Tuple[str, Circuit
                 fillcolor="#ccccff",
             )
         )
+
+
+def _add_nand_node(graph: pydot.Graph, id: str):
+    """Add nodes for all components (NAND gates)"""
+    graph.add_node(
+        pydot.Node(
+            id,
+            label="NAND",
+            shape="box",
+            style="filled",
+            fillcolor="#ccccff",
+        )
+    )
 
 
 def _add_all_connections(
@@ -188,8 +229,12 @@ def _add_all_connections(
         graph.add_edge(pydot.Edge(src, dst))
 
 
-def visualize_raw_schematic(
-    circuit_idx: int, schematics: CircuitDict, filename: str, format: str = "png"
+def visualize_schematic(
+    circuit_idx: int,
+    options: GraphOptions,
+    schematics: CircuitDict,
+    filename: str,
+    format: str = "png",
 ) -> pydot.Graph:
     """
     Helper function to quickly visualize a raw schematic from your library.
@@ -204,7 +249,7 @@ def visualize_raw_schematic(
         The generated pydot graph
     """
     circuit = get_schematic_idx(circuit_idx, schematics)
-    return generate_raw_circuit_graph(circuit, filename, format)
+    return generate_circuit_graph(circuit, options, filename, format)
 
 
 # Example usage
@@ -223,6 +268,35 @@ if __name__ == "__main__":
     # Generate raw graphs for different circuits
     for idx in range(9):  # Visualize first 9 circuits
         try:
-            visualize_raw_schematic(idx, reference, f"raw_circuit_{idx}", "svg")
+            is_nested = True
+            is_aligned = True
+            visualize_schematic(
+                idx,
+                GraphOptions(is_nested, is_aligned),
+                reference,
+                f"raw_circuit_{idx}_refact_nested_aligned",
+                "svg",
+            )
+            visualize_schematic(
+                idx,
+                GraphOptions(not is_nested, is_aligned),
+                reference,
+                f"raw_circuit_{idx}_refact_flat_aligned",
+                "svg",
+            )
+            visualize_schematic(
+                idx,
+                GraphOptions(is_nested, not is_aligned),
+                reference,
+                f"raw_circuit_{idx}_refact_nested_mis",
+                "svg",
+            )
+            visualize_schematic(
+                idx,
+                GraphOptions(not is_nested, not is_aligned),
+                reference,
+                f"raw_circuit_{idx}_refact_flat_mis",
+                "svg",
+            )
         except Exception as e:
             print(f"Error visualizing circuit {idx}: {e}")

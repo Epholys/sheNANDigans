@@ -53,6 +53,7 @@ class SchematicsBuilder:
         self.add_full_adder()
         self.add_2bits_adder()
         self.add_4bits_adder()
+        self.add_8bits_adder()
 
     def add_not(self):
         not_gate = Circuit("NOT")
@@ -180,11 +181,11 @@ class SchematicsBuilder:
         two_bits_adder.connect_input("A1", "ADDER_1", "A")
         two_bits_adder.connect_input("B1", "ADDER_1", "B")
 
+        two_bits_adder.connect("ADDER_0", "Cout", "ADDER_1", "Cin")
+
         two_bits_adder.connect_output("S0", "ADDER_0", "SUM")
         two_bits_adder.connect_output("S1", "ADDER_1", "SUM")
         two_bits_adder.connect_output("Cout", "ADDER_1", "Cout")
-
-        two_bits_adder.connect("ADDER_0", "Cout", "ADDER_1", "Cin")
 
         self.add_schematic(two_bits_adder)
 
@@ -213,3 +214,43 @@ class SchematicsBuilder:
         four_bits_adder.connect("2BITS_ADDER_0", "Cout", "2BITS_ADDER_1", "C0")
 
         self.add_schematic(four_bits_adder)
+
+    def add_8bits_adder(self):
+        eight_bits_adder = Circuit("8-Bits Adder")
+        eight_bits_adder.add_component("4BITS_ADDER_0", self.get_schematic_idx(9))
+        eight_bits_adder.add_component("4BITS_ADDER_1", self.get_schematic_idx(9))
+
+        eight_bits_adder.connect_input("A0", "4BITS_ADDER_0", "A0")
+        eight_bits_adder.connect_input("B0", "4BITS_ADDER_0", "B0")
+        eight_bits_adder.connect_input("C0", "4BITS_ADDER_0", "C0")
+        eight_bits_adder.connect_input("A1", "4BITS_ADDER_0", "A1")
+        eight_bits_adder.connect_input("B1", "4BITS_ADDER_0", "B1")
+        eight_bits_adder.connect_input("A2", "4BITS_ADDER_0", "A2")
+        eight_bits_adder.connect_input("B2", "4BITS_ADDER_0", "B2")
+        eight_bits_adder.connect_input("A3", "4BITS_ADDER_0", "A3")
+        eight_bits_adder.connect_input("B3", "4BITS_ADDER_0", "B3")
+
+        eight_bits_adder.connect_input("A4", "4BITS_ADDER_1", "A0")
+        eight_bits_adder.connect_input("B4", "4BITS_ADDER_1", "B0")
+        eight_bits_adder.connect_input("A5", "4BITS_ADDER_1", "A1")
+        eight_bits_adder.connect_input("B5", "4BITS_ADDER_1", "B1")
+        eight_bits_adder.connect_input("A6", "4BITS_ADDER_1", "A2")
+        eight_bits_adder.connect_input("B6", "4BITS_ADDER_1", "B2")
+        eight_bits_adder.connect_input("A7", "4BITS_ADDER_1", "A3")
+        eight_bits_adder.connect_input("B7", "4BITS_ADDER_1", "B3")
+
+        eight_bits_adder.connect("4BITS_ADDER_0", "Cout", "4BITS_ADDER_1", "C0")
+
+        eight_bits_adder.connect_output("S0", "4BITS_ADDER_0", "S0")
+        eight_bits_adder.connect_output("S1", "4BITS_ADDER_0", "S1")
+        eight_bits_adder.connect_output("S2", "4BITS_ADDER_0", "S2")
+        eight_bits_adder.connect_output("S3", "4BITS_ADDER_0", "S3")
+
+        eight_bits_adder.connect_output("S4", "4BITS_ADDER_1", "S0")
+        eight_bits_adder.connect_output("S5", "4BITS_ADDER_1", "S1")
+        eight_bits_adder.connect_output("S6", "4BITS_ADDER_1", "S2")
+        eight_bits_adder.connect_output("S7", "4BITS_ADDER_1", "S3")
+
+        eight_bits_adder.connect_output("Cout", "4BITS_ADDER_1", "Cout")
+
+        self.add_schematic(eight_bits_adder)

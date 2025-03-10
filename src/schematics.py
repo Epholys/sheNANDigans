@@ -52,6 +52,7 @@ class SchematicsBuilder:
         self.add_half_adder()
         self.add_full_adder()
         self.add_2bits_adder()
+        self.add_4bits_adder()
 
     def add_not(self):
         not_gate = Circuit("NOT")
@@ -186,3 +187,29 @@ class SchematicsBuilder:
         two_bits_adder.connect("ADDER_0", "Cout", "ADDER_1", "Cin")
 
         self.add_schematic(two_bits_adder)
+
+    def add_4bits_adder(self):
+        four_bits_adder = Circuit("4-Bits Adder")
+        four_bits_adder.add_component("2BITS_ADDER_0", self.get_schematic_idx(8))
+        four_bits_adder.add_component("2BITS_ADDER_1", self.get_schematic_idx(8))
+
+        four_bits_adder.connect_input("A0", "2BITS_ADDER_0", "A0")
+        four_bits_adder.connect_input("B0", "2BITS_ADDER_0", "B0")
+        four_bits_adder.connect_input("C0", "2BITS_ADDER_0", "C0")
+        four_bits_adder.connect_input("A1", "2BITS_ADDER_0", "A1")
+        four_bits_adder.connect_input("B1", "2BITS_ADDER_0", "B1")
+
+        four_bits_adder.connect_input("A2", "2BITS_ADDER_1", "A0")
+        four_bits_adder.connect_input("B2", "2BITS_ADDER_1", "B0")
+        four_bits_adder.connect_input("A3", "2BITS_ADDER_1", "A1")
+        four_bits_adder.connect_input("B3", "2BITS_ADDER_1", "B1")
+
+        four_bits_adder.connect_output("S0", "2BITS_ADDER_0", "S0")
+        four_bits_adder.connect_output("S1", "2BITS_ADDER_0", "S1")
+        four_bits_adder.connect_output("S2", "2BITS_ADDER_1", "S0")
+        four_bits_adder.connect_output("S3", "2BITS_ADDER_1", "S1")
+        four_bits_adder.connect_output("Cout", "2BITS_ADDER_1", "Cout")
+
+        four_bits_adder.connect("2BITS_ADDER_0", "Cout", "2BITS_ADDER_1", "C0")
+
+        self.add_schematic(four_bits_adder)

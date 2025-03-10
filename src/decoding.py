@@ -145,12 +145,12 @@ class CircuitDecoder:
         """
         Decode the 'input_idx'-th input of the 'component_idx'-th component of the circuit, originating from another component's outputs.
         """
-        source_id = self.data.pop(0)
-        if source_id not in self.library.keys():
+        source_idx = self.data.pop(0)
+        if source_idx >= len(self.circuit.components):
             raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of component {source_id}, which does not exists."
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of {source_idx}-th component , which does not exists."
             )
-        source = self.library[source_id]
+        source = self.circuit.components[source_idx]
 
         source_output_idx = self.data.pop(0)
         if source_output_idx > len(source.outputs):
@@ -158,7 +158,7 @@ class CircuitDecoder:
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {source_output_idx}-th output of component {source_id}, which is not in 0..{len(source.outputs)}."
             )
         self.circuit.connect(
-            source_id,
+            source_idx,
             source_output_idx,
             component_idx,
             input_idx,
@@ -174,11 +174,12 @@ class CircuitDecoder:
                 raise ValueError(
                     f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output to come from its {source_idx}-th component, which is not in 0..{self.circuit.n_components}."
                 )
+            source = self.circuit.components[source_idx]
 
             source_output_idx = self.data.pop(0)
-            try:
-                self.circuit.connect_output(output_idx, source_idx, source_output_idx)
-            except ValueError as _:
+            if source_output_idx > len(source.outputs):
                 raise ValueError(
                     f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component, which does not exists."
                 )
+
+            self.circuit.connect_output(output_idx, source_idx, source_output_idx)

@@ -325,18 +325,18 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     reference = schematics_builder.schematics
 
-    encoder = CircuitEncoder(reference.copy())
-    encoded = encoder.encode()
-    decoder = CircuitDecoder(encoded.copy())
-    round_trip_1 = decoder.decode()
+    # encoder = CircuitEncoder(reference.copy())
+    # encoded = encoder.encode()
+    # decoder = CircuitDecoder(encoded.copy())
+    # round_trip_1 = decoder.decode()
 
-    encoder = CircuitEncoder(round_trip_1.copy())
-    encoded = encoder.encode()
-    decoder = CircuitDecoder(encoded.copy())
-    round_trip_2 = decoder.decode()
+    # encoder = CircuitEncoder(round_trip_1.copy())
+    # encoded = encoder.encode()
+    # decoder = CircuitDecoder(encoded.copy())
+    # round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    for idx in range(9):  # Visualize first 9 circuits
+    for idx in [9]:  # Visualize first 9 circuits
         try:
             visualize_schematic(
                 idx,

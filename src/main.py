@@ -1,4 +1,4 @@
-from schematics import SchematicsBuilder
+from schematics import SchematicsBuilder, get_schematic_idx
 from encoding import CircuitEncoder
 from decoding import CircuitDecoder
 
@@ -8,7 +8,7 @@ def main():
     builder.build_circuits()
     schematics = builder.schematics
 
-    print(str(schematics[8]))
+    print(str(get_schematic_idx(9, schematics)))
 
     # print(schematics)
 

@@ -164,7 +164,7 @@ class TestSchematics(unittest.TestCase):
         # Input Numbers  : A = 0b_a1_a0 ; B = 0b_b1_b0 ; Carry = c0
         # Output Numbers : S = 0b_cout_s1_s0
         # Operation : A + B + Carry = S
-        # Ex: a0=1, a1=0, cin=1, b1=1, b0=0
+        # Ex: a0=1, a1=0, cin=1, b0=0, b1=1
         # A = 0b01 = 1
         # B = 0b10 = 2
         # Carry = 0b1 = 1
@@ -193,6 +193,50 @@ class TestSchematics(unittest.TestCase):
 
         self.assert_numeric_operations(
             two_bits_adder, 5, 3, inputs_to_numbers, number_to_output, sum
+        )
+
+    def test_4bits_adder(self):
+        four_bits_adder = schematics.get_schematic_idx(9, self.library)
+        # Inputs : a0, b0, c0, a1, b1, a2, b2, a3, b3
+        # Outputs: s0, s1, s2, s3, cout
+        # Input Numbers  : A = 0b_a3_a2_a1_a0 ; B = 0b_b3_b2_b1_b0 ; Carry = c0
+        # Output Numbers : S = 0b_cout_s3_s2_s1_s0
+        # Operation : A + B + Carry = S
+        # Ex: a0=1, a1=0, a2=1, a3=0, cin=0, b0=0, b1=1, b2=1, b3=1
+        # A = 0b0101 = 5
+        # B = 0b1110 = 14
+        # Carry = 0b0 = 0
+        # Operation : 5 + 14 + 0 = 19 = 0b01011
+        # Outputs = s0=1 ; s1=1, s2=0, s3=1 ; cout=0
+
+        def inputs_to_numbers(inputs: List[bool]):
+            self.assertEqual(len(inputs), 9)
+            a0 = +(inputs[0])
+            b0 = +(inputs[1])
+            c0 = +(inputs[2])
+            a1 = +(inputs[3])
+            b1 = +(inputs[4])
+            a2 = +(inputs[5])
+            b2 = +(inputs[6])
+            a3 = +(inputs[7])
+            b3 = +(inputs[8])
+
+            a = a3 * 8 + a2 * 4 + a1 * 2 + a0
+            b = b3 * 8 + b2 * 4 + b1 * 2 + b0
+
+            return [a, b, c0]
+
+        def number_to_output(number: int):
+            cout = (number >> 4) & 1
+            s3 = (number >> 3) & 1
+            s2 = (number >> 2) & 1
+            s1 = (number >> 1) & 1
+            s0 = number & 1
+
+            return [bool(x) for x in [s0, s1, s2, s3, cout]]
+
+        self.assert_numeric_operations(
+            four_bits_adder, 9, 5, inputs_to_numbers, number_to_output, sum
         )
 
 

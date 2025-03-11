@@ -1,4 +1,7 @@
-from typing import Dict
+from itertools import chain, groupby
+from typing import Dict, List, Tuple
+
+import networkx
 
 from wire import Wire, WireState
 
@@ -45,7 +48,9 @@ class Circuit:
         self.inputs: InputWireDict = dict()
         self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
-        self.miss = 0
+        self.graph = networkx.DiGraph()
+        self.missed = 0
+        self.simulated = 0
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -201,7 +206,79 @@ class Circuit:
         # no unused components
         # all ins and all outs used
         # ins > 0, outs > 0, composants > 0
+
         return True
+
+    def optimize(self, recursive: bool):
+        if len(self.components) == 0:
+            return
+
+        if recursive:
+            for component in self.components.values():
+                component.optimize(recursive)
+
+        components: List[Circuit] = [
+            component for component in self.components.values()
+        ]
+
+        raw_components_inputs: List[Tuple[str, List[Wire]]] = [
+            (f"{component.identifier}_{idx}", list(component.inputs.values()))
+            for idx, component in enumerate(components)
+        ]
+        components_inputs: List[Tuple[str, Wire]] = [
+            (key, wire) for key, wires in raw_components_inputs for wire in wires
+        ]
+
+        raw_components_outputs: List[Tuple[str, List[Wire]]] = [
+            (f"{component.identifier}_{idx}", list(component.outputs.values()))
+            for idx, component in enumerate(components)
+        ]
+        components_outputs: List[Tuple[str, Wire]] = [
+            (key, wire) for key, wires in raw_components_outputs for wire in wires
+        ]
+
+        inputs: List[Tuple[str, Wire]] = list(
+            (f"{input[0]}_{idx}", input[1])
+            for idx, input in enumerate(self.inputs.items())
+        )
+        outputs: List[Tuple[str, Wire]] = list(
+            (f"{output[0]}_{idx}", output[1])
+            for idx, output in enumerate(self.outputs.items())
+        )
+
+        for input in inputs:
+            for component_input in components_inputs:
+                if input[1].id == component_input[1].id:
+                    self.graph.add_edge(input[0], component_input[0])
+
+        for output in outputs:
+            for component_output in components_outputs:
+                if output[1].id == component_output[1].id:
+                    self.graph.add_edge(component_output[0], output[0])
+
+        for component_output in components_outputs:
+            for component_input in components_inputs:
+                if component_input[1] == component_output[1]:
+                    self.graph.add_edge(component_output[0], component_input[0])
+
+        sorted = list(networkx.topological_sort(self.graph))
+        components_named_duplicate = [key for key, _ in components_inputs]
+        components_named = [key for key, _ in groupby(components_named_duplicate)]
+        sorted_only_components = [
+            comp_name for comp_name in sorted if comp_name in components_named_duplicate
+        ]
+
+        indices_order: List[int] = []
+        for node in sorted_only_components:
+            indices_order.append(components_named.index(node))
+        components_list: List[Tuple[CircuitKey, "Circuit"]] = list(
+            self.components.items()
+        )
+        ordered_components: CircuitDict = {}
+        for index in indices_order:
+            (key, component) = components_list[index]
+            ordered_components[key] = component
+        self.components = ordered_components
 
     def reset(self):
         """
@@ -221,7 +298,8 @@ class Circuit:
         for component in self.components.values():
             component.reset()
 
-        self.miss = 0
+        self.missed = 0
+        self.simulated = 0
 
     def can_simulate(self) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""
@@ -253,6 +331,7 @@ class Circuit:
 
         if self.identifier == 0:
             self._simulate_nand()
+            self.simulated += 1
             return True
 
         # There are much more "elegant" ways to do it (using any for example), but my brain
@@ -262,8 +341,9 @@ class Circuit:
             for component in self.components.values():
                 if component.simulate():
                     progress_made = True
+                    self.simulated += 1
                 else:
-                    self.miss += 1
+                    self.missed += 1
 
             if not progress_made:
                 break
@@ -277,6 +357,18 @@ class Circuit:
         b = inputs[1]
         out = list(self.outputs.values())[0]
         out.state = not (a.state and b.state)
+
+    def all_missed(self):
+        components_missed = sum(
+            [component.all_missed() for component in self.components.values()]
+        )
+        return components_missed + self.missed
+
+    def all_simulated(self):
+        components_missed = sum(
+            [component.all_simulated() for component in self.components.values()]
+        )
+        return components_missed + self.simulated
 
     def __str__(self, indent: int = 0):
         """

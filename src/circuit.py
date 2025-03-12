@@ -40,6 +40,38 @@ class Circuit:
     TODO Explain provenance model
     """
 
+    class Performance:
+        def __init__(self):
+            # Initialize fields dynamically
+            self.nand_simulation: int = 0
+            self.simulation_failure: int = 0
+            self.simulation_success: int = 0
+            self.was_simulated_computation: int = 0
+            self.can_simulate_computation: int = 0
+
+        def reset(self):
+            for key in self.__dict__:
+                if isinstance(self.__dict__[key], int):
+                    self.__dict__[key] = 0
+
+        def __add__(self, other):
+            """Add corresponding fields from two objects."""
+            if not isinstance(other, type(self)):
+                return NotImplemented
+
+            obj = type(self)()
+            for key in self.__dict__:
+                if isinstance(self.__dict__[key], int):
+                    obj.__dict__[key] = self.__dict__[key] + other.__dict__[key]
+            return obj
+
+        def __str__(self):
+            str = ""
+            for key in self.__dict__:
+                if isinstance(self.__dict__[key], int):
+                    str += f"{key} = {self.__dict__[key]}\n"
+            return str
+
     def __init__(self, identifier: CircuitKey):
         """
         Initialize a new circuit with the given identifier.
@@ -49,8 +81,7 @@ class Circuit:
         self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
         self.graph = networkx.DiGraph()
-        self.missed = 0
-        self.simulated = 0
+        self.performance = self.Performance()
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -298,15 +329,16 @@ class Circuit:
         for component in self.components.values():
             component.reset()
 
-        self.missed = 0
-        self.simulated = 0
+        self.performance.reset()
 
     def can_simulate(self) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""
+        self.performance.can_simulate_computation += 1
         return all(wire.state != WireState.UNKNOWN for wire in self.inputs.values())
 
     def was_simulated(self) -> bool:
         """Check if the circuit was simulated, meaning that all outputs are determined."""
+        self.performance.was_simulated_computation += 1
         return all(wire.state != WireState.UNKNOWN for wire in self.outputs.values())
 
     def simulate(self) -> bool:
@@ -330,8 +362,8 @@ class Circuit:
             return False
 
         if self.identifier == 0:
+            self.performance.nand_simulation += 1
             self._simulate_nand()
-            self.simulated += 1
             return True
 
         # There are much more "elegant" ways to do it (using any for example), but my brain
@@ -341,9 +373,9 @@ class Circuit:
             for component in self.components.values():
                 if component.simulate():
                     progress_made = True
-                    self.simulated += 1
+                    self.performance.simulation_success += 1
                 else:
-                    self.missed += 1
+                    self.performance.simulation_failure += 1
 
             if not progress_made:
                 break
@@ -358,17 +390,11 @@ class Circuit:
         out = list(self.outputs.values())[0]
         out.state = not (a.state and b.state)
 
-    def all_missed(self):
-        components_missed = sum(
-            [component.all_missed() for component in self.components.values()]
-        )
-        return components_missed + self.missed
-
-    def all_simulated(self):
-        components_missed = sum(
-            [component.all_simulated() for component in self.components.values()]
-        )
-        return components_missed + self.simulated
+    def sum_performance(self):
+        sum = self.performance
+        for component in self.components.values():
+            sum += component.sum_performance()
+        return sum
 
     def __str__(self, indent: int = 0):
         """
@@ -413,12 +439,10 @@ class Circuit:
         indent_str = " " * indent
 
         # Format input wires
-        inputs_str = ", ".join(f"{k}: Wire(id={v.id})" for k, v in self.inputs.items())
+        inputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.inputs.items())
 
         # Format output wires
-        outputs_str = ", ".join(
-            f"{k}: Wire(id={v.id})" for k, v in self.outputs.items()
-        )
+        outputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.outputs.items())
 
         representation = (
             f"Circuit(id={self.identifier}"

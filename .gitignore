@@ -17,3 +17,6 @@ nand/
 *.png
 *.jpg
 *.svg
+
+# Profiling
+*.profiling

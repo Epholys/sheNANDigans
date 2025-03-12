@@ -1,9 +1,17 @@
 from schematics import SchematicsBuilder, get_schematic_idx
 from encoding import CircuitEncoder
 from decoding import CircuitDecoder
+from wire import WireState
 
 
 def main():
+    # builder = SchematicsBuilder()
+    # builder.build_circuits()
+    # reference_circuits = builder.schematics
+    #
+    # encoded = CircuitEncoder(reference_circuits).encode()
+    # round_trip_circuits = CircuitDecoder(encoded).decode()
+    #
     builder = SchematicsBuilder()
     builder.build_circuits()
     schematics = builder.schematics
@@ -19,32 +27,28 @@ def main():
         print(repr(circuit))
         return
 
-    perfs = circuit.sum_performance()
-    print(f"performance data:\n{perfs}")
-    print(
-        f"failure percentage = {100 * perfs.simulation_failure / (perfs.simulation_failure + perfs.simulation_success)}"
-    )
+    # perfs = circuit.sum_performance()
+    # print(f"performance data:\n{perfs}")
+    # print(
+    #     f"failure percentage = {100 * perfs.simulation_failure / (perfs.simulation_failure + perfs.simulation_success)}%"
+    # )
 
     # print(schematics)
 
-    # partial = deepcopy(schematics)
-    # while len(partial) > 9:
-    #     partial.popitem()
+    encoder = CircuitEncoder(schematics)
+    encoded = encoder.encode()
+    print(encoded)
 
-    # encoder = CircuitEncoder(schematics)
-    # encoded = encoder.encode()
-    # print(encoded)
-
-    # decoder = CircuitDecoder(encoded)
-    # decoded = decoder.decode()
+    decoder = CircuitDecoder(encoded)
+    decoded = decoder.decode()
     # print(decoded)
 
-    # round_trip = CircuitEncoder(decoded).encode()
+    round_trip = CircuitEncoder(decoded).encode()
 
-    # print(encoded)
-    # for idx, (a, b) in enumerate(zip(encoded, round_trip)):
-    #     if a != b:
-    #         print(f"Index {idx} is different: {a} != {b}")
+    print(encoded)
+    for idx, (a, b) in enumerate(zip(encoded, round_trip)):
+        if a != b:
+            print(f"Index {idx} is different: {a} != {b}")
 
     # print(len(round_trip))
     # assert encoded == round_trip

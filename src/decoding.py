@@ -17,6 +17,15 @@ class _InputParameters(NamedTuple):
     component_input: int
 
 
+class _ConnectionParameters(NamedTuple):
+    """ """
+
+    source_key: int
+    source_output: int
+    target_key: CircuitKey
+    target_input: int
+
+
 class DecodedCircuit(Circuit):
     """
     An intermediate class to decode a circuit.
@@ -30,6 +39,7 @@ class DecodedCircuit(Circuit):
         self.n_inputs = 0
         self.n_outputs = 0
         self.stashed_inputs: List[_InputParameters] = []
+        self.stashed_connections: List[_ConnectionParameters] = []
 
     def stash_input(self, input: _InputParameters):
         """
@@ -37,18 +47,38 @@ class DecodedCircuit(Circuit):
         """
         self.stashed_inputs.append(input)
 
-    def order_inputs(self):
+    def apply_inputs(self):
         """
         Connect the inputs according to their input_index.
 
         Note : the index is at the same time the ordering and the identifier of the input.
         """
         self.stashed_inputs.sort(key=lambda x: x.input_index)
-        for unordered_input in self.stashed_inputs:
+        for input in self.stashed_inputs:
             self.connect_input(
-                unordered_input.input_index,
-                unordered_input.component_key,
-                unordered_input.component_input,
+                input.input_index,
+                input.component_key,
+                input.component_input,
+            )
+
+    def stash_connection(self, connection: _ConnectionParameters):
+        """
+        Stash an input to connect it later.
+        """
+        self.stashed_connections.append(connection)
+
+    def apply_connections(self):
+        """
+        Connect the inputs according to their input_index.
+
+        Note : the index is at the same time the ordering and the identifier of the input.
+        """
+        for connection in self.stashed_connections:
+            self.connect(
+                connection.source_key,
+                connection.source_output,
+                connection.target_key,
+                connection.target_input,
             )
 
     def validate(self) -> bool:
@@ -87,7 +117,8 @@ class CircuitDecoder:
             self.circuit = DecodedCircuit(self.idx)
             self.decode_circuit()
             self.circuit.validate()
-            self.circuit.order_inputs()
+            self.circuit.apply_inputs()
+            self.circuit.apply_connections()
             schematics.add_schematic(self.circuit, self.library)
         return self.library
 
@@ -135,7 +166,7 @@ class CircuitDecoder:
         circuit_input_idx = self.data.pop(0)
         if circuit_input_idx >= self.circuit.n_inputs:
             raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {circuit_input_idx}-th input of the circuit itself, which is not in 0..{self.circuit.n_inputs}."
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {circuit_input_idx}-th input of the circuit itself, which is not in [0, {self.circuit.n_inputs}[."
             )
         self.circuit.stash_input(
             _InputParameters(circuit_input_idx, component_idx, input_idx)
@@ -145,23 +176,22 @@ class CircuitDecoder:
         """
         Decode the 'input_idx'-th input of the 'component_idx'-th component of the circuit, originating from another component's outputs.
         """
-        (source, source_idx, source_output_idx) = self.decode_component_wiring()
+        (source_idx, source_output_idx) = self.decode_component_wiring()
 
-        if source is None or source_idx is None:
-            raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of {source_idx}-th component , which is not in 0..{self.circuit.n_components}."
-            )
+        print(len(self.circuit.components)) if self.circuit.identifier == 10 else ""
 
         if source_output_idx is None:
             raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {source_output_idx}-th output of component {source_idx}, which is not in 0..{len(source.outputs)}."
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of {source_idx}-th component , which is not in [0,  {len(self.circuit.components)}[."
             )
 
-        self.circuit.connect(
-            source_idx,
-            source_output_idx,
-            component_idx,
-            input_idx,
+        self.circuit.stash_connection(
+            _ConnectionParameters(
+                source_idx,
+                source_output_idx,
+                component_idx,
+                input_idx,
+            )
         )
 
     def decode_outputs(self):
@@ -169,16 +199,11 @@ class CircuitDecoder:
         Decode the outputs of the current decoded circuit. They must come from one its component.
         """
         for output_idx in range(0, self.circuit.n_outputs):
-            (source, source_idx, source_output_idx) = self.decode_component_wiring()
-
-            if source is None or source_idx is None:
-                raise ValueError(
-                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output to come from its {source_idx}-th component, which is not in 0..{self.circuit.n_components}."
-                )
+            (source_idx, source_output_idx) = self.decode_component_wiring()
 
             if source_output_idx is None:
                 raise ValueError(
-                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component,  which is not in 0..{len(source.outputs)}."
+                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component,  which is not in [0, {len(source.outputs)}[."
                 )
 
             self.circuit.connect_output(output_idx, source_idx, source_output_idx)
@@ -189,13 +214,11 @@ class CircuitDecoder:
         The 'None' are here to indicate error so that the callers can raise an Exception with a meaningful message.
         """
         source_idx = self.data.pop(0)
-
-        if source_idx >= len(self.circuit.components):
-            return (None, None, None)
-        source = self.circuit.components[source_idx]
+        if source_idx >= self.circuit.n_components:
+            print(source_idx)
+            print(len(self.circuit.components))
+            return (source_idx, None)
 
         source_output_idx = self.data.pop(0)
-        if source_output_idx > len(source.outputs):
-            return (source, source_idx, None)
 
-        return (source, source_idx, source_output_idx)
+        return (source_idx, source_output_idx)

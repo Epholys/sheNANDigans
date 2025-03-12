@@ -13,6 +13,8 @@ def add_nand(library: CircuitDict):
 
 
 def add_schematic(circuit: Circuit, library: CircuitDict):
+    circuit.optimize(recursive=False)
+    circuit.conclude()
     if library.get(circuit.identifier) is not None:
         raise ValueError(f"Circuit {circuit.identifier} already exists")
     library[circuit.identifier] = circuit
@@ -217,6 +219,7 @@ class SchematicsBuilder:
 
     def add_8bits_adder(self):
         eight_bits_adder = Circuit("8-Bits Adder")
+
         eight_bits_adder.add_component("4BITS_ADDER_0", self.get_schematic_idx(9))
         eight_bits_adder.add_component("4BITS_ADDER_1", self.get_schematic_idx(9))
 

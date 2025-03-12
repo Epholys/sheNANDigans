@@ -80,6 +80,8 @@ class Circuit:
         self.inputs: InputWireDict = dict()
         self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
+        self.untouched_components: CircuitDict = dict()
+        self.components_stack: List[Circuit] = []
         self.graph = networkx.DiGraph()
         self.performance = self.Performance()
 
@@ -179,19 +181,27 @@ class Circuit:
             ValueError: If the specified output port doesn't exist on source component
         """
         if source_name not in self.components:
-            raise ValueError(f"Source ({source_name}) component does not exist")
+            raise ValueError(
+                f"Source component ({source_name}) component does not exist"
+            )
 
         if target_name not in self.components:
-            raise ValueError(f"Target ({target_name}) component does not exist")
+            raise ValueError(
+                f"Target component ({target_name}) component does not exist"
+            )
 
         source = self.components[source_name]
         target = self.components[target_name]
 
         if source_output not in source.outputs:
-            raise ValueError(f"Component {source_name} has no output {source_output}")
+            raise ValueError(
+                f"Source component {source_name} has no output {source_output}"
+            )
 
         if target_input not in target.inputs:
-            raise ValueError(f"Component {target_name} has no input {target_input}")
+            raise ValueError(
+                f"Source component {target_name} has no input {target_input}"
+            )
 
         wire = source.outputs[source_output]
         old_wire = target.inputs[target_input]
@@ -253,27 +263,29 @@ class Circuit:
         ]
 
         raw_components_inputs: List[Tuple[str, List[Wire]]] = [
-            (f"{component.identifier}_{idx}", list(component.inputs.values()))
+            (f"comp_in_{component.identifier}_{idx}", list(component.inputs.values()))
             for idx, component in enumerate(components)
         ]
+
         components_inputs: List[Tuple[str, Wire]] = [
             (key, wire) for key, wires in raw_components_inputs for wire in wires
         ]
 
         raw_components_outputs: List[Tuple[str, List[Wire]]] = [
-            (f"{component.identifier}_{idx}", list(component.outputs.values()))
+            (f"comp_out_{component.identifier}_{idx}", list(component.outputs.values()))
             for idx, component in enumerate(components)
         ]
+
         components_outputs: List[Tuple[str, Wire]] = [
             (key, wire) for key, wires in raw_components_outputs for wire in wires
         ]
 
         inputs: List[Tuple[str, Wire]] = list(
-            (f"{input[0]}_{idx}", input[1])
+            (f"ct_in_{input[0]}_{idx}", input[1])
             for idx, input in enumerate(self.inputs.items())
         )
         outputs: List[Tuple[str, Wire]] = list(
-            (f"{output[0]}_{idx}", output[1])
+            (f"ct_out_{output[0]}_{idx}", output[1])
             for idx, output in enumerate(self.outputs.items())
         )
 
@@ -326,10 +338,14 @@ class Circuit:
         for wire in self.outputs.values():
             wire.state = WireState.UNKNOWN
 
+        self.performance.reset()
+        self.components_stack = list(self.components.values())
+
         for component in self.components.values():
             component.reset()
 
-        self.performance.reset()
+    def conclude(self):
+        self.untouched_components = self.components.copy()
 
     def can_simulate(self) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""
@@ -341,7 +357,7 @@ class Circuit:
         self.performance.was_simulated_computation += 1
         return all(wire.state != WireState.UNKNOWN for wire in self.outputs.values())
 
-    def simulate(self) -> bool:
+    def simulate_slow(self) -> bool:
         """
         Simulate the circuit's behavior.
 
@@ -371,7 +387,7 @@ class Circuit:
         while True:
             progress_made = False
             for component in self.components.values():
-                if component.simulate():
+                if component.simulate_slow():
                     progress_made = True
                     self.performance.simulation_success += 1
                 else:
@@ -381,6 +397,75 @@ class Circuit:
                 break
 
         return self.was_simulated()
+
+    def simulate_queue(self) -> bool:
+        """
+        Simulate the circuit's behavior.
+
+        Performs digital logic simulation by either:
+        1. For NAND gates (identifier=0): Directly computes NAND logic
+        2. For complex circuits: Iteratively simulates sub-components until either:
+           - All outputs are determined (success)
+           - Or no further progress can be made (deadlock)
+
+        Returns:
+            bool: True if simulation completed successfully (all outputs determined)
+                 False if simulation cannot proceed or is already complete
+
+        Note:
+            Increments self.miss counter when sub-component simulation fails
+        """
+        if self.identifier == 0:
+            self.performance.nand_simulation += 1
+            self._simulate_nand()
+            return True
+
+        # There are much more "elegant" ways to do it (using any for example), but my brain
+        # isn't python-wired enough to be sure to understand it tomorrow.
+        while True:
+            to_simulate = len(self.components_stack)
+            for _ in range(to_simulate):
+                component = self.components_stack.pop(0)
+                if component.simulate_queue():
+                    self.performance.simulation_success += 1
+                else:
+                    self.performance.simulation_failure += 1
+                    self.components_stack.append(component)
+            left = len(self.components_stack)
+
+            if to_simulate == left:
+                break
+
+        return True
+
+    def simulate(self) -> bool:
+        """
+        Simulate the circuit's behavior.
+
+        Performs digital logic simulation by either:
+        1. For NAND gates (identifier=0): Directly computes NAND logic
+        2. For complex circuits: Iteratively simulates sub-components until either:
+           - All outputs are determined (success)
+           - Or no further progress can be made (deadlock)
+
+        Returns:
+            bool: True if simulation completed successfully (all outputs determined)
+                 False if simulation cannot proceed or is already complete
+
+        Note:
+            Increments self.miss counter when sub-component simulation fails
+        """
+        if self.identifier == 0:
+            self.performance.nand_simulation += 1
+            self._simulate_nand()
+            return True
+
+        # There are much more "elegant" ways to do it (using any for example), but my brain
+        # isn't python-wired enough to be sure to understand it tomorrow.
+        for component in self.components.values():
+            component.simulate()
+
+        return True
 
     def _simulate_nand(self):
         """Simulate a NAND gate"""

@@ -1,7 +1,6 @@
 from schematics import SchematicsBuilder, get_schematic_idx
 from encoding import CircuitEncoder
 from decoding import CircuitDecoder
-from wire import WireState
 
 
 def main():
@@ -17,7 +16,6 @@ def main():
     schematics = builder.schematics
 
     circuit = get_schematic_idx(10, schematics)
-    circuit.reset()
     wires = [wire for wire in circuit.inputs.values()]
     for wire in wires:
         wire.state = True
@@ -35,20 +33,20 @@ def main():
 
     # print(schematics)
 
-    encoder = CircuitEncoder(schematics)
-    encoded = encoder.encode()
-    print(encoded)
+    # encoder = CircuitEncoder(schematics)
+    # encoded = encoder.encode()
+    # print(encoded)
 
-    decoder = CircuitDecoder(encoded)
-    decoded = decoder.decode()
-    # print(decoded)
+    # decoder = CircuitDecoder(encoded)
+    # decoded = decoder.decode()
+    # # print(decoded)
 
-    round_trip = CircuitEncoder(decoded).encode()
+    # round_trip = CircuitEncoder(decoded).encode()
 
-    print(encoded)
-    for idx, (a, b) in enumerate(zip(encoded, round_trip)):
-        if a != b:
-            print(f"Index {idx} is different: {a} != {b}")
+    # print(encoded)
+    # for idx, (a, b) in enumerate(zip(encoded, round_trip)):
+    #     if a != b:
+    #         print(f"Index {idx} is different: {a} != {b}")
 
     # print(len(round_trip))
     # assert encoded == round_trip

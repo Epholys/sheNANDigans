@@ -1,20 +1,20 @@
 from copy import deepcopy
 from typing import OrderedDict
 
-from circuit import Circuit, CircuitDict, CircuitKey, Wire
+from circuit import Circuit, CircuitDict, CircuitKey
+from wire import WireFast
 
 
 def add_nand(library: CircuitDict):
     nand_gate = Circuit(0)
-    nand_gate.inputs["A"] = Wire()
-    nand_gate.inputs["B"] = Wire()
-    nand_gate.outputs["OUT"] = Wire()
+    nand_gate.inputs["A"] = WireFast()
+    nand_gate.inputs["B"] = WireFast()
+    nand_gate.outputs["OUT"] = WireFast()
     add_schematic(nand_gate, library)
 
 
 def add_schematic(circuit: Circuit, library: CircuitDict):
     circuit.optimize(recursive=False)
-    circuit.conclude()
     if library.get(circuit.identifier) is not None:
         raise ValueError(f"Circuit {circuit.identifier} already exists")
     library[circuit.identifier] = circuit

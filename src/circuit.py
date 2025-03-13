@@ -1,9 +1,9 @@
-from itertools import chain, groupby
-from typing import Dict, List, Tuple
+from itertools import groupby
+from typing import Callable, Dict, List, Tuple
 
 import networkx
 
-from wire import Wire, WireState
+from wire import Wire, WireDebug, WireFast, WireState
 
 type Key = str | int
 type CircuitKey = Key
@@ -80,10 +80,11 @@ class Circuit:
         self.inputs: InputWireDict = dict()
         self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
-        self.untouched_components: CircuitDict = dict()
         self.components_stack: List[Circuit] = []
         self.graph = networkx.DiGraph()
         self.performance = self.Performance()
+        self.simulate: Callable[[], bool] = self.simulate_fast
+        self.reset: Callable = self.reset_fast
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -115,7 +116,7 @@ class Circuit:
             )
 
         if input not in self.inputs:
-            self.inputs[input] = Wire()
+            self.inputs[input] = WireFast()
 
         # Setting 'input' as the 'target_input' doesn't work, there a edge cases.
         # A single input can be connected to several component's input(s).
@@ -323,7 +324,7 @@ class Circuit:
             ordered_components[key] = component
         self.components = ordered_components
 
-    def reset(self):
+    def reset_debug(self):
         """
         Reset the circuit to its initial state.
 
@@ -342,10 +343,10 @@ class Circuit:
         self.components_stack = list(self.components.values())
 
         for component in self.components.values():
-            component.reset()
+            component.reset_debug()
 
-    def conclude(self):
-        self.untouched_components = self.components.copy()
+    def reset_fast(self):
+        return
 
     def can_simulate(self) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""
@@ -438,7 +439,7 @@ class Circuit:
 
         return True
 
-    def simulate(self) -> bool:
+    def simulate_fast(self) -> bool:
         """
         Simulate the circuit's behavior.
 
@@ -480,6 +481,21 @@ class Circuit:
         for component in self.components.values():
             sum += component.sum_performance()
         return sum
+
+    def debug_mode(self):
+        self.reset = self.reset_debug
+        self.simulate = self.simulate_slow
+        self.convert_wires_to_debug({})
+
+    def convert_wires_to_debug(self, wires: PortWireDict):
+        for wire in [*self.inputs.values(), *self.outputs.values()]:
+            if wire.id in wires.keys():
+                wire = wires[wire.id]
+            else:
+                wire = WireDebug()
+                wires[wire.id] = wire
+        for component in self.components.values():
+            component.convert_wires_to_debug(wires)
 
     def __str__(self, indent: int = 0):
         """

@@ -2,6 +2,7 @@ from typing import List, NamedTuple, OrderedDict
 
 import schematics
 from circuit import Circuit, CircuitDict, CircuitKey, Wire
+from wire import WireFast
 
 
 class _InputParameters(NamedTuple):
@@ -104,9 +105,9 @@ class CircuitDecoder:
 
     def add_nand(self):
         nand_gate = Circuit(0)
-        nand_gate.inputs[0] = Wire()
-        nand_gate.inputs[1] = Wire()
-        nand_gate.outputs[0] = Wire()
+        nand_gate.inputs[0] = WireFast()
+        nand_gate.inputs[1] = WireFast()
+        nand_gate.outputs[0] = WireFast()
         schematics.add_schematic(nand_gate, self.library)
 
     def decode(self) -> CircuitDict:

@@ -1,4 +1,6 @@
+from concurrent.futures import ProcessPoolExecutor
 from itertools import product
+import multiprocessing
 from typing import Callable, List
 
 import pytest
@@ -14,6 +16,20 @@ reference_circuits = builder.schematics
 
 encoded = CircuitEncoder(reference_circuits).encode()
 round_trip_circuits = CircuitDecoder(encoded).decode()
+
+
+def assert_simulation(data):
+    (circuit, input_wires, output_wires, possible_input, expected_outputs) = data
+
+    circuit.reset()
+
+    for input_wire, input in zip(input_wires, possible_input):
+        input_wire.state = input
+
+    assert circuit.simulate(), "Simulation failed"
+
+    actual_outputs = [bool(wire.state) for wire in output_wires]
+    assert actual_outputs == expected_outputs
 
 
 @pytest.mark.parametrize("library", [reference_circuits, round_trip_circuits])
@@ -97,18 +113,33 @@ class TestSchematics:
             operation_result = operation(input_numbers)
             all_expected_outputs.append(number_to_outputs(operation_result))
 
-        for possible_input, expected_outputs in zip(
-            all_possible_inputs, all_expected_outputs
-        ):
-            circuit.reset()
+        cases = [
+            (circuit, input_wires, output_wires, inputs, expected_outputs)
+            for inputs, expected_outputs in zip(
+                all_possible_inputs, all_expected_outputs
+            )
+        ]
 
-            for input_wire, input in zip(input_wires, possible_input):
-                input_wire.state = input
+        if n_inputs >= 16:
+            # Create fewer, larger chunks to reduce process creation overhead
+            n_tasks = len(cases)
+            cpu_count = multiprocessing.cpu_count()
+            n_processes = min(cpu_count, 8)
+            chunk_size = max(1, n_tasks // (n_processes * 4))
 
-            assert circuit.simulate(), "Simulation failed"
+            with ProcessPoolExecutor(max_workers=n_processes) as executor:
+                results = list(
+                    executor.map(
+                        assert_simulation,
+                        cases,
+                        chunksize=chunk_size,
+                    )
+                )
+            assert len(results) == n_tasks
 
-            actual_outputs = [bool(wire.state) for wire in output_wires]
-            assert actual_outputs == expected_outputs
+        else:
+            for case in cases:
+                assert_simulation(case)
 
     def test_half_adder(self, library):
         half_adder = schematics.get_schematic_idx(6, library)

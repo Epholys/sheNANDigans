@@ -1,6 +1,4 @@
 from schematics import SchematicsBuilder, get_schematic_idx
-from encoding import CircuitEncoder
-from decoding import CircuitDecoder
 
 
 def main():

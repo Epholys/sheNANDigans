@@ -1,7 +1,7 @@
 from typing import List, NamedTuple, OrderedDict
 
 import schematics
-from circuit import Circuit, CircuitDict, CircuitKey, Wire
+from circuit import Circuit, CircuitDict, CircuitKey
 from wire import WireFast
 
 

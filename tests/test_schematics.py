@@ -146,11 +146,13 @@ class TestSchematics:
             # I'll come back later, when I have more tests and more motivation to go deeper on this subject.
             # Things I know (now) that I can try:
             # - Automated hyper-parameters tuning
+            # - psutil library
             # - 'multiprocessing.Pool'
             # - loky's 'joblib.Parallel'
             # - Persistent worker pool 'multiprocessing.Pool'
             # - Persistent workers (probably a good idea when I'll have more parallelizable tests)
             # - Different chunking approach: not in 'executor.map(chunksize=)' but pre-chunking: 'chunks=[cases[i+chunk_size] for i in range(len(cases), chunk_size)]'
+            # - Analyze pickling
             cpu_count = multiprocessing.cpu_count()
             n_processes = cpu_count - 1
             chunk_size = max(1, n_tasks // (n_processes * 4))

@@ -1,11 +1,12 @@
 from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from itertools import product
 import multiprocessing
 from typing import Callable, List
 
 import pytest
 from src import schematics
-from src.circuit import Circuit
+from src.circuit import Circuit, Tuple
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 
@@ -18,12 +19,41 @@ encoded = CircuitEncoder(reference_circuits).encode()
 round_trip_circuits = CircuitDecoder(encoded).decode()
 
 
+class NumericOperations:
+    def __init__(
+        self,
+        inputs_to_numbers: Callable[[List[bool]], List[int]],
+        number_to_outputs: Callable[[int], List[bool]],
+        operation: Callable[[List[int]], int],
+    ):
+        self.inputs_to_numbers = inputs_to_numbers
+        self.number_to_outputs = number_to_outputs
+        self.operation = operation
+
+    def apply(self, inputs: Tuple[bool, ...]) -> List[bool]:
+        input_numbers = self.inputs_to_numbers(list(inputs))
+        operation_result = self.operation(input_numbers)
+        expected_outputs = self.number_to_outputs(operation_result)
+        return expected_outputs
+
+
 def assert_simulation(data):
-    (circuit, input_wires, output_wires, possible_input, expected_outputs) = data
+    circuit: Circuit
+    n_inputs: int
+    n_outputs: int
+    operations: NumericOperations
+    circuit_inputs: Tuple[bool, ...]
+    circuit, n_inputs, n_outputs, operations, circuit_inputs = data
 
-    circuit.reset()
+    assert len(circuit.inputs) == n_inputs
+    input_wires = list(circuit.inputs.values())
 
-    for input_wire, input in zip(input_wires, possible_input):
+    assert len(circuit.outputs) == n_outputs
+    output_wires = list(circuit.outputs.values())
+
+    expected_outputs = operations.apply(circuit_inputs)
+
+    for input_wire, input in zip(input_wires, circuit_inputs):
         input_wire.state = input
 
     assert circuit.simulate(), "Simulation failed"
@@ -95,36 +125,34 @@ class TestSchematics:
         circuit: Circuit,
         n_inputs: int,
         n_outputs: int,
-        inputs_to_numbers: Callable[[List[bool]], List[int]],
-        number_to_outputs: Callable[[int], List[bool]],
-        operation: Callable[[List[int]], int],
+        operations: NumericOperations,
     ):
-        assert len(circuit.inputs) == n_inputs
-        input_wires = list(circuit.inputs.values())
-
-        assert len(circuit.outputs) == n_outputs
-        output_wires = list(circuit.outputs.values())
-
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
-        all_expected_outputs: List[List[bool]] = []
-        for possible_input in all_possible_inputs:
-            input_numbers = inputs_to_numbers(list(possible_input))
-            operation_result = operation(input_numbers)
-            all_expected_outputs.append(number_to_outputs(operation_result))
-
         cases = [
-            (circuit, input_wires, output_wires, inputs, expected_outputs)
-            for inputs, expected_outputs in zip(
-                all_possible_inputs, all_expected_outputs
-            )
+            (circuit, n_inputs, n_outputs, operations, inputs)
+            for inputs in all_possible_inputs
         ]
 
         if n_inputs >= 16:
-            # Create fewer, larger chunks to reduce process creation overhead
             n_tasks = len(cases)
+
+            # This is based on almost nothing (well with hyperfine on a ~5s task).
+            # There's a big difference between Windows (5.5s) and WSL (3.6s).
+            # I know it's because of how the threads/processes are managed between different OSes.
+            # I try quickly asking LLMs (2025-03-14 : GPT-4o and Claude 3.7), but they have different opinions.
+            # When I profile with 'python -m cProfile', on both OSes it seems that the hyper-parameters of workers and chunks are not optimized:
+            # the process management takes the biggest amount of time (Windows's '_winapi.WaitForMultipleObjects' and WSL's 'select.poll').
+            # I'll come back later, when I have more tests and more motivation to go deeper on this subject.
+            # Things I know (now) that I can try:
+            # - Automated hyper-parameters tuning
+            # - 'multiprocessing.Pool'
+            # - loky's 'joblib.Parallel'
+            # - Persistent worker pool 'multiprocessing.Pool'
+            # - Persistent workers (probably a good idea when I'll have more parallelizable tests)
+            # - Different chunking approach: not in 'executor.map(chunksize=)' but pre-chunking: 'chunks=[cases[i+chunk_size] for i in range(len(cases), chunk_size)]'
             cpu_count = multiprocessing.cpu_count()
-            n_processes = min(cpu_count, 8)
+            n_processes = cpu_count - 1
             chunk_size = max(1, n_tasks // (n_processes * 4))
 
             with ProcessPoolExecutor(max_workers=n_processes) as executor:
@@ -159,7 +187,10 @@ class TestSchematics:
             return [bool(x) for x in [sum, carry]]
 
         self.assert_numeric_operations(
-            half_adder, 2, 2, inputs_to_numbers, number_to_output, sum
+            half_adder,
+            2,
+            2,
+            NumericOperations(inputs_to_numbers, number_to_output, sum),
         )
 
     def test_full_adder(self, library):
@@ -181,9 +212,11 @@ class TestSchematics:
             full_adder,
             n_inputs,
             n_outputs,
-            inputs_to_numbers,
-            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
-            operation=sum,
+            NumericOperations(
+                inputs_to_numbers,
+                number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+                operation=sum,
+            ),
         )
 
     def test_2bits_adder(self, library):
@@ -224,9 +257,11 @@ class TestSchematics:
             two_bits_adder,
             n_inputs,
             n_outputs,
-            inputs_to_numbers,
-            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
-            operation=sum,
+            NumericOperations(
+                inputs_to_numbers,
+                number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+                operation=sum,
+            ),
         )
 
     def test_4bits_adder(self, library):
@@ -267,10 +302,31 @@ class TestSchematics:
             four_bits_adder,
             n_inputs,
             n_outputs,
-            inputs_to_numbers,
-            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
-            operation=sum,
+            NumericOperations(
+                inputs_to_numbers,
+                number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+                operation=sum,
+            ),
         )
+
+    @staticmethod
+    def eight_bits_inputs_to_numbers(inputs: List[bool]):
+        # interleaved and c0 : a0 b0 c0 a1 b1 ... a7 b7
+
+        # a0 ... a7
+        a_indices: List[int] = [0, *range(3, 16, 2)]
+        a = [inputs[i] for i in a_indices]
+
+        # b0 ... b7
+        b_indices: List[int] = [1, *range(4, 17, 2)]
+        b = [inputs[i] for i in b_indices]
+
+        c0 = +(inputs[2])
+
+        a = bools_to_int(a)
+        b = bools_to_int(b)
+
+        return [a, b, c0]
 
     @pytest.mark.slow
     def test_8bits_adder(self, library):
@@ -281,33 +337,15 @@ class TestSchematics:
         n_inputs = 17
         n_outputs = 9
 
-        def inputs_to_numbers(inputs: List[bool]):
-            assert len(inputs) == n_inputs
-
-            # interleaved and c0 : a0 b0 c0 a1 b1 ... a7 b7
-
-            # a0 ... a7
-            a_indices: List[int] = [0, *range(3, 16, 2)]
-            a = [inputs[i] for i in a_indices]
-
-            # b0 ... b7
-            b_indices: List[int] = [1, *range(4, 17, 2)]
-            b = [inputs[i] for i in b_indices]
-
-            c0 = +(inputs[2])
-
-            a = bools_to_int(a)
-            b = bools_to_int(b)
-
-            return [a, b, c0]
-
         self.assert_numeric_operations(
             eight_bits_adder,
             n_inputs,
             n_outputs,
-            inputs_to_numbers,
-            number_to_outputs=lambda n: int_to_bools(n, n_outputs),
-            operation=sum,
+            NumericOperations(
+                self.eight_bits_inputs_to_numbers,
+                number_to_outputs=int_to_bools_partial(n_outputs),
+                operation=sum,
+            ),
         )
 
 
@@ -316,6 +354,10 @@ def bools_to_int(bools: List[bool]):
     bools from low to high
     """
     return sum(b * (2**n) for n, b in enumerate(bools))
+
+
+def int_to_bools_partial(n: int) -> Callable[[int], List[bool]]:
+    return partial(int_to_bools, n=n)
 
 
 def int_to_bools(x: int, n: int) -> List[bool]:

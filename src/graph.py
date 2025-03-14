@@ -1,3 +1,6 @@
+import random
+from typing import Any, List
+import cmapy
 import pydot
 from circuit import (
     Circuit,
@@ -8,11 +11,36 @@ from circuit import (
 from schematics import SchematicsBuilder, get_schematic_idx
 
 
+class ColorScheme:
+    def __init__(self):
+        self.colors = {}
+
+    def _gen_color(self, id: CircuitKey):
+        if id in self.colors:
+            return self.colors[id]
+        color: Any = cmapy.color(
+            "spring",
+            random.randrange(0, 256, step=10),  # TODO Better
+            rgb_order=True,
+        )
+        hex = "#%02x%02x%02x" % (color[0], color[1], color[2])
+        self.colors[id] = hex
+        print(hex)
+        return hex
+
+    def get_color(self, id: CircuitKey):
+        return self._gen_color(id)
+
+
+scheme = ColorScheme()
+
+
 class GraphOptions:
-    def __init__(self, is_compact: bool, is_aligned: bool, bold_io: bool):
+    def __init__(self, is_compact: bool, is_aligned: bool, bold_io: bool, max_depth=-1):
         self.is_compact = is_compact
         self.is_aligned = is_aligned
         self.bold_ins_outs: bool = bold_io
+        self.max_depth: int = max_depth
 
 
 def generate_circuit_graph(
@@ -38,7 +66,7 @@ def generate_circuit_graph(
     )
 
     # Create the circuit representation directly (not as a subgraph)
-    _build_circuit_graph(graph, circuit, "", options, True)
+    _build_circuit_graph(graph, circuit, "", options, depth=0, is_main_graph=True)
 
     # If filename is provided, save the graph
     output_file = f"{filename}.{format}"
@@ -57,6 +85,7 @@ def _build_circuit_graph(
     circuit: Circuit,
     prefix: str,
     options: GraphOptions,
+    depth: int = 0,
     is_main_graph: bool = False,
 ) -> CircuitPorts:
     """
@@ -108,7 +137,7 @@ def _build_circuit_graph(
 
     # A mapping between all the components and their ports
     components_ports: ComponentsPorts = _build_components_graph(
-        circuit.components, circuit_ports, graph, prefix, options
+        circuit.components, circuit_ports, graph, prefix, options, depth
     )
 
     # Create connections between circuit inputs and component inputs.
@@ -168,6 +197,7 @@ def _build_components_graph(
     graph: pydot.Graph,
     prefix: str,
     options: GraphOptions,
+    depth,
 ) -> ComponentsPorts:
     component_ports: ComponentsPorts = {}
 
@@ -184,13 +214,34 @@ def _build_components_graph(
             component_ports[component_name] = _build_nand_component(
                 component, graph, component_prefix
             )
+        elif options.max_depth > 0 and depth >= options.max_depth:
+            component_ports[component_name] = _build_node(
+                component, graph, component_prefix
+            )
         else:
             # For non-NAND components, process them recursively.
             component_ports[component_name] = _build_circuit_graph(
-                graph, component, component_prefix, options
+                graph, component, component_prefix, options, depth + 1
             )
 
     return component_ports
+
+
+def _build_node(circuit: Circuit, graph: pydot.Graph, name: str) -> CircuitPorts:
+    graph.add_node(
+        pydot.Node(
+            name,
+            label=circuit.identifier,
+            shape="component",
+            style="filled",
+            fillcolor=scheme.get_color(circuit.identifier),
+        )
+    )
+    # As it is a compact graph, the inputs and outputs of NAND gates are "collapsed" into the gate itself
+    nand_ports: CircuitPorts = {in_key: name for in_key in circuit.inputs.keys()}
+    nand_ports.update({out_key: name for out_key in circuit.outputs.keys()})
+
+    return nand_ports
 
 
 def _build_nand_component(nand: Circuit, graph: pydot.Graph, name: str) -> CircuitPorts:
@@ -340,14 +391,11 @@ if __name__ == "__main__":
     # round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    for idx in [6, 7, 8]:  # Visualize first 9 circuits
-        try:
-            visualize_schematic(
-                idx,
-                reference,
-                GraphOptions(is_compact=True, is_aligned=True, bold_io=True),
-                f"circuit_{idx}",
-                "svg",
-            )
-        except Exception as e:
-            print(f"Error visualizing circuit {idx}: {e}")
+    for idx in range(0, 8):  # Visualize first 9 circuits
+        visualize_schematic(
+            10,
+            reference,
+            GraphOptions(is_compact=True, is_aligned=True, bold_io=True, max_depth=idx),
+            f"circuit_{idx}",
+            "svg",
+        )

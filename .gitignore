@@ -5,3 +5,18 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+
+# Personal Documents
+scratchpad.md
+
+# Python
+*__pycache__*
+nand/
+
+# Images
+*.png
+*.jpg
+*.svg
+
+# Profiling
+*.profiling

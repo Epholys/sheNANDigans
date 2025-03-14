@@ -1,13 +1,14 @@
 import pydot
 from circuit import Circuit, CircuitDict
 from schematics import get_schematic_idx
-from typing import List, Tuple
+from typing import List, Literal, Tuple
 
 
 class GraphOptions:
-    def __init__(self, is_nested: bool, is_aligned: bool):
+    def __init__(self, is_nested: bool, is_aligned: bool, bold_io: bool):
         self.is_nested = is_nested
         self.is_aligned = is_aligned
+        self.bold_ins_outs = bold_io
 
 
 def generate_circuit_graph(
@@ -44,7 +45,7 @@ def generate_circuit_graph(
 
     # Add all connections
     _add_all_connections(
-        graph, input_connections, output_connections, internal_connections
+        graph, input_connections, output_connections, internal_connections, options
     )
 
     # Save the graph
@@ -214,15 +215,18 @@ def _add_all_connections(
     input_connections: List[Tuple[str, str, int]],
     output_connections: List[Tuple[str, str, int]],
     internal_connections: List[Tuple[str, str, int]],
+    options: GraphOptions,
 ):
+    penwidth: Literal[2] | Literal[1] = 2 if options.bold_ins_outs else 1
+
     """Add all connections to the graph"""
     # Add connections from inputs to components
     for src, dst, _ in input_connections:
-        graph.add_edge(pydot.Edge(src, dst))
+        graph.add_edge(pydot.Edge(src, dst, penwidth=penwidth))
 
     # Add connections from components to outputs
     for src, dst, _ in output_connections:
-        graph.add_edge(pydot.Edge(src, dst))
+        graph.add_edge(pydot.Edge(src, dst, penwidth=penwidth))
 
     # Add connections between components
     for src, dst, _ in internal_connections:
@@ -266,13 +270,11 @@ if __name__ == "__main__":
     reference = schematics_builder.schematics
 
     # Generate raw graphs for different circuits
-    for idx in [10]:  # Visualize first 9 circuits
+    for idx in [5, 6, 7, 8, 10]:  # Visualize first 9 circuits
         try:
-            is_nested = True
-            is_aligned = True
             visualize_schematic(
                 idx,
-                GraphOptions(not is_nested, is_aligned),
+                GraphOptions(is_nested=False, is_aligned=True, bold_io=True),
                 reference,
                 f"raw_circuit_{idx}",
                 "svg",

@@ -9,9 +9,10 @@ from schematics import SchematicsBuilder, get_schematic_idx
 
 
 class GraphOptions:
-    def __init__(self, is_compact: bool, is_aligned: bool):
+    def __init__(self, is_compact: bool, is_aligned: bool, bold_io: bool):
         self.is_compact = is_compact
         self.is_aligned = is_aligned
+        self.bold_ins_outs: bool = bold_io
 
 
 def generate_circuit_graph(
@@ -72,8 +73,11 @@ def _build_circuit_graph(
     # A port is an input or output of a circuit
     # ports maps the input/output key to the Node ID
 
+    penwidth = 1
     if is_main_graph:
         graph = parent_graph
+        if options.bold_ins_outs:
+            penwidth = 2
     else:
         circuit_name = f"cluster_{prefix}_{circuit.identifier}"
         graph = pydot.Cluster(
@@ -109,11 +113,11 @@ def _build_circuit_graph(
 
     # Create connections between circuit inputs and component inputs.
     # For each input in the circuit, search in all components the corresponding input wire.
-    _connect_inputs(circuit, circuit_ports, components_ports, graph)
+    _connect_inputs(circuit, circuit_ports, components_ports, graph, penwidth)
 
     # Connect component outputs to circuit outputs.
     # For each output in the circuit, search in all components the corresponding output wire.
-    _connect_outputs(circuit, circuit_ports, components_ports, graph)
+    _connect_outputs(circuit, circuit_ports, components_ports, graph, penwidth)
 
     # Connect component outputs to other component inputs.
     # For each components' output, search in all components the corresponding input wire.
@@ -228,6 +232,7 @@ def _connect_inputs(
     circuit_ports: CircuitPorts,
     components_ports: ComponentsPorts,
     graph: pydot.Graph,
+    penwidth: int,
 ):
     for circuit_input_name, input_wire in circuit.inputs.items():
         for component_name, component in circuit.components.items():
@@ -240,7 +245,7 @@ def _connect_inputs(
             for component_input_name in matching_inputs:
                 source_node = circuit_ports[circuit_input_name]
                 target_node = components_ports[component_name][component_input_name]
-                graph.add_edge(pydot.Edge(source_node, target_node))
+                graph.add_edge(pydot.Edge(source_node, target_node, penwidth=penwidth))
 
 
 def _connect_outputs(
@@ -248,6 +253,7 @@ def _connect_outputs(
     circuit_ports: CircuitPorts,
     components_ports: ComponentsPorts,
     graph: pydot.Graph,
+    penwidth: int,
 ):
     for circuit_output_name, output_wire in circuit.outputs.items():
         for component_name, component in circuit.components.items():
@@ -261,7 +267,7 @@ def _connect_outputs(
                 source_node = components_ports[component_name][component_output_name]
                 target_node = circuit_ports[circuit_output_name]
 
-                graph.add_edge(pydot.Edge(source_node, target_node))
+                graph.add_edge(pydot.Edge(source_node, target_node, penwidth=penwidth))
 
 
 def _connect_components(
@@ -334,12 +340,12 @@ if __name__ == "__main__":
     # round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    for idx in [10]:  # Visualize first 9 circuits
+    for idx in [6, 7, 8]:  # Visualize first 9 circuits
         try:
             visualize_schematic(
                 idx,
                 reference,
-                GraphOptions(is_compact=True, is_aligned=True),
+                GraphOptions(is_compact=True, is_aligned=True, bold_io=True),
                 f"circuit_{idx}",
                 "svg",
             )

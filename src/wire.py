@@ -16,7 +16,7 @@ class WireState(Enum):
             case WireState.ON:
                 return True
             case WireState.UNKNOWN:
-                raise ValueError("Trying to convert an Unknown state to a boolean.")
+                raise ValueError("Trying to convert the Unknown state to a boolean.")
 
     def __int__(self) -> int:
         match self:
@@ -25,7 +25,7 @@ class WireState(Enum):
             case WireState.ON:
                 return 1
             case WireState.UNKNOWN:
-                raise ValueError("Trying to convert an Unknown state to a boolean.")
+                raise ValueError("Trying to convert the Unknown state to an integer.")
 
 
 class Wire(ABC):
@@ -46,7 +46,7 @@ class Wire(ABC):
 
     @state.setter
     @abstractmethod
-    def state(self, value: bool | Any):
+    def state(self, value: Any) -> Any:
         pass
 
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
@@ -156,6 +156,6 @@ class WireFast(Wire):
         """
         Return simple string representation of wire state (0/1/X).
 
-        Useful to check the simulations results."
+        Useful to check the simulations results.
         """
         return "1" if self._state else "0"

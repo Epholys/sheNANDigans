@@ -204,7 +204,7 @@ class CircuitDecoder:
 
             if source_output_idx is None:
                 raise ValueError(
-                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component,  which is not in [0, {len(source.outputs)}[."
+                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component,  which does not exist."
                 )
 
             self.circuit.connect_output(output_idx, source_idx, source_output_idx)

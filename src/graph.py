@@ -1,6 +1,5 @@
-import random
-from typing import Any, List
-import cmapy
+import seaborn
+from typing import Dict
 import pydot
 from circuit import (
     Circuit,
@@ -10,29 +9,31 @@ from circuit import (
 )
 from schematics import SchematicsBuilder, get_schematic_idx
 
+palette_size = 256
+
+
+def golden_ratio_generator():
+    phi = (5**0.5 - 1) / 2  # Golden ratio conjugate (~0.618)
+    i = 0
+    while True:
+        yield int(palette_size * ((i * phi) % 1))
+        i += 1
+
 
 class ColorScheme:
     def __init__(self):
-        self.colors = {}
-
-    def _gen_color(self, id: CircuitKey):
-        if id in self.colors:
-            return self.colors[id]
-        color: Any = cmapy.color(
-            "spring",
-            random.randrange(0, 256, step=10),  # TODO Better
-            rgb_order=True,
-        )
-        hex = "#%02x%02x%02x" % (color[0], color[1], color[2])
-        self.colors[id] = hex
-        print(hex)
-        return hex
+        self.colors: Dict[CircuitKey, str] = {}
+        self.gen = golden_ratio_generator()
+        self.palette = seaborn.husl_palette(
+            n_colors=palette_size, s=0.95, l=0.8, h=0.5
+        ).as_hex()
 
     def get_color(self, id: CircuitKey):
-        return self._gen_color(id)
-
-
-scheme = ColorScheme()
+        if id in self.colors:
+            return self.colors[id]
+        color = self.palette[next(self.gen)]
+        self.colors[id] = color
+        return color
 
 
 class GraphOptions:
@@ -41,6 +42,11 @@ class GraphOptions:
         self.is_aligned = is_aligned
         self.bold_ins_outs: bool = bold_io
         self.max_depth: int = max_depth
+
+
+class GraphTools:
+    def __init__(self):
+        self.scheme = ColorScheme()
 
 
 def generate_circuit_graph(
@@ -65,8 +71,12 @@ def generate_circuit_graph(
         label=circuit.identifier,
     )
 
+    tools = GraphTools()
+
     # Create the circuit representation directly (not as a subgraph)
-    _build_circuit_graph(graph, circuit, "", options, depth=0, is_main_graph=True)
+    _build_circuit_graph(
+        graph, circuit, "", options, tools, depth=0, is_main_graph=True
+    )
 
     # If filename is provided, save the graph
     output_file = f"{filename}.{format}"
@@ -85,6 +95,7 @@ def _build_circuit_graph(
     circuit: Circuit,
     prefix: str,
     options: GraphOptions,
+    tools: GraphTools,
     depth: int = 0,
     is_main_graph: bool = False,
 ) -> CircuitPorts:
@@ -137,7 +148,7 @@ def _build_circuit_graph(
 
     # A mapping between all the components and their ports
     components_ports: ComponentsPorts = _build_components_graph(
-        circuit.components, circuit_ports, graph, prefix, options, depth
+        circuit.components, circuit_ports, graph, prefix, options, tools, depth
     )
 
     # Create connections between circuit inputs and component inputs.
@@ -197,6 +208,7 @@ def _build_components_graph(
     graph: pydot.Graph,
     prefix: str,
     options: GraphOptions,
+    tools: GraphTools,
     depth,
 ) -> ComponentsPorts:
     component_ports: ComponentsPorts = {}
@@ -216,25 +228,27 @@ def _build_components_graph(
             )
         elif options.max_depth > 0 and depth >= options.max_depth:
             component_ports[component_name] = _build_node(
-                component, graph, component_prefix
+                component, graph, component_prefix, tools
             )
         else:
             # For non-NAND components, process them recursively.
             component_ports[component_name] = _build_circuit_graph(
-                graph, component, component_prefix, options, depth + 1
+                graph, component, component_prefix, options, tools, depth=depth + 1
             )
 
     return component_ports
 
 
-def _build_node(circuit: Circuit, graph: pydot.Graph, name: str) -> CircuitPorts:
+def _build_node(
+    circuit: Circuit, graph: pydot.Graph, name: str, tools: GraphTools
+) -> CircuitPorts:
     graph.add_node(
         pydot.Node(
             name,
             label=circuit.identifier,
             shape="component",
             style="filled",
-            fillcolor=scheme.get_color(circuit.identifier),
+            fillcolor=tools.scheme.get_color(circuit.identifier),
         )
     )
     # As it is a compact graph, the inputs and outputs of NAND gates are "collapsed" into the gate itself
@@ -391,11 +405,13 @@ if __name__ == "__main__":
     # round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    for idx in range(0, 8):  # Visualize first 9 circuits
+    for depth in range(1, 5):
         visualize_schematic(
             10,
             reference,
-            GraphOptions(is_compact=True, is_aligned=True, bold_io=True, max_depth=idx),
-            f"circuit_{idx}",
+            GraphOptions(
+                is_compact=True, is_aligned=True, bold_io=True, max_depth=depth
+            ),
+            f"circuit_{10}_{depth}",
             "svg",
         )

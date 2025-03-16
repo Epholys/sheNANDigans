@@ -492,15 +492,24 @@ class Circuit:
         self.simulate = self.simulate_slow
         self.convert_wires_to_debug({})
 
-    def convert_wires_to_debug(self, wires: PortWireDict):
-        for wire in [*self.inputs.values(), *self.outputs.values()]:
-            if wire.id in wires.keys():
-                wire = wires[wire.id]
-            else:
-                wire = WireDebug()
-                wires[wire.id] = wire
+    def convert_wires_to_debug(self, new_wires: Dict[int, Wire]):
+        self.convert_ports_to_debug(self.inputs, new_wires)
+        self.convert_ports_to_debug(self.outputs, new_wires)
+
         for component in self.components.values():
-            component.convert_wires_to_debug(wires)
+            component.convert_wires_to_debug(new_wires)
+
+    def convert_ports_to_debug(self, ports: PortWireDict, new_wires: Dict[int, Wire]):
+        for key, existing_wire in list(ports.items()):
+            del ports[key]
+
+            if existing_wire.id in new_wires:
+                debug_wire = new_wires[existing_wire.id]
+            else:
+                debug_wire = WireDebug()
+                new_wires[existing_wire.id] = debug_wire
+
+            ports[key] = debug_wire
 
     def __deepcopy__(self, memo):
         """Create a deep copy of the wire with a new unique ID.
@@ -538,10 +547,10 @@ class Circuit:
         indent_str = " " * indent
 
         # Format input wires
-        inputs_str = ", ".join(f"{k}: W({v.id})" for k, v in self.inputs.items())
+        inputs_str = ", ".join(f"{k}: W({v.id}, {v})" for k, v in self.inputs.items())
 
         # Format output wires
-        outputs_str = ", ".join(f"{k}: W({v.id})" for k, v in self.outputs.items())
+        outputs_str = ", ".join(f"{k}: W({v.id}, {v})" for k, v in self.outputs.items())
 
         representation = (
             f"C(id={self.identifier}, inputs=({inputs_str}), outputs=({outputs_str})"

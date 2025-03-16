@@ -16,7 +16,7 @@ class WireExtendedState(Enum):
             case WireExtendedState.ON:
                 return True
             case WireExtendedState.UNKNOWN:
-                raise ValueError(
+                raise TypeError(
                     "Something went wrong: trying to cast the UNKNOWN state to a boolean"
                 )
 
@@ -27,7 +27,7 @@ class WireExtendedState(Enum):
             case WireExtendedState.ON:
                 return 1
             case WireExtendedState.UNKNOWN:
-                raise ValueError(
+                raise TypeError(
                     "Something went wrong: : trying to convert the UNKONWN state to an integer."
                 )
 
@@ -105,17 +105,9 @@ class WireDebug(Wire):
         elif isinstance(value, bool):
             self._state = WireExtendedState.ON if value else WireExtendedState.OFF
         else:
-            raise ValueError(
+            raise TypeError(
                 f"Trying to set the value of a {type(self).__name__} to an unsupported WireState {type(value).__name__}."
             )
-
-    def __repr__(self):
-        """
-        Return detailed string representation of the wire.
-
-        Useful for debugging purpose, to easily track its ID through a circuit.
-        """
-        return f"Wire(id={self.id}, state={self._state})"
 
     def __str__(self):
         """
@@ -130,6 +122,14 @@ class WireDebug(Wire):
                 return "1"
             case WireExtendedState.UNKNOWN:
                 return "?"
+
+    def __repr__(self):
+        """
+        Return detailed string representation of the wire.
+
+        Useful for debugging purpose, to easily track its ID through a circuit.
+        """
+        return f"WireDebug(id={self.id}, state={self._state})"
 
 
 class WireFast(Wire):
@@ -167,14 +167,6 @@ class WireFast(Wire):
                 f"Trying to set the value of the {type(self).__name__}'s boolean state to a more complex WireState ({type(value).__name__})."
             )
 
-    def __repr__(self):
-        """
-        Return detailed string representation of the wire.
-
-        Useful for debugging purpose, to easily track its ID through a circuit.
-        """
-        return f"Wire(id={self.id}, state={self._state})"
-
     def __str__(self):
         """
         Return simple string representation of wire state (0/1/X).
@@ -182,3 +174,11 @@ class WireFast(Wire):
         Useful to check the simulations results.
         """
         return "1" if self._state else "0"
+
+    def __repr__(self):
+        """
+        Return detailed string representation of the wire.
+
+        Useful for debugging purpose, to easily track its ID through a circuit.
+        """
+        return f"WireFast(id={self.id}, state={self._state})"

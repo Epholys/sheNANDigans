@@ -1,4 +1,6 @@
+import itertools
 from schematics import SchematicsBuilder, get_schematic_idx
+from wire import WireExtendedState
 
 
 def main():
@@ -12,8 +14,39 @@ def main():
     builder = SchematicsBuilder()
     builder.build_circuits()
     library = builder.schematics
-    print(get_schematic_idx(2, library))
-    print(get_schematic_idx(2, library))
+    circuit = get_schematic_idx(2, library)
+
+    print([x for x in itertools.product([circuit.identifier, "OR"], [False])])
+
+    print(repr(circuit))
+    print(str(circuit))
+
+    circuit.inputs["A"].state = True
+    circuit.inputs["B"].state = True
+
+    circuit.simulate()
+
+    print(
+        f"{''.join(str(win) for win in circuit.inputs.values())} → {''.join(str(wout) for wout in circuit.outputs.values())}"
+    )
+
+    circuit.debug_mode()
+    circuit.reset()
+    print(repr(circuit))
+    print(str(circuit))
+
+    circuit.inputs["A"].state = WireExtendedState.UNKNOWN
+    circuit.inputs["B"].state = WireExtendedState.OFF
+
+    print(str(circuit))
+
+    circuit.simulate()
+
+    print(
+        f"{''.join(str(win) for win in circuit.inputs.values())} → {''.join(str(wout) for wout in circuit.outputs.values())}"
+    )
+
+    print(circuit)
 
     # circuit = get_schematic_idx(10, schematics)
     # wires = [wire for wire in circuit.inputs.values()]

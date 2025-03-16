@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import List
 
 from circuit import Circuit, CircuitDict, Wire
@@ -19,7 +20,7 @@ class CircuitEncoder:
     """
 
     def __init__(self, library: CircuitDict):
-        self.library: CircuitDict = library.copy()
+        self.library: CircuitDict = deepcopy(library)
         self.encoding: List[int]
         # TODO add validation for all circuits of library ?
         # It would minimize safety checks

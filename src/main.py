@@ -11,17 +11,19 @@ def main():
     #
     builder = SchematicsBuilder()
     builder.build_circuits()
-    schematics = builder.schematics
+    library = builder.schematics
+    print(get_schematic_idx(2, library))
+    print(get_schematic_idx(2, library))
 
-    circuit = get_schematic_idx(10, schematics)
-    wires = [wire for wire in circuit.inputs.values()]
-    for wire in wires:
-        wire.state = True
-    success = circuit.simulate()
-    if not success:
-        print("simulation failed!")
-        print(repr(circuit))
-        return
+    # circuit = get_schematic_idx(10, schematics)
+    # wires = [wire for wire in circuit.inputs.values()]
+    # for wire in wires:
+    #     wire.state = True
+    # success = circuit.simulate()
+    # if not success:
+    #     print("simulation failed!")
+    #     print(repr(circuit))
+    #     return
 
     # perfs = circuit.sum_performance()
     # print(f"performance data:\n{perfs}")

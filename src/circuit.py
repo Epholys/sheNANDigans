@@ -1,9 +1,10 @@
+import copy
 from itertools import groupby
 from typing import Callable, Dict, List, Tuple
 
 import networkx
 
-from wire import Wire, WireDebug, WireFast, WireState
+from wire import Wire, WireDebug, WireFast, WireExtendedState
 
 type Key = str | int
 type CircuitKey = Key
@@ -334,10 +335,10 @@ class Circuit:
         - The simulation miss counter
         """
         for wire in self.inputs.values():
-            wire.state = WireState.UNKNOWN
+            wire.state = WireExtendedState.UNKNOWN
 
         for wire in self.outputs.values():
-            wire.state = WireState.UNKNOWN
+            wire.state = WireExtendedState.UNKNOWN
 
         self.performance.reset()
         self.components_stack = list(self.components.values())
@@ -351,12 +352,16 @@ class Circuit:
     def can_simulate(self) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""
         self.performance.can_simulate_computation += 1
-        return all(wire.state != WireState.UNKNOWN for wire in self.inputs.values())
+        return all(
+            wire.state != WireExtendedState.UNKNOWN for wire in self.inputs.values()
+        )
 
     def was_simulated(self) -> bool:
         """Check if the circuit was simulated, meaning that all outputs are determined."""
         self.performance.was_simulated_computation += 1
-        return all(wire.state != WireState.UNKNOWN for wire in self.outputs.values())
+        return all(
+            wire.state != WireExtendedState.UNKNOWN for wire in self.outputs.values()
+        )
 
     def simulate_slow(self) -> bool:
         """
@@ -496,6 +501,34 @@ class Circuit:
                 wires[wire.id] = wire
         for component in self.components.values():
             component.convert_wires_to_debug(wires)
+
+    def __deepcopy__(self, memo):
+        """Create a deep copy of the wire with a new unique ID.
+
+        Technically, this method isn't necessary: the default Python's deepcopy method is enough.
+        I still prefer to define it: Wire must define this method, so this is a way to
+        have an explicit control flow.
+
+        Args:
+            memo (Any): The memory of already copied objects.
+
+        Returns:
+            Self: A new deepcopy object.
+        """
+        new_circuit = type(self)(self.identifier)
+        memo[id(self)] = new_circuit
+
+        new_circuit.inputs = {
+            key: copy.deepcopy(wire, memo) for key, wire in self.inputs.items()
+        }
+        new_circuit.outputs = {
+            key: copy.deepcopy(wire, memo) for key, wire in self.outputs.items()
+        }
+        new_circuit.components = {
+            key: copy.deepcopy(wire, memo) for key, wire in self.components.items()
+        }
+
+        return new_circuit
 
     def __str__(self, indent: int = 0):
         """

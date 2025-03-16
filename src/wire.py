@@ -4,28 +4,35 @@ import itertools
 from typing import Any, Self
 
 
-class WireState(Enum):
+class WireExtendedState(Enum):
     UNKNOWN = auto()
     OFF = auto()
     ON = auto()
 
     def __bool__(self) -> bool:
         match self:
-            case WireState.OFF:
+            case WireExtendedState.OFF:
                 return False
-            case WireState.ON:
+            case WireExtendedState.ON:
                 return True
-            case WireState.UNKNOWN:
-                raise ValueError("Trying to convert the Unknown state to a boolean.")
+            case WireExtendedState.UNKNOWN:
+                raise ValueError(
+                    "Something went wrong: trying to cast the UNKNOWN state to a boolean"
+                )
 
     def __int__(self) -> int:
         match self:
-            case WireState.OFF:
+            case WireExtendedState.OFF:
                 return 0
-            case WireState.ON:
+            case WireExtendedState.ON:
                 return 1
-            case WireState.UNKNOWN:
-                raise ValueError("Trying to convert the Unknown state to an integer.")
+            case WireExtendedState.UNKNOWN:
+                raise ValueError(
+                    "Something went wrong: : trying to convert the UNKONWN state to an integer."
+                )
+
+
+type WireState = WireExtendedState | bool
 
 
 class Wire(ABC):
@@ -41,18 +48,25 @@ class Wire(ABC):
 
     @property
     @abstractmethod
-    def state(self) -> Any:
+    def state(self) -> WireState:
         pass
 
     @state.setter
     @abstractmethod
-    def state(self, value: Any) -> Any:
+    def state(self, value: WireState):
         pass
 
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """
         Create a deep copy of the wire with a new unique ID.
+
+        Args:
+            memo (Any): The memory of already copied objects.
+
+        Returns:
+            Self: A new deepcopy object.
         """
+        # Automatically creates a new id.
         new_wire = type(self)()
         memo[id(self)] = new_wire
         return new_wire
@@ -78,18 +92,22 @@ class WireDebug(Wire):
         The ID allow to quick check while debugging
         """
         super().__init__()
-        self._state: WireState = WireState.UNKNOWN
+        self._state: WireExtendedState = WireExtendedState.UNKNOWN
 
     @property
-    def state(self) -> WireState:
+    def state(self) -> WireExtendedState:
         return self._state
 
     @state.setter
-    def state(self, value: bool | WireState):
-        if isinstance(value, bool):
-            self._state = WireState.ON if value else WireState.OFF
-        else:
+    def state(self, value: WireState):
+        if isinstance(value, WireExtendedState):
             self._state = value
+        elif isinstance(value, bool):
+            self._state = WireExtendedState.ON if value else WireExtendedState.OFF
+        else:
+            raise ValueError(
+                f"Trying to set the value of a {type(self).__name__} to an unsupported WireState {type(value).__name__}."
+            )
 
     def __repr__(self):
         """
@@ -106,12 +124,12 @@ class WireDebug(Wire):
         Useful to check the simulations results.
         """
         match self._state:
-            case WireState.OFF:
+            case WireExtendedState.OFF:
                 return "0"
-            case WireState.ON:
+            case WireExtendedState.ON:
                 return "1"
-            case WireState.UNKNOWN:
-                return "X"
+            case WireExtendedState.UNKNOWN:
+                return "?"
 
 
 class WireFast(Wire):
@@ -141,8 +159,13 @@ class WireFast(Wire):
         return self._state
 
     @state.setter
-    def state(self, value: bool):
-        self._state = value
+    def state(self, value: WireState):
+        if isinstance(value, bool):
+            self._state = value
+        else:
+            raise ValueError(
+                f"Trying to set the value of the {type(self).__name__}'s boolean state to a more complex WireState ({type(value).__name__})."
+            )
 
     def __repr__(self):
         """

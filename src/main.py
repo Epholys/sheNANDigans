@@ -1,5 +1,5 @@
 import itertools
-from schematics import SchematicsBuilder, get_schematic_idx
+from schematics import SchematicsBuilder
 from wire import WireExtendedState
 
 
@@ -14,7 +14,7 @@ def main():
     builder = SchematicsBuilder()
     builder.build_circuits()
     library = builder.schematics
-    circuit = get_schematic_idx(2, library)
+    circuit = library.get_schematic_idx(2)
 
     print([x for x in itertools.product([circuit.identifier, "OR"], [False])])
 

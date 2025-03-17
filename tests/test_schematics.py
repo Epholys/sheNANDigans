@@ -1,18 +1,17 @@
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from itertools import product
-import itertools
 import multiprocessing
 from typing import Callable, List
 
 import pytest
-from src import schematics
 from src.circuit import Circuit, Tuple
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
+from src.schematics import SchematicsBuilder
 
 
-builder = schematics.SchematicsBuilder()
+builder = SchematicsBuilder()
 builder.build_circuits()
 reference_circuits = builder.schematics
 
@@ -66,7 +65,7 @@ def assert_simulation(data):
 
 
 @pytest.mark.parametrize(
-    "library, debug",
+    "schematics, debug",
     [
         pytest.param(reference_circuits, False),
         pytest.param(round_trip_circuits, False),
@@ -99,12 +98,12 @@ class TestSchematics:
             assert gate.simulate()
             assert bool(output.state) == expected_output
 
-    def test_nand(self, library, debug):
-        nand_gate = schematics.get_schematic_idx(0, library)
+    def test_nand(self, schematics, debug):
+        nand_gate = schematics.get_schematic_idx(0)
         self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b), debug)
 
-    def test_not(self, library, debug):
-        not_gate = schematics.get_schematic_idx(1, library)
+    def test_not(self, schematics, debug):
+        not_gate = schematics.get_schematic_idx(1)
 
         if debug:
             not_gate.debug_mode()
@@ -121,20 +120,20 @@ class TestSchematics:
             assert not_gate.simulate()
             assert bool(output.state) == (not a)
 
-    def test_and(self, library, debug):
-        and_gate = schematics.get_schematic_idx(2, library)
+    def test_and(self, schematics, debug):
+        and_gate = schematics.get_schematic_idx(2)
         self.assert_2_in_1_out(and_gate, lambda a, b: a and b, debug)
 
-    def test_or(self, library, debug):
-        or_gate = schematics.get_schematic_idx(3, library)
+    def test_or(self, schematics, debug):
+        or_gate = schematics.get_schematic_idx(3)
         self.assert_2_in_1_out(or_gate, lambda a, b: a or b, debug)
 
-    def test_nor(self, library, debug):
-        nor_gate = schematics.get_schematic_idx(4, library)
+    def test_nor(self, schematics, debug):
+        nor_gate = schematics.get_schematic_idx(4)
         self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b), debug)
 
-    def test_xor(self, library, debug):
-        xor_gate = schematics.get_schematic_idx(5, library)
+    def test_xor(self, schematics, debug):
+        xor_gate = schematics.get_schematic_idx(5)
         self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b, debug)
 
     def assert_numeric_operations(
@@ -192,8 +191,8 @@ class TestSchematics:
             for case in cases:
                 assert_simulation(case)
 
-    def test_half_adder(self, library, debug):
-        half_adder = schematics.get_schematic_idx(6, library)
+    def test_half_adder(self, schematics, debug):
+        half_adder = schematics.get_schematic_idx(6)
 
         # Inputs : a, b
         # Operation : a + b
@@ -217,8 +216,8 @@ class TestSchematics:
             debug,
         )
 
-    def test_full_adder(self, library, debug):
-        full_adder = schematics.get_schematic_idx(7, library)
+    def test_full_adder(self, schematics, debug):
+        full_adder = schematics.get_schematic_idx(7)
 
         # Inputs : a, b, cin
         # Operation : a + b + cin
@@ -244,8 +243,8 @@ class TestSchematics:
             debug,
         )
 
-    def test_2bits_adder(self, library, debug):
-        two_bits_adder = schematics.get_schematic_idx(8, library)
+    def test_2bits_adder(self, schematics, debug):
+        two_bits_adder = schematics.get_schematic_idx(8)
 
         # Inputs : a0, b0, c0, a1, b1
         # Outputs: s0, s1, cout
@@ -290,8 +289,8 @@ class TestSchematics:
             debug,
         )
 
-    def test_4bits_adder(self, library, debug):
-        four_bits_adder = schematics.get_schematic_idx(9, library)
+    def test_4bits_adder(self, schematics, debug):
+        four_bits_adder = schematics.get_schematic_idx(9)
 
         # Inputs : a0, b0, c0, a1, b1, a2, b2, a3, b3
         # Outputs: s0, s1, s2, s3, cout
@@ -356,8 +355,8 @@ class TestSchematics:
         return [a, b, c0]
 
     @pytest.mark.slow
-    def test_8bits_adder(self, library, debug):
-        eight_bits_adder = schematics.get_schematic_idx(10, library)
+    def test_8bits_adder(self, schematics, debug):
+        eight_bits_adder = schematics.get_schematic_idx(10)
 
         # See other adders
 

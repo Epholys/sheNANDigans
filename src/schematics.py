@@ -5,47 +5,51 @@ from circuit import Circuit, CircuitDict, CircuitKey
 from wire import WireFast
 
 
-def add_nand(library: CircuitDict):
-    nand_gate = Circuit(0)
-    nand_gate.inputs["A"] = WireFast()
-    nand_gate.inputs["B"] = WireFast()
-    nand_gate.outputs["OUT"] = WireFast()
-    add_schematic(nand_gate, library)
+class Schematics:
+    def __init__(self):
+        self.library: CircuitDict = OrderedDict()
 
+    def has_schematics(self, identifier: CircuitKey):
+        return identifier in self.library
 
-def add_schematic(circuit: Circuit, library: CircuitDict):
-    circuit.optimize(recursive=False)
-    if library.get(circuit.identifier) is not None:
-        raise ValueError(f"Circuit {circuit.identifier} already exists")
-    library[circuit.identifier] = circuit
+    def add_schematic(self, circuit: Circuit):
+        circuit.optimize(recursive=False)
+        if self.has_schematics(circuit.identifier):
+            raise ValueError(f"Circuit {circuit.identifier} already exists")
+        self.library[circuit.identifier] = circuit
 
+    def get_schematic(self, identifier: CircuitKey) -> Circuit:
+        if not self.has_schematics(identifier):
+            raise ValueError(f"Circuit {identifier} does not exist")
+        return deepcopy(self.library[identifier])
 
-def get_schematic(identifier: CircuitKey, library: CircuitDict) -> Circuit:
-    if library.get(identifier) is None:
-        raise ValueError(f"Circuit {identifier} does not exist")
-    return deepcopy(library[identifier])
-
-
-def get_schematic_idx(idx: int, library: CircuitDict) -> Circuit:
-    circuit = list(library.values())[idx]
-    if circuit is None:
-        raise ValueError(f"Circuit of index {idx} does not exist")
-    return deepcopy(circuit)
+    def get_schematic_idx(self, idx: int) -> Circuit:
+        try:
+            circuit = list(self.library.values())[idx]
+        except IndexError as e:
+            raise ValueError(f"Circuit of index {idx} does not exist") from e
+        return deepcopy(circuit)
 
 
 class SchematicsBuilder:
     def __init__(self):
-        self.schematics: CircuitDict = OrderedDict()
+        self.schematics = Schematics()
 
     def add_schematic(self, circuit: Circuit):
-        add_schematic(circuit, self.schematics)
-        # circuit.sanitize()
+        self.schematics.add_schematic(circuit)
 
     def get_schematic_idx(self, idx: int):
-        return get_schematic_idx(idx, self.schematics)
+        return self.schematics.get_schematic_idx(idx)
+
+    def add_nand(self):
+        nand_gate = Circuit(0)
+        nand_gate.inputs["A"] = WireFast()
+        nand_gate.inputs["B"] = WireFast()
+        nand_gate.outputs["OUT"] = WireFast()
+        self.schematics.add_schematic(nand_gate)
 
     def build_circuits(self):
-        add_nand(self.schematics)
+        self.add_nand()
         self.add_not()
         self.add_and()
         self.add_or()

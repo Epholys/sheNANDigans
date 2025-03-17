@@ -7,7 +7,7 @@ from circuit import (
     CircuitKey,
     PortWireDict,
 )
-from schematics import SchematicsBuilder, get_schematic_idx
+from schematics import SchematicsBuilder
 
 palette_size = 256
 
@@ -359,9 +359,8 @@ def _connect_components(
                     graph.add_edge(pydot.Edge(source_node, target_node))
 
 
-def visualize_schematic(
-    circuit_idx: int,
-    schematics: CircuitDict,
+def visualize_circuit(
+    circuit: Circuit,
     options: GraphOptions,
     filename: str,
     format: str = "png",
@@ -378,7 +377,6 @@ def visualize_schematic(
     Returns:
         The generated pydot graph
     """
-    circuit = get_schematic_idx(circuit_idx, schematics)
     return generate_circuit_graph(circuit, options, filename, format)
 
 
@@ -405,10 +403,9 @@ if __name__ == "__main__":
     # round_trip_2 = decoder.decode()
 
     # Visualize different circuits
-    for depth in range(1, 5):
-        visualize_schematic(
-            10,
-            reference,
+    for depth in range(3, 4):
+        visualize_circuit(
+            reference.get_schematic_idx(10),
             GraphOptions(
                 is_compact=True, is_aligned=True, bold_io=True, max_depth=depth
             ),

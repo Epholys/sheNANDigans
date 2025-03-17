@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import List
 
 from circuit import Circuit, CircuitDict, Wire
+from src.schematics import Schematics
 
 
 class CircuitEncoder:
@@ -19,8 +20,8 @@ class CircuitEncoder:
     TODO add a reference to the circuit wiring model
     """
 
-    def __init__(self, library: CircuitDict):
-        self.library: CircuitDict = deepcopy(library)
+    def __init__(self, schematics: Schematics):
+        self.library: CircuitDict = deepcopy(schematics.library)
         self.encoding: List[int]
         # TODO add validation for all circuits of library ?
         # It would minimize safety checks

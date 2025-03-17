@@ -1,7 +1,7 @@
-from typing import List, NamedTuple, OrderedDict
+from typing import List, NamedTuple
 
-import schematics
-from circuit import Circuit, CircuitDict, CircuitKey
+from schematics import Schematics
+from circuit import Circuit, CircuitKey
 from wire import WireFast
 
 
@@ -97,7 +97,7 @@ class CircuitDecoder:
 
     def __init__(self, data: List[int]):
         self.data = data.copy()
-        self.library: CircuitDict = OrderedDict()
+        self.schematics = Schematics()
 
         self.add_nand()  # TODO merge with schematics.addnand
 
@@ -108,9 +108,9 @@ class CircuitDecoder:
         nand_gate.inputs[0] = WireFast()
         nand_gate.inputs[1] = WireFast()
         nand_gate.outputs[0] = WireFast()
-        schematics.add_schematic(nand_gate, self.library)
+        self.schematics.add_schematic(nand_gate)
 
-    def decode(self) -> CircuitDict:
+    def decode(self) -> Schematics:
         while len(self.data) != 0:
             # The index is used as the identifier of the circuit
             self.idx += 1
@@ -120,8 +120,8 @@ class CircuitDecoder:
             self.circuit.validate()
             self.circuit.apply_inputs()
             self.circuit.apply_connections()
-            schematics.add_schematic(self.circuit, self.library)
-        return self.library
+            self.schematics.add_schematic(self.circuit)
+        return self.schematics
 
     def decode_circuit(self):
         self.decode_header()
@@ -139,9 +139,10 @@ class CircuitDecoder:
         Decode the idx-th component of the circuit.
         """
         id = self.data.pop(0)
-        if id not in self.library.keys():
-            raise ValueError(f"Trying to use the undefined component {id}.")
-        component = schematics.get_schematic(id, self.library)
+        try:
+            component = self.schematics.get_schematic(id)
+        except ValueError as e:
+            raise ValueError(f"Trying to use the undefined component {id}.") from e
         self.circuit.add_component(idx, component)
         self.decode_inputs(idx, component)
 

@@ -95,9 +95,9 @@ class CircuitDecoder:
     One point important to reiterate is that the names of the circuits, inputs, and outputs are lost during the encoding. They are replaced by the index in which their appear. But the order, that defines the functionality, is preserved.
     """
 
-    def __init__(self, data: List[int]):
+    def __init__(self, data: List[int], debug=False):
         self.data = data.copy()
-        self.schematics = Schematics()
+        self.schematics = Schematics(debug)
 
         self.add_nand()  # TODO merge with schematics.addnand
 

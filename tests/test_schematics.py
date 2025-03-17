@@ -8,15 +8,7 @@ import pytest
 from src.circuit import Circuit, Tuple
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
-from src.schematics import SchematicsBuilder
-
-
-builder = SchematicsBuilder()
-builder.build_circuits()
-reference_circuits = builder.schematics
-
-encoded = CircuitEncoder(reference_circuits).encode()
-round_trip_circuits = CircuitDecoder(encoded).decode()
+from src.schematics import Schematics, SchematicsBuilder
 
 
 class NumericOperations:
@@ -64,14 +56,46 @@ def assert_simulation(data):
     assert actual_outputs == expected_outputs
 
 
+reference_circuits = None
+round_trip_circuits = None
+
+
+def build_circuits():
+    global reference_circuits
+    global round_trip_circuits
+
+    builder = SchematicsBuilder()
+    builder.build_circuits()
+    reference_circuits = builder.schematics
+    encoded = CircuitEncoder(reference_circuits).encode()
+    round_trip_circuits = CircuitDecoder(encoded).decode()
+
+
+@pytest.fixture(scope="function")
+def schematics(request):
+    global reference_circuits
+    global round_trip_circuits
+
+    if reference_circuits is None or round_trip_circuits is None:
+        build_circuits()
+
+    if request.param == "reference":
+        return reference_circuits
+    elif request.param == "round_trip":
+        return round_trip_circuits
+    else:
+        return None
+
+
 @pytest.mark.parametrize(
     "schematics, debug",
     [
-        pytest.param(reference_circuits, False),
-        pytest.param(round_trip_circuits, False),
-        pytest.param(reference_circuits, True, marks=pytest.mark.debug),
-        pytest.param(round_trip_circuits, True, marks=pytest.mark.debug),
+        pytest.param("reference", False),
+        pytest.param("round_trip", False),
+        pytest.param("reference", True, marks=pytest.mark.debug),
+        pytest.param("round_trip", True, marks=pytest.mark.debug),
     ],
+    indirect=["schematics"],
 )
 class TestSchematics:
     def assert_2_in_1_out(

@@ -6,14 +6,16 @@ from wire import WireFast
 
 
 class Schematics:
-    def __init__(self):
+    def __init__(self, debug: bool = False):
         self.library: CircuitDict = OrderedDict()
+        self.debug = debug
 
     def has_schematics(self, identifier: CircuitKey):
         return identifier in self.library
 
     def add_schematic(self, circuit: Circuit):
-        circuit.optimize(recursive=False)
+        if not self.debug:
+            circuit.optimize(recursive=False)
         if self.has_schematics(circuit.identifier):
             raise ValueError(f"Circuit {circuit.identifier} already exists")
         self.library[circuit.identifier] = circuit
@@ -32,8 +34,8 @@ class Schematics:
 
 
 class SchematicsBuilder:
-    def __init__(self):
-        self.schematics = Schematics()
+    def __init__(self, debug: bool = False):
+        self.schematics = Schematics(debug)
 
     def add_schematic(self, circuit: Circuit):
         self.schematics.add_schematic(circuit)

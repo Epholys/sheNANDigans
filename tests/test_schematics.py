@@ -56,54 +56,78 @@ def assert_simulation(data):
     assert actual_outputs == expected_outputs
 
 
-reference_circuits = None
-round_trip_circuits = None
+class TestedCircuits:
+    reference_circuits: Schematics | None = None
+    round_trip_circuits: Schematics | None = None
+    reference_circuits_debug: Schematics | None = None
+    round_trip_circuits_debug: Schematics | None = None
 
 
-def build_circuits():
-    global reference_circuits
-    global round_trip_circuits
+tested_circuits = TestedCircuits()
 
-    builder = SchematicsBuilder()
-    builder.build_circuits()
-    reference_circuits = builder.schematics
-    encoded = CircuitEncoder(reference_circuits).encode()
-    round_trip_circuits = CircuitDecoder(encoded).decode()
+
+def build_circuits(processing: str, debug: bool):
+    global tested_circuits
+
+    if not debug:
+        if tested_circuits.reference_circuits is None:
+            builder = SchematicsBuilder()
+            builder.build_circuits()
+            tested_circuits.reference_circuits = builder.schematics
+        if processing == "round_trip" and tested_circuits.round_trip_circuits is None:
+            encoded = CircuitEncoder(tested_circuits.reference_circuits).encode()
+            tested_circuits.round_trip_circuits = CircuitDecoder(encoded).decode()
+    else:
+        if tested_circuits.reference_circuits_debug is None:
+            builder = SchematicsBuilder(debug=True)
+            builder.build_circuits()
+            tested_circuits.reference_circuits_debug = builder.schematics
+        if (
+            processing == "round_trip"
+            and tested_circuits.round_trip_circuits_debug is None
+        ):
+            encoded = CircuitEncoder(tested_circuits.reference_circuits_debug).encode()
+            tested_circuits.round_trip_circuits_debug = CircuitDecoder(
+                encoded, debug=True
+            ).decode()
 
 
 @pytest.fixture(scope="function")
 def schematics(request):
-    global reference_circuits
-    global round_trip_circuits
+    processing, debug = request.param
 
-    if reference_circuits is None or round_trip_circuits is None:
-        build_circuits()
+    global tested_circuits
 
-    if request.param == "reference":
-        return reference_circuits
-    elif request.param == "round_trip":
-        return round_trip_circuits
+    build_circuits(processing, debug)
+
+    if processing == "reference":
+        if not debug:
+            return tested_circuits.reference_circuits
+        else:
+            return tested_circuits.reference_circuits_debug
+    elif processing == "round_trip":
+        if not debug:
+            return tested_circuits.round_trip_circuits
+        else:
+            return tested_circuits.round_trip_circuits_debug
     else:
         return None
 
 
 @pytest.mark.parametrize(
-    "schematics, debug",
+    "schematics",
     [
-        pytest.param("reference", False),
-        pytest.param("round_trip", False),
-        pytest.param("reference", True, marks=pytest.mark.debug),
-        pytest.param("round_trip", True, marks=pytest.mark.debug),
+        pytest.param(("reference", False)),
+        pytest.param(("round_trip", False)),
+        pytest.param(("reference", True), marks=pytest.mark.debug),
+        pytest.param(("round_trip", True), marks=pytest.mark.debug),
     ],
     indirect=["schematics"],
 )
 class TestSchematics:
     def assert_2_in_1_out(
-        self, gate: Circuit, gate_logic: Callable[[bool, bool], bool], debug: bool
+        self, gate: Circuit, gate_logic: Callable[[bool, bool], bool]
     ):
-        if debug:
-            gate.debug_mode()
-
         assert len(gate.inputs) == 2
         inputs = list(gate.inputs.values())
         input_a = inputs[0]
@@ -122,15 +146,12 @@ class TestSchematics:
             assert gate.simulate()
             assert bool(output.state) == expected_output
 
-    def test_nand(self, schematics, debug):
+    def test_nand(self, schematics):
         nand_gate = schematics.get_schematic_idx(0)
-        self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b), debug)
+        self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b))
 
-    def test_not(self, schematics, debug):
+    def test_not(self, schematics):
         not_gate = schematics.get_schematic_idx(1)
-
-        if debug:
-            not_gate.debug_mode()
 
         assert len(not_gate.inputs) == 1
         input = list(not_gate.inputs.values())[0]
@@ -144,21 +165,21 @@ class TestSchematics:
             assert not_gate.simulate()
             assert bool(output.state) == (not a)
 
-    def test_and(self, schematics, debug):
+    def test_and(self, schematics):
         and_gate = schematics.get_schematic_idx(2)
-        self.assert_2_in_1_out(and_gate, lambda a, b: a and b, debug)
+        self.assert_2_in_1_out(and_gate, lambda a, b: a and b)
 
-    def test_or(self, schematics, debug):
+    def test_or(self, schematics):
         or_gate = schematics.get_schematic_idx(3)
-        self.assert_2_in_1_out(or_gate, lambda a, b: a or b, debug)
+        self.assert_2_in_1_out(or_gate, lambda a, b: a or b)
 
-    def test_nor(self, schematics, debug):
+    def test_nor(self, schematics):
         nor_gate = schematics.get_schematic_idx(4)
-        self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b), debug)
+        self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b))
 
-    def test_xor(self, schematics, debug):
+    def test_xor(self, schematics):
         xor_gate = schematics.get_schematic_idx(5)
-        self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b, debug)
+        self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b)
 
     def assert_numeric_operations(
         self,
@@ -166,11 +187,7 @@ class TestSchematics:
         n_inputs: int,
         n_outputs: int,
         operations: NumericOperations,
-        debug,
     ):
-        if debug:
-            circuit.debug_mode()
-
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
         cases = [
@@ -215,7 +232,7 @@ class TestSchematics:
             for case in cases:
                 assert_simulation(case)
 
-    def test_half_adder(self, schematics, debug):
+    def test_half_adder(self, schematics):
         half_adder = schematics.get_schematic_idx(6)
 
         # Inputs : a, b
@@ -237,10 +254,9 @@ class TestSchematics:
             2,
             2,
             NumericOperations(inputs_to_numbers, number_to_output, sum),
-            debug,
         )
 
-    def test_full_adder(self, schematics, debug):
+    def test_full_adder(self, schematics):
         full_adder = schematics.get_schematic_idx(7)
 
         # Inputs : a, b, cin
@@ -264,10 +280,9 @@ class TestSchematics:
                 number_to_outputs=lambda n: int_to_bools(n, n_outputs),
                 operation=sum,
             ),
-            debug,
         )
 
-    def test_2bits_adder(self, schematics, debug):
+    def test_2bits_adder(self, schematics):
         two_bits_adder = schematics.get_schematic_idx(8)
 
         # Inputs : a0, b0, c0, a1, b1
@@ -310,10 +325,9 @@ class TestSchematics:
                 number_to_outputs=lambda n: int_to_bools(n, n_outputs),
                 operation=sum,
             ),
-            debug,
         )
 
-    def test_4bits_adder(self, schematics, debug):
+    def test_4bits_adder(self, schematics):
         four_bits_adder = schematics.get_schematic_idx(9)
 
         # Inputs : a0, b0, c0, a1, b1, a2, b2, a3, b3
@@ -356,7 +370,6 @@ class TestSchematics:
                 number_to_outputs=lambda n: int_to_bools(n, n_outputs),
                 operation=sum,
             ),
-            debug,
         )
 
     @staticmethod
@@ -379,7 +392,7 @@ class TestSchematics:
         return [a, b, c0]
 
     @pytest.mark.slow
-    def test_8bits_adder(self, schematics, debug):
+    def test_8bits_adder(self, schematics):
         eight_bits_adder = schematics.get_schematic_idx(10)
 
         # See other adders
@@ -396,7 +409,6 @@ class TestSchematics:
                 number_to_outputs=int_to_bools_partial(n_outputs),
                 operation=sum,
             ),
-            debug,
         )
 
 

@@ -537,6 +537,11 @@ class Circuit:
             key: copy.deepcopy(wire, memo) for key, wire in self.components.items()
         }
 
+        if self.reset == self.reset_debug:
+            # TODO do it properly
+            new_circuit.reset = new_circuit.reset_debug
+            new_circuit.simulate = new_circuit.simulate_slow
+
         return new_circuit
 
     def __str__(self, indent: int = 0):

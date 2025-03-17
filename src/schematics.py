@@ -16,6 +16,9 @@ class Schematics:
     def add_schematic(self, circuit: Circuit):
         if not self.debug:
             circuit.optimize(recursive=False)
+        else:
+            circuit.debug_mode()
+
         if self.has_schematics(circuit.identifier):
             raise ValueError(f"Circuit {circuit.identifier} already exists")
         self.library[circuit.identifier] = circuit
@@ -27,7 +30,7 @@ class Schematics:
 
     def get_schematic_idx(self, idx: int) -> Circuit:
         try:
-            circuit = list(self.library.values())[idx]
+            circuit: Circuit = list(self.library.values())[idx]
         except IndexError as e:
             raise ValueError(f"Circuit of index {idx} does not exist") from e
         return deepcopy(circuit)

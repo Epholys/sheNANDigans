@@ -1,17 +1,13 @@
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # Only imports the below statements during type checking
-    from simulator import Simulator
-
-
 import copy
+
 from itertools import groupby
 from typing import Dict, List, Tuple
 
 import networkx
 
-from wire import Wire, WireFast
+from simulator_builder import OptimizationLevel, build_simulator, get_wire_class
+from simulator import Simulator
+from wire import Wire
 
 
 type Key = str | int
@@ -49,9 +45,11 @@ class Circuit:
     TODO Explain provenance model
     """
 
-    def __init__(self, identifier: CircuitKey):
-        from simulator_builder import build_simulator
-
+    def __init__(
+        self,
+        identifier: CircuitKey,
+        optimization_level: OptimizationLevel = OptimizationLevel.FAST,
+    ):
         """
         Initialize a new circuit with the given identifier.
         """
@@ -61,8 +59,9 @@ class Circuit:
         self.components: CircuitDict = dict()
         self.components_stack: List[Circuit] = []
         self.graph = networkx.DiGraph()
-        self.is_debug = False
-        self.simulator: Simulator = build_simulator(self)
+        self._optimization_level = optimization_level
+        self._wire_class = get_wire_class(optimization_level)
+        self._simulator: Simulator = build_simulator(self, optimization_level)
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -94,7 +93,7 @@ class Circuit:
             )
 
         if input not in self.inputs:
-            self.inputs[input] = WireFast()
+            self.inputs[input] = self._wire_class()
 
         # Setting 'input' as the 'target_input' doesn't work, there a edge cases.
         # A single input can be connected to several component's input(s).
@@ -213,6 +212,10 @@ class Circuit:
             )
             self._propagate_wire_update(subcomponents, old_wire, new_wire)
 
+    def concludes(self, recursive: bool):
+        # self.optimize(recursive)
+        self.validate()
+
     def validate(self) -> bool:
         # TODO
         # Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?),
@@ -302,14 +305,23 @@ class Circuit:
             ordered_components[key] = component
         self.components = ordered_components
 
-    def toggle_debug(self, debug: bool):
-        from simulator_builder import build_simulator
+    def set_optimization(self, level: OptimizationLevel):
+        from circuit_converter import convert_wires
 
-        self.is_debug = debug
-        self.simulator = build_simulator(self)
+        if self._optimization_level == level:
+            pass
+
+        self._optimization_level = level
+        self._wire_class = get_wire_class(level)
+        convert_wires(self, self._wire_class)
+        self._simulator = build_simulator(self, level)
+
+    def reset(self):
+        self._simulator.reset(self)
 
     def simulate(self) -> bool:
-        return self.simulator.simulate(self)
+        simulation = self._simulator.simulate(self)
+        return simulation
 
     def simulate_queue(self) -> bool:
         """
@@ -329,7 +341,7 @@ class Circuit:
             Increments self.miss counter when sub-component simulation fails
         """
         if self.identifier == 0:
-            self._simulate_nand()
+            # self._simulate_nand()
             return True
 
         # There are much more "elegant" ways to do it (using any for example), but my brain
@@ -360,7 +372,7 @@ class Circuit:
         Returns:
             Self: A new deepcopy object.
         """
-        new_circuit = type(self)(self.identifier)
+        new_circuit = type(self)(self.identifier, self._optimization_level)
         memo[id(self)] = new_circuit
 
         new_circuit.inputs = {
@@ -372,8 +384,6 @@ class Circuit:
         new_circuit.components = {
             key: copy.deepcopy(wire, memo) for key, wire in self.components.items()
         }
-
-        new_circuit.is_debug = self.is_debug
 
         return new_circuit
 

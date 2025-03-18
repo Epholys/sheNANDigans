@@ -1,10 +1,15 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from circuit import Circuit
+
 from abc import ABC, abstractmethod
-from circuit import Circuit
 
 
 class Simulator(ABC):
-    def __init__(self, circuit: Circuit):
-        self.circuit = circuit
+    def __init__(self):
+        pass
 
     @abstractmethod
     def reset(self, circuit: Circuit):
@@ -12,7 +17,6 @@ class Simulator(ABC):
 
     @abstractmethod
     def simulate(self, circuit: Circuit) -> bool:
-        self.reset(circuit)
         pass
 
     def _simulate_nand(self, nand: Circuit):

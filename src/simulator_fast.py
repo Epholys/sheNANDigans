@@ -1,16 +1,15 @@
-from wire import WireFast
-from circuit import Circuit
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from circuit import Circuit
+
 from simulator import Simulator
-from circuit_converter import convert_wires
 
 
 class SimulatorFast(Simulator):
     def __init__(self, circuit: Circuit):
-        super().__init__(circuit)
-
-        if self.circuit.is_debug:
-            convert_wires(self.circuit, WireFast)
-            self.circuit.is_debug = False
+        super().__init__()
 
     def simulate(self, circuit: Circuit):
         """

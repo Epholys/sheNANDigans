@@ -1,16 +1,16 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from circuit import Circuit
+
 from simulator import Simulator
-from circuit import Circuit
-from wire import WireExtendedState, WireDebug
-from circuit_converter import convert_wires
+from wire import WireExtendedState
 
 
 class SimulatorDebug(Simulator):
     def __init__(self, circuit: Circuit):
-        super().__init__(circuit)
-
-        if not self.circuit.is_debug:
-            convert_wires(self.circuit, WireDebug)
-            self.circuit.is_debug = True
+        super().__init__()
 
     def _can_simulate(self, circuit: Circuit) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""

@@ -5,7 +5,7 @@ import multiprocessing
 from typing import Callable, List
 
 import pytest
-from src.circuit import Circuit, Tuple
+from src.circuit import Circuit, Tuple, OptimizationLevel
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 from src.schematics import Schematics, SchematicsBuilder
@@ -36,7 +36,6 @@ def assert_simulation(data):
     operations: NumericOperations
     circuit_inputs: Tuple[bool, ...]
     circuit, n_inputs, n_outputs, operations, circuit_inputs = data
-
     assert len(circuit.inputs) == n_inputs
     input_wires = list(circuit.inputs.values())
 
@@ -44,6 +43,8 @@ def assert_simulation(data):
     output_wires = list(circuit.outputs.values())
 
     expected_outputs = operations.apply(circuit_inputs)
+
+    circuit.reset()
 
     for input_wire, input in zip(input_wires, circuit_inputs):
         input_wire.state = input
@@ -77,7 +78,7 @@ def build_circuits(processing: str, debug: bool):
             tested_circuits.round_trip_circuits = CircuitDecoder(encoded).decode()
     else:
         if tested_circuits.reference_circuits_debug is None:
-            builder = SchematicsBuilder(debug=True)
+            builder = SchematicsBuilder(OptimizationLevel.DEBUG)
             builder.build_circuits()
             tested_circuits.reference_circuits_debug = builder.schematics
         if (
@@ -86,7 +87,7 @@ def build_circuits(processing: str, debug: bool):
         ):
             encoded = CircuitEncoder(tested_circuits.reference_circuits_debug).encode()
             tested_circuits.round_trip_circuits_debug = CircuitDecoder(
-                encoded, debug=True
+                encoded, OptimizationLevel.DEBUG
             ).decode()
 
 
@@ -138,6 +139,7 @@ class TestSchematics:
         expected_outputs = [gate_logic(a, b) for a, b in possible_inputs]
 
         for (a, b), expected_output in zip(possible_inputs, expected_outputs):
+            gate.reset()
             input_a.state = a
             input_b.state = b
             assert gate.simulate()
@@ -157,6 +159,7 @@ class TestSchematics:
         output = list(not_gate.outputs.values())[0]
 
         for a in [True, False]:
+            not_gate.reset()
             input.state = a
             assert not_gate.simulate()
             assert bool(output.state) == (not a)

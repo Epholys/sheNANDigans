@@ -5,17 +5,17 @@ from wire import Wire
 
 
 def convert_wires(circuit: Circuit, wire_class: Type[Wire]):
-    _convert_wires_to(circuit, wire_class, {})
+    _convert_wires(circuit, wire_class, {})
 
 
-def _convert_wires_to(
+def _convert_wires(
     circuit: Circuit, wire_class: Type[Wire], new_wires: Dict[int, Wire]
 ):
     _convert_ports(circuit.inputs, wire_class, new_wires)
     _convert_ports(circuit.outputs, wire_class, new_wires)
 
     for component in circuit.components.values():
-        _convert_wires_to(component, wire_class, new_wires)
+        _convert_wires(component, wire_class, new_wires)
 
 
 def _convert_ports(

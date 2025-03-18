@@ -37,8 +37,6 @@ def assert_simulation(data):
     circuit_inputs: Tuple[bool, ...]
     circuit, n_inputs, n_outputs, operations, circuit_inputs = data
 
-    circuit.reset()
-
     assert len(circuit.inputs) == n_inputs
     input_wires = list(circuit.inputs.values())
 
@@ -140,7 +138,6 @@ class TestSchematics:
         expected_outputs = [gate_logic(a, b) for a, b in possible_inputs]
 
         for (a, b), expected_output in zip(possible_inputs, expected_outputs):
-            gate.reset()
             input_a.state = a
             input_b.state = b
             assert gate.simulate()
@@ -160,7 +157,6 @@ class TestSchematics:
         output = list(not_gate.outputs.values())[0]
 
         for a in [True, False]:
-            not_gate.reset()
             input.state = a
             assert not_gate.simulate()
             assert bool(output.state) == (not a)

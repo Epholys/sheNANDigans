@@ -1,10 +1,18 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from simulator import Simulator
+
+
 import copy
 from itertools import groupby
-from typing import Callable, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import networkx
 
-from wire import Wire, WireDebug, WireFast, WireExtendedState
+from wire import Wire, WireFast
+
 
 type Key = str | int
 type CircuitKey = Key
@@ -41,39 +49,9 @@ class Circuit:
     TODO Explain provenance model
     """
 
-    class Performance:
-        def __init__(self):
-            # Initialize fields dynamically
-            self.nand_simulation: int = 0
-            self.simulation_failure: int = 0
-            self.simulation_success: int = 0
-            self.was_simulated_computation: int = 0
-            self.can_simulate_computation: int = 0
-
-        def reset(self):
-            for key in self.__dict__:
-                if isinstance(self.__dict__[key], int):
-                    self.__dict__[key] = 0
-
-        def __add__(self, other):
-            """Add corresponding fields from two objects."""
-            if not isinstance(other, type(self)):
-                return NotImplemented
-
-            obj = type(self)()
-            for key in self.__dict__:
-                if isinstance(self.__dict__[key], int):
-                    obj.__dict__[key] = self.__dict__[key] + other.__dict__[key]
-            return obj
-
-        def __str__(self):
-            str = ""
-            for key in self.__dict__:
-                if isinstance(self.__dict__[key], int):
-                    str += f"{key} = {self.__dict__[key]}\n"
-            return str
-
     def __init__(self, identifier: CircuitKey):
+        from simulator_builder import build_simulator
+
         """
         Initialize a new circuit with the given identifier.
         """
@@ -83,9 +61,8 @@ class Circuit:
         self.components: CircuitDict = dict()
         self.components_stack: List[Circuit] = []
         self.graph = networkx.DiGraph()
-        self.performance = self.Performance()
-        self.simulate: Callable[[], bool] = self.simulate_fast
-        self.reset: Callable = self.reset_fast
+        self.is_debug = False
+        self.simulator: Simulator = build_simulator(self)
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -325,84 +302,14 @@ class Circuit:
             ordered_components[key] = component
         self.components = ordered_components
 
-    def reset_debug(self):
-        """
-        Reset the circuit to its initial state.
+    def toggle_debug(self, debug: bool):
+        from simulator_builder import build_simulator
 
-        Resets:
-        - All wires' state to Unknown
-        - All components recursively
-        - The simulation miss counter
-        """
-        for wire in self.inputs.values():
-            wire.state = WireExtendedState.UNKNOWN
+        self.is_debug = debug
+        self.simulator = build_simulator(self)
 
-        for wire in self.outputs.values():
-            wire.state = WireExtendedState.UNKNOWN
-
-        self.performance.reset()
-        self.components_stack = list(self.components.values())
-
-        for component in self.components.values():
-            component.reset_debug()
-
-    def reset_fast(self):
-        return
-
-    def can_simulate(self) -> bool:
-        """Check if the circuit can be simulated, meaning that all inputs are determined."""
-        self.performance.can_simulate_computation += 1
-        return all(
-            wire.state != WireExtendedState.UNKNOWN for wire in self.inputs.values()
-        )
-
-    def was_simulated(self) -> bool:
-        """Check if the circuit was simulated, meaning that all outputs are determined."""
-        self.performance.was_simulated_computation += 1
-        return all(
-            wire.state != WireExtendedState.UNKNOWN for wire in self.outputs.values()
-        )
-
-    def simulate_slow(self) -> bool:
-        """
-        Simulate the circuit's behavior.
-
-        Performs digital logic simulation by either:
-        1. For NAND gates (identifier=0): Directly computes NAND logic
-        2. For complex circuits: Iteratively simulates sub-components until either:
-           - All outputs are determined (success)
-           - Or no further progress can be made (deadlock)
-
-        Returns:
-            bool: True if simulation completed successfully (all outputs determined)
-                 False if simulation cannot proceed or is already complete
-
-        Note:
-            Increments self.miss counter when sub-component simulation fails
-        """
-        if not self.can_simulate() or self.was_simulated():
-            return False
-
-        if self.identifier == 0:
-            self.performance.nand_simulation += 1
-            self._simulate_nand()
-            return True
-
-        # There are much more "elegant" ways to do it (using any for example), but my brain
-        # isn't python-wired enough to be sure to understand it tomorrow.
-        while True:
-            progress_made = False
-            for component in self.components.values():
-                if component.simulate_slow():
-                    progress_made = True
-                    self.performance.simulation_success += 1
-                else:
-                    self.performance.simulation_failure += 1
-
-            if not progress_made:
-                break
-
-        return self.was_simulated()
+    def simulate(self) -> bool:
+        return self.simulator.simulate(self)
 
     def simulate_queue(self) -> bool:
         """
@@ -422,7 +329,6 @@ class Circuit:
             Increments self.miss counter when sub-component simulation fails
         """
         if self.identifier == 0:
-            self.performance.nand_simulation += 1
             self._simulate_nand()
             return True
 
@@ -432,10 +338,7 @@ class Circuit:
             to_simulate = len(self.components_stack)
             for _ in range(to_simulate):
                 component = self.components_stack.pop(0)
-                if component.simulate_queue():
-                    self.performance.simulation_success += 1
-                else:
-                    self.performance.simulation_failure += 1
+                if not component.simulate_queue():
                     self.components_stack.append(component)
             left = len(self.components_stack)
 
@@ -443,73 +346,6 @@ class Circuit:
                 break
 
         return True
-
-    def simulate_fast(self) -> bool:
-        """
-        Simulate the circuit's behavior.
-
-        Performs digital logic simulation by either:
-        1. For NAND gates (identifier=0): Directly computes NAND logic
-        2. For complex circuits: Iteratively simulates sub-components until either:
-           - All outputs are determined (success)
-           - Or no further progress can be made (deadlock)
-
-        Returns:
-            bool: True if simulation completed successfully (all outputs determined)
-                 False if simulation cannot proceed or is already complete
-
-        Note:
-            Increments self.miss counter when sub-component simulation fails
-        """
-        if self.identifier == 0:
-            self.performance.nand_simulation += 1
-            self._simulate_nand()
-            return True
-
-        # There are much more "elegant" ways to do it (using any for example), but my brain
-        # isn't python-wired enough to be sure to understand it tomorrow.
-        for component in self.components.values():
-            component.simulate()
-
-        return True
-
-    def _simulate_nand(self):
-        """Simulate a NAND gate"""
-        inputs = list(self.inputs.values())
-        a = inputs[0]
-        b = inputs[1]
-        out = list(self.outputs.values())[0]
-        out.state = not (a.state and b.state)
-
-    def sum_performance(self):
-        sum = self.performance
-        for component in self.components.values():
-            sum += component.sum_performance()
-        return sum
-
-    def debug_mode(self):
-        self.reset = self.reset_debug
-        self.simulate = self.simulate_slow
-        self.convert_wires_to_debug({})
-
-    def convert_wires_to_debug(self, new_wires: Dict[int, Wire]):
-        self.convert_ports_to_debug(self.inputs, new_wires)
-        self.convert_ports_to_debug(self.outputs, new_wires)
-
-        for component in self.components.values():
-            component.convert_wires_to_debug(new_wires)
-
-    def convert_ports_to_debug(self, ports: PortWireDict, new_wires: Dict[int, Wire]):
-        for key, existing_wire in list(ports.items()):
-            del ports[key]
-
-            if existing_wire.id in new_wires:
-                debug_wire = new_wires[existing_wire.id]
-            else:
-                debug_wire = WireDebug()
-                new_wires[existing_wire.id] = debug_wire
-
-            ports[key] = debug_wire
 
     def __deepcopy__(self, memo):
         """Create a deep copy of the wire with a new unique ID.
@@ -537,10 +373,7 @@ class Circuit:
             key: copy.deepcopy(wire, memo) for key, wire in self.components.items()
         }
 
-        if self.reset == self.reset_debug:
-            # TODO do it properly
-            new_circuit.reset = new_circuit.reset_debug
-            new_circuit.simulate = new_circuit.simulate_slow
+        new_circuit.is_debug = self.is_debug
 
         return new_circuit
 

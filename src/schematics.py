@@ -1,27 +1,35 @@
 from copy import deepcopy
 from typing import OrderedDict
 
-from circuit import Circuit, CircuitDict, CircuitKey, OptimizationLevel
-from simulator_builder import get_wire_class
+from circuit import Circuit, CircuitDict, CircuitKey
+from src.optimization_level import OptimizationLevel
+from wire import Wire
 
 
 class Schematics:
-    def __init__(self):
+    def __init__(self, optimization_level: OptimizationLevel):
         self.library: CircuitDict = OrderedDict()
+        self._optimization_level = optimization_level
 
     def has_schematics(self, identifier: CircuitKey):
         return identifier in self.library
 
     def add_schematic(self, circuit: Circuit):
-        circuit.concludes(recursive=False)
+        optimize = not self._optimization_level == OptimizationLevel.DEBUG
+        circuit.concludes(recursive=False, optimize=optimize)
+
         if self.has_schematics(circuit.identifier):
             raise ValueError(f"Circuit {circuit.identifier} already exists")
+
         self.library[circuit.identifier] = circuit
 
     def get_schematic(self, identifier: CircuitKey) -> Circuit:
         if not self.has_schematics(identifier):
             raise ValueError(f"Circuit {identifier} does not exist")
         return deepcopy(self.library[identifier])
+
+    def get_all_schematics(self) -> CircuitDict:
+        return {k: deepcopy(circuit) for k, circuit in self.library.items()}
 
     def get_schematic_idx(self, idx: int) -> Circuit:
         try:
@@ -32,9 +40,8 @@ class Schematics:
 
 
 class SchematicsBuilder:
-    def __init__(self, optimization_level: OptimizationLevel = OptimizationLevel.FAST):
-        self.schematics = Schematics()
-        self._optimization_level = optimization_level
+    def __init__(self, optimization_level: OptimizationLevel):
+        self.schematics = Schematics(optimization_level)
 
     def add_schematic(self, circuit: Circuit):
         self.schematics.add_schematic(circuit)
@@ -43,11 +50,10 @@ class SchematicsBuilder:
         return self.schematics.get_schematic_idx(idx)
 
     def add_nand(self):
-        nand_gate = Circuit(0, self._optimization_level)
-        wire_class = get_wire_class(self._optimization_level)
-        nand_gate.inputs["A"] = wire_class()
-        nand_gate.inputs["B"] = wire_class()
-        nand_gate.outputs["OUT"] = wire_class()
+        nand_gate = Circuit(0)
+        nand_gate.inputs["A"] = Wire()
+        nand_gate.inputs["B"] = Wire()
+        nand_gate.outputs["OUT"] = Wire()
         self.schematics.add_schematic(nand_gate)
 
     def build_circuits(self):
@@ -64,7 +70,7 @@ class SchematicsBuilder:
         self.add_8bits_adder()
 
     def add_not(self):
-        not_gate = Circuit("NOT", self._optimization_level)
+        not_gate = Circuit("NOT")
         not_gate.add_component("NAND", self.get_schematic_idx(0))
         not_gate.connect_input("IN", "NAND", "A")
         not_gate.connect_input("IN", "NAND", "B")
@@ -72,7 +78,7 @@ class SchematicsBuilder:
         self.add_schematic(not_gate)
 
     def add_and(self):
-        and_gate = Circuit("AND", self._optimization_level)
+        and_gate = Circuit("AND")
         and_gate.add_component("NAND", self.get_schematic_idx(0))
         and_gate.add_component("NOT", self.get_schematic_idx(1))
         and_gate.connect_input("A", "NAND", "A")
@@ -82,10 +88,10 @@ class SchematicsBuilder:
         self.add_schematic(and_gate)
 
     def add_or(self):
-        or_gate = Circuit("OR", self._optimization_level)
-        or_gate.add_component("NAND_OUT", self.get_schematic_idx(0))
+        or_gate = Circuit("OR")
         or_gate.add_component("NAND_A", self.get_schematic_idx(0))
         or_gate.add_component("NAND_B", self.get_schematic_idx(0))
+        or_gate.add_component("NAND_OUT", self.get_schematic_idx(0))
 
         or_gate.connect_input("A", "NAND_A", "A")
         or_gate.connect_input("A", "NAND_A", "B")
@@ -100,7 +106,7 @@ class SchematicsBuilder:
         self.add_schematic(or_gate)
 
     def add_nor(self):
-        nor_gate = Circuit("NOR", self._optimization_level)
+        nor_gate = Circuit("NOR")
         nor_gate.add_component("OR", self.get_schematic_idx(3))
         nor_gate.add_component("NOT", self.get_schematic_idx(1))
 
@@ -114,7 +120,7 @@ class SchematicsBuilder:
         self.add_schematic(nor_gate)
 
     def add_xor(self):
-        xor_gate = Circuit("XOR", self._optimization_level)
+        xor_gate = Circuit("XOR")
         xor_gate.add_component("NAND_A", self.get_schematic_idx(0))
         xor_gate.add_component("NAND_B1", self.get_schematic_idx(0))
         xor_gate.add_component("NAND_B2", self.get_schematic_idx(0))
@@ -136,7 +142,7 @@ class SchematicsBuilder:
         self.add_schematic(xor_gate)
 
     def add_half_adder(self):
-        half_adder = Circuit("Half-Adder", self._optimization_level)
+        half_adder = Circuit("Half-Adder")
         half_adder.add_component("XOR", self.get_schematic_idx(5))
         half_adder.add_component("AND", self.get_schematic_idx(2))
 
@@ -151,7 +157,7 @@ class SchematicsBuilder:
         self.add_schematic(half_adder)
 
     def add_full_adder(self):
-        full_adder = Circuit("Full-Adder", self._optimization_level)
+        full_adder = Circuit("Full-Adder")
         full_adder.add_component("XOR_ONE", self.get_schematic_idx(5))
         full_adder.add_component("XOR_TWO", self.get_schematic_idx(5))
         full_adder.add_component("AND_ONE", self.get_schematic_idx(2))
@@ -178,7 +184,7 @@ class SchematicsBuilder:
         self.add_schematic(full_adder)
 
     def add_2bits_adder(self):
-        two_bits_adder = Circuit("2-Bits Adder", self._optimization_level)
+        two_bits_adder = Circuit("2-Bits Adder")
         two_bits_adder.add_component("ADDER_0", self.get_schematic_idx(7))
         two_bits_adder.add_component("ADDER_1", self.get_schematic_idx(7))
 
@@ -198,7 +204,7 @@ class SchematicsBuilder:
         self.add_schematic(two_bits_adder)
 
     def add_4bits_adder(self):
-        four_bits_adder = Circuit("4-Bits Adder", self._optimization_level)
+        four_bits_adder = Circuit("4-Bits Adder")
         four_bits_adder.add_component("2BITS_ADDER_0", self.get_schematic_idx(8))
         four_bits_adder.add_component("2BITS_ADDER_1", self.get_schematic_idx(8))
 
@@ -224,7 +230,7 @@ class SchematicsBuilder:
         self.add_schematic(four_bits_adder)
 
     def add_8bits_adder(self):
-        eight_bits_adder = Circuit("8-Bits Adder", self._optimization_level)
+        eight_bits_adder = Circuit("8-Bits Adder")
 
         eight_bits_adder.add_component("4BITS_ADDER_0", self.get_schematic_idx(9))
         eight_bits_adder.add_component("4BITS_ADDER_1", self.get_schematic_idx(9))

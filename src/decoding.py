@@ -1,7 +1,9 @@
 from typing import List, NamedTuple
 
 from schematics import Schematics
-from circuit import Circuit, CircuitKey, OptimizationLevel, get_wire_class
+from circuit import Circuit, CircuitKey
+from src.simulator_builder import OptimizationLevel
+from wire import Wire
 
 
 class _InputParameters(NamedTuple):
@@ -33,18 +35,13 @@ class DecodedCircuit(Circuit):
     It contains data that is not in the Circuit class, but is necessary to decode a circuit.
     """
 
-    def __init__(
-        self,
-        identifier: CircuitKey,
-        optimization_level: OptimizationLevel = OptimizationLevel.FAST,
-    ):
+    def __init__(self, identifier: CircuitKey):
         super().__init__(identifier)
         self.n_components = 0
         self.n_inputs = 0
         self.n_outputs = 0
         self.stashed_inputs: List[_InputParameters] = []
         self.stashed_connections: List[_ConnectionParameters] = []
-        self._optimization_level = optimization_level
 
     def stash_input(self, input: _InputParameters):
         """
@@ -99,25 +96,19 @@ class CircuitDecoder:
     One point important to reiterate is that the names of the circuits, inputs, and outputs are lost during the encoding. They are replaced by the index in which their appear. But the order, that defines the functionality, is preserved.
     """
 
-    def __init__(
-        self,
-        data: List[int],
-        optimization_level: OptimizationLevel = OptimizationLevel.FAST,
-    ):
+    def __init__(self, data: List[int], optimization_level: OptimizationLevel):
         self.data = data.copy()
-        self.schematics = Schematics()
-        self._optimization_level = optimization_level
+        self.schematics = Schematics(optimization_level)
 
         self.add_nand()  # TODO merge with schematics.addnand
 
         self.idx = 0
 
     def add_nand(self):
-        nand_gate = Circuit(0, self._optimization_level)
-        wire_class = get_wire_class(self._optimization_level)
-        nand_gate.inputs[0] = wire_class()
-        nand_gate.inputs[1] = wire_class()
-        nand_gate.outputs[0] = wire_class()
+        nand_gate = Circuit(0)
+        nand_gate.inputs[0] = Wire()
+        nand_gate.inputs[1] = Wire()
+        nand_gate.outputs[0] = Wire()
         self.schematics.add_schematic(nand_gate)
 
     def decode(self) -> Schematics:
@@ -125,7 +116,7 @@ class CircuitDecoder:
             # The index is used as the identifier of the circuit
             self.idx += 1
             # The current circuit being decoded
-            self.circuit = DecodedCircuit(self.idx, self._optimization_level)
+            self.circuit = DecodedCircuit(self.idx)
             self.decode_circuit()
             self.circuit.validate()
             self.circuit.apply_inputs()
@@ -189,8 +180,6 @@ class CircuitDecoder:
         Decode the 'input_idx'-th input of the 'component_idx'-th component of the circuit, originating from another component's outputs.
         """
         (source_idx, source_output_idx) = self.decode_component_wiring()
-
-        print(len(self.circuit.components)) if self.circuit.identifier == 10 else ""
 
         if source_output_idx is None:
             raise ValueError(

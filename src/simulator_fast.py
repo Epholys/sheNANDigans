@@ -1,17 +1,15 @@
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # Only imports the below statements during type checking
-    from circuit import Circuit
-
+from circuit import Circuit
 from simulator import Simulator
+from circuit_converter import set_wires
+from src.optimization_level import OptimizationLevel
 
 
 class SimulatorFast(Simulator):
     def __init__(self, circuit: Circuit):
-        super().__init__()
+        super().__init__(circuit)
+        set_wires(self.circuit, OptimizationLevel.FAST)
 
-    def simulate(self, circuit: Circuit):
+    def _simulate(self, circuit: Circuit):
         """
         Simulate the circuit's behavior.
 
@@ -28,8 +26,6 @@ class SimulatorFast(Simulator):
         Note:
             Increments self.miss counter when sub-component simulation fails
         """
-        super().simulate(circuit)
-
         if circuit.identifier == 0:
             self._simulate_nand(circuit)
             return True
@@ -37,9 +33,9 @@ class SimulatorFast(Simulator):
         # There are much more "elegant" ways to do it (using any for example), but my brain
         # isn't python-wired enough to be sure to understand it tomorrow.
         for component in circuit.components.values():
-            self.simulate(component)
+            self._simulate(component)
 
         return True
 
-    def reset(self, circuit: Circuit):
+    def _reset(self, circuit: Circuit):
         pass

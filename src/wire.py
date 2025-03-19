@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from enum import Enum, auto
 import itertools
 from typing import Any, Self
@@ -35,7 +34,7 @@ class WireExtendedState(Enum):
 type WireState = WireExtendedState | bool
 
 
-class Wire(ABC):
+class Wire:
     _id_generator = itertools.count()
 
     def __init__(self):
@@ -47,14 +46,12 @@ class Wire(ABC):
         self.id: int = next(Wire._id_generator)
 
     @property
-    @abstractmethod
     def state(self) -> WireState:
-        pass
+        raise TypeError("Trying to get the state of a bare Wire.")
 
     @state.setter
-    @abstractmethod
-    def state(self, value: WireState):
-        pass
+    def state(self, value: WireState) -> None:
+        raise TypeError("Trying to set the state of a bare Wire.")
 
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """
@@ -70,6 +67,14 @@ class Wire(ABC):
         new_wire = type(self)()
         memo[id(self)] = new_wire
         return new_wire
+
+    def __repr__(self):
+        """
+        Return detailed string representation of the wire.
+
+        Useful for debugging purpose, to easily track its ID through a circuit.
+        """
+        return f"Wire(id={self.id})"
 
 
 class WireDebug(Wire):

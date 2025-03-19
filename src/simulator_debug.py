@@ -1,16 +1,15 @@
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # Only imports the below statements during type checking
-    from circuit import Circuit
+from circuit import Circuit
 
 from simulator import Simulator
+from circuit_converter import set_wires
+from src.optimization_level import OptimizationLevel
 from wire import WireExtendedState
 
 
 class SimulatorDebug(Simulator):
     def __init__(self, circuit: Circuit):
-        super().__init__()
+        super().__init__(circuit)
+        set_wires(self.circuit, OptimizationLevel.DEBUG)
 
     def _can_simulate(self, circuit: Circuit) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""
@@ -24,7 +23,7 @@ class SimulatorDebug(Simulator):
             wire.state != WireExtendedState.UNKNOWN for wire in circuit.outputs.values()
         )
 
-    def simulate(self, circuit: Circuit) -> bool:
+    def _simulate(self, circuit: Circuit) -> bool:
         """
         Simulate the circuit's behavior.
 
@@ -41,8 +40,6 @@ class SimulatorDebug(Simulator):
         Note:
             Increments self.miss counter when sub-component simulation fails
         """
-        super().simulate(circuit)
-
         if not self._can_simulate(circuit) or self._was_simulated(circuit):
             return False
 
@@ -55,7 +52,7 @@ class SimulatorDebug(Simulator):
         while True:
             progress_made = False
             for component in circuit.components.values():
-                if self.simulate(component):
+                if self._simulate(component):
                     progress_made = True
 
             if not progress_made:
@@ -63,7 +60,7 @@ class SimulatorDebug(Simulator):
 
         return self._was_simulated(circuit)
 
-    def reset(self, circuit: Circuit):
+    def _reset(self, circuit: Circuit):
         """
         Reset the circuit to its initial state.
 
@@ -81,10 +78,4 @@ class SimulatorDebug(Simulator):
         self.components_stack = list(circuit.components.values())
 
         for component in circuit.components.values():
-            self.reset(component)
-
-    def debug_mode(self):
-        pass
-        # self.reset = self.reset_debug
-        # self.simulate = self.simulate_slow
-        # self.convert_wires_to_debug({})
+            self._reset(component)

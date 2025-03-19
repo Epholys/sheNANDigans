@@ -2,13 +2,14 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from itertools import product
 import multiprocessing
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import pytest
-from src.circuit import Circuit, Tuple, OptimizationLevel
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 from src.schematics import Schematics, SchematicsBuilder
+from src.simulator import SimulationErrorCode, SimulationResult, Simulator
+from src.simulator_builder import OptimizationLevel, build_simulator
 
 
 class NumericOperations:
@@ -29,160 +30,139 @@ class NumericOperations:
         return expected_outputs
 
 
+def check_simulation_failure(result: SimulationResult):
+    if not isinstance(result, SimulationErrorCode):
+        return
+
+    if result == SimulationErrorCode.SIZE_MISMATCH:
+        assert False, (
+            "Simulation impossible : mismatch of the length inputs or outputs."
+        )
+    elif result == SimulationErrorCode.SIMULATION_FAILURE:
+        assert False, "Simulation failed."
+
+
 def assert_simulation(data):
-    circuit: Circuit
-    n_inputs: int
+    simulator: Simulator
     n_outputs: int
     operations: NumericOperations
     circuit_inputs: Tuple[bool, ...]
-    circuit, n_inputs, n_outputs, operations, circuit_inputs = data
-    assert len(circuit.inputs) == n_inputs
-    input_wires = list(circuit.inputs.values())
-
-    assert len(circuit.outputs) == n_outputs
-    output_wires = list(circuit.outputs.values())
+    simulator, n_outputs, operations, circuit_inputs = data
 
     expected_outputs = operations.apply(circuit_inputs)
 
-    circuit.reset()
+    simulation_result = simulator.simulate(circuit_inputs, n_outputs)
 
-    for input_wire, input in zip(input_wires, circuit_inputs):
-        input_wire.state = input
-
-    assert circuit.simulate(), "Simulation failed"
-
-    actual_outputs = [bool(wire.state) for wire in output_wires]
-    assert actual_outputs == expected_outputs
+    check_simulation_failure(simulation_result)
+    assert simulation_result == expected_outputs
 
 
 class TestedCircuits:
     reference_circuits: Schematics | None = None
+    reference_simulators: List[Simulator] = []
     round_trip_circuits: Schematics | None = None
-    reference_circuits_debug: Schematics | None = None
-    round_trip_circuits_debug: Schematics | None = None
+    round_trip_simulator: List[Simulator] = []
 
 
 tested_circuits = TestedCircuits()
 
 
-def build_circuits(processing: str, debug: bool):
+def build_simulators(processing: str, optimization_level: OptimizationLevel):
     global tested_circuits
 
-    if not debug:
-        if tested_circuits.reference_circuits is None:
-            builder = SchematicsBuilder()
-            builder.build_circuits()
-            tested_circuits.reference_circuits = builder.schematics
-        if processing == "round_trip" and tested_circuits.round_trip_circuits is None:
-            encoded = CircuitEncoder(tested_circuits.reference_circuits).encode()
-            tested_circuits.round_trip_circuits = CircuitDecoder(encoded).decode()
-    else:
-        if tested_circuits.reference_circuits_debug is None:
-            builder = SchematicsBuilder(OptimizationLevel.DEBUG)
-            builder.build_circuits()
-            tested_circuits.reference_circuits_debug = builder.schematics
-        if (
-            processing == "round_trip"
-            and tested_circuits.round_trip_circuits_debug is None
-        ):
-            encoded = CircuitEncoder(tested_circuits.reference_circuits_debug).encode()
-            tested_circuits.round_trip_circuits_debug = CircuitDecoder(
-                encoded, OptimizationLevel.DEBUG
-            ).decode()
+    if processing != "reference" and processing != "round_trip":
+        raise ValueError("Unknown schematics request.")
+
+    if tested_circuits.reference_circuits is None:
+        builder = SchematicsBuilder(optimization_level)
+        builder.build_circuits()
+        tested_circuits.reference_circuits = builder.schematics
+        tested_circuits.reference_simulators = [
+            build_simulator(circuit, optimization_level)
+            for circuit in builder.schematics.get_all_schematics().values()
+        ]
+    if processing == "round_trip" and tested_circuits.round_trip_circuits is None:
+        encoded = CircuitEncoder(tested_circuits.reference_circuits).encode()
+        tested_circuits.round_trip_circuits = CircuitDecoder(
+            encoded, optimization_level
+        ).decode()
+        tested_circuits.round_trip_simulator = [
+            build_simulator(circuit, optimization_level)
+            for circuit in tested_circuits.round_trip_circuits.get_all_schematics().values()
+        ]
 
 
 @pytest.fixture(scope="function")
-def schematics(request):
-    processing, debug = request.param
+def simulators(request):
+    processing: str
+    optimization_level: OptimizationLevel
+    processing, optimization_level = request.param
 
     global tested_circuits
 
-    build_circuits(processing, debug)
+    build_simulators(processing, optimization_level)
 
     if processing == "reference":
-        if not debug:
-            return tested_circuits.reference_circuits
-        else:
-            return tested_circuits.reference_circuits_debug
+        return tested_circuits.reference_simulators
     elif processing == "round_trip":
-        if not debug:
-            return tested_circuits.round_trip_circuits
-        else:
-            return tested_circuits.round_trip_circuits_debug
+        return tested_circuits.round_trip_simulator
     else:
-        return None
+        raise ValueError("Unknown schematics request.")
 
 
 @pytest.mark.parametrize(
-    "schematics",
+    "simulators",
     [
-        pytest.param(("reference", False)),
-        pytest.param(("round_trip", False)),
-        pytest.param(("reference", True), marks=pytest.mark.debug),
-        pytest.param(("round_trip", True), marks=pytest.mark.debug),
+        pytest.param(("reference", OptimizationLevel.FAST)),
+        pytest.param(("round_trip", OptimizationLevel.FAST)),
+        pytest.param(("reference", OptimizationLevel.DEBUG), marks=pytest.mark.debug),
+        pytest.param(("round_trip", OptimizationLevel.DEBUG), marks=pytest.mark.debug),
     ],
-    indirect=["schematics"],
+    indirect=["simulators"],
 )
 class TestSchematics:
     def assert_2_in_1_out(
-        self, gate: Circuit, gate_logic: Callable[[bool, bool], bool]
+        self, simulator: Simulator, gate_logic: Callable[[bool, bool], bool]
     ):
-        assert len(gate.inputs) == 2
-        inputs = list(gate.inputs.values())
-        input_a = inputs[0]
-        input_b = inputs[1]
-
-        assert len(gate.outputs) == 1
-        output = list(gate.outputs.values())[0]
-
         possible_inputs = list(product([True, False], repeat=2))
         expected_outputs = [gate_logic(a, b) for a, b in possible_inputs]
 
         for (a, b), expected_output in zip(possible_inputs, expected_outputs):
-            gate.reset()
-            input_a.state = a
-            input_b.state = b
-            assert gate.simulate()
-            assert bool(output.state) == expected_output
+            result = simulator.simulate((a, b), 1)
+            check_simulation_failure(result)
+            assert result == [expected_output]
 
-    def test_nand(self, schematics):
-        nand_gate = schematics.get_schematic_idx(0)
-        self.assert_2_in_1_out(nand_gate, lambda a, b: not (a and b))
+    def test_nand(self, simulators):
+        nand = simulators[0]
+        self.assert_2_in_1_out(nand, lambda a, b: not (a and b))
 
-    def test_not(self, schematics):
-        not_gate = schematics.get_schematic_idx(1)
-
-        assert len(not_gate.inputs) == 1
-        input = list(not_gate.inputs.values())[0]
-
-        assert len(not_gate.outputs) == 1
-        output = list(not_gate.outputs.values())[0]
+    def test_not(self, simulators):
+        not_ = simulators[1]
 
         for a in [True, False]:
-            not_gate.reset()
-            input.state = a
-            assert not_gate.simulate()
-            assert bool(output.state) == (not a)
+            result = not_.simulate([a], 1)
+            check_simulation_failure(result)
+            assert result == [not a]
 
-    def test_and(self, schematics):
-        and_gate = schematics.get_schematic_idx(2)
-        self.assert_2_in_1_out(and_gate, lambda a, b: a and b)
+    def test_and(self, simulators):
+        and_ = simulators[2]
+        self.assert_2_in_1_out(and_, lambda a, b: a and b)
 
-    def test_or(self, schematics):
-        or_gate = schematics.get_schematic_idx(3)
-        self.assert_2_in_1_out(or_gate, lambda a, b: a or b)
+    def test_or(self, simulators):
+        or_ = simulators[3]
+        self.assert_2_in_1_out(or_, lambda a, b: a or b)
 
-    def test_nor(self, schematics):
-        nor_gate = schematics.get_schematic_idx(4)
-        self.assert_2_in_1_out(nor_gate, lambda a, b: not (a or b))
+    def test_nor(self, simulators):
+        nor = simulators[4]
+        self.assert_2_in_1_out(nor, lambda a, b: not (a or b))
 
-    def test_xor(self, schematics):
-        xor_gate = schematics.get_schematic_idx(5)
-        self.assert_2_in_1_out(xor_gate, lambda a, b: a ^ b)
+    def test_xor(self, simulators):
+        xor = simulators[5]
+        self.assert_2_in_1_out(xor, lambda a, b: a ^ b)
 
     def assert_numeric_operations(
         self,
-        circuit: Circuit,
+        simulator: Simulator,
         n_inputs: int,
         n_outputs: int,
         operations: NumericOperations,
@@ -190,8 +170,7 @@ class TestSchematics:
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
         cases = [
-            (circuit, n_inputs, n_outputs, operations, inputs)
-            for inputs in all_possible_inputs
+            (simulator, n_outputs, operations, inputs) for inputs in all_possible_inputs
         ]
 
         if n_inputs >= 16:
@@ -231,8 +210,8 @@ class TestSchematics:
             for case in cases:
                 assert_simulation(case)
 
-    def test_half_adder(self, schematics):
-        half_adder = schematics.get_schematic_idx(6)
+    def test_half_adder(self, simulators):
+        half_adder = simulators[6]
 
         # Inputs : a, b
         # Operation : a + b
@@ -255,8 +234,8 @@ class TestSchematics:
             NumericOperations(inputs_to_numbers, number_to_output, sum),
         )
 
-    def test_full_adder(self, schematics):
-        full_adder = schematics.get_schematic_idx(7)
+    def test_full_adder(self, simulators):
+        full_adder = simulators[7]
 
         # Inputs : a, b, cin
         # Operation : a + b + cin
@@ -281,8 +260,8 @@ class TestSchematics:
             ),
         )
 
-    def test_2bits_adder(self, schematics):
-        two_bits_adder = schematics.get_schematic_idx(8)
+    def test_2bits_adder(self, simulators):
+        two_bits_adder = simulators[8]
 
         # Inputs : a0, b0, c0, a1, b1
         # Outputs: s0, s1, cout
@@ -326,8 +305,8 @@ class TestSchematics:
             ),
         )
 
-    def test_4bits_adder(self, schematics):
-        four_bits_adder = schematics.get_schematic_idx(9)
+    def test_4bits_adder(self, simulators):
+        four_bits_adder = simulators[9]
 
         # Inputs : a0, b0, c0, a1, b1, a2, b2, a3, b3
         # Outputs: s0, s1, s2, s3, cout
@@ -391,8 +370,8 @@ class TestSchematics:
         return [a, b, c0]
 
     @pytest.mark.slow
-    def test_8bits_adder(self, schematics):
-        eight_bits_adder = schematics.get_schematic_idx(10)
+    def test_8bits_adder(self, simulators):
+        eight_bits_adder = simulators[10]
 
         # See other adders
 

@@ -5,10 +5,7 @@ from typing import Dict, List, Tuple
 
 import networkx
 
-from simulator_builder import OptimizationLevel, build_simulator, get_wire_class
-from simulator import Simulator
 from wire import Wire
-
 
 type Key = str | int
 type CircuitKey = Key
@@ -45,11 +42,7 @@ class Circuit:
     TODO Explain provenance model
     """
 
-    def __init__(
-        self,
-        identifier: CircuitKey,
-        optimization_level: OptimizationLevel = OptimizationLevel.FAST,
-    ):
+    def __init__(self, identifier: CircuitKey):
         """
         Initialize a new circuit with the given identifier.
         """
@@ -59,9 +52,6 @@ class Circuit:
         self.components: CircuitDict = dict()
         self.components_stack: List[Circuit] = []
         self.graph = networkx.DiGraph()
-        self._optimization_level = optimization_level
-        self._wire_class = get_wire_class(optimization_level)
-        self._simulator: Simulator = build_simulator(self, optimization_level)
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -93,7 +83,7 @@ class Circuit:
             )
 
         if input not in self.inputs:
-            self.inputs[input] = self._wire_class()
+            self.inputs[input] = Wire()
 
         # Setting 'input' as the 'target_input' doesn't work, there a edge cases.
         # A single input can be connected to several component's input(s).
@@ -212,8 +202,9 @@ class Circuit:
             )
             self._propagate_wire_update(subcomponents, old_wire, new_wire)
 
-    def concludes(self, recursive: bool):
-        # self.optimize(recursive)
+    def concludes(self, recursive: bool, optimize: bool):
+        if optimize:
+            self.optimize(recursive)
         self.validate()
 
     def validate(self) -> bool:
@@ -305,24 +296,6 @@ class Circuit:
             ordered_components[key] = component
         self.components = ordered_components
 
-    def set_optimization(self, level: OptimizationLevel):
-        from circuit_converter import convert_wires
-
-        if self._optimization_level == level:
-            pass
-
-        self._optimization_level = level
-        self._wire_class = get_wire_class(level)
-        convert_wires(self, self._wire_class)
-        self._simulator = build_simulator(self, level)
-
-    def reset(self):
-        self._simulator.reset(self)
-
-    def simulate(self) -> bool:
-        simulation = self._simulator.simulate(self)
-        return simulation
-
     def simulate_queue(self) -> bool:
         """
         Simulate the circuit's behavior.
@@ -372,7 +345,7 @@ class Circuit:
         Returns:
             Self: A new deepcopy object.
         """
-        new_circuit = type(self)(self.identifier, self._optimization_level)
+        new_circuit = type(self)(self.identifier)
         memo[id(self)] = new_circuit
 
         new_circuit.inputs = {

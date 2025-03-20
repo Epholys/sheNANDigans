@@ -2,7 +2,6 @@ import copy
 
 from typing import Dict, List
 
-import networkx
 
 from wire import Wire
 

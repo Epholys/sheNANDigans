@@ -58,54 +58,79 @@ def assert_simulation(data):
 
 
 class TestedCircuits:
-    reference_circuits: Schematics | None = None
-    reference_simulators: List[Simulator] = []
-    round_trip_circuits: Schematics | None = None
-    round_trip_simulator: List[Simulator] = []
+    reference: Schematics | None = None
+    round_trip: Schematics | None = None
 
 
-tested_circuits = TestedCircuits()
+class Simulators:
+    reference: List[Simulator] = []
+    round_trip: List[Simulator] = []
+
+
+# Todo lazy pytest ?
+
+circuits = TestedCircuits()
+simulators_fast = Simulators()
+simulators_debug = Simulators()
 
 
 def build_simulators(processing: str, optimization_level: OptimizationLevel):
-    global tested_circuits
+    global circuits
+    global simulators_fast
+    global simulators_debug
+
+    if optimization_level == OptimizationLevel.FAST:
+        simulators = simulators_fast
+    elif optimization_level == OptimizationLevel.DEBUG:
+        simulators = simulators_debug
+    else:
+        raise TypeError("Unknown OptimizationLevel.")
+
+    if circuits.reference is None:
+        builder = SchematicsBuilder(optimization_level)
+        builder.build_circuits()
+        circuits.reference = builder.schematics
+    if circuits.round_trip is None:
+        encoded = CircuitEncoder(circuits.reference).encode()
+        circuits.round_trip = CircuitDecoder(encoded, optimization_level).decode()
 
     if processing != "reference" and processing != "round_trip":
         raise ValueError("Unknown schematics request.")
 
-    if tested_circuits.reference_circuits is None:
-        builder = SchematicsBuilder(optimization_level)
-        builder.build_circuits()
-        tested_circuits.reference_circuits = builder.schematics
-        tested_circuits.reference_simulators = [
+    if processing == "reference" and len(simulators.reference) == 0:
+        simulators.reference = [
             build_simulator(circuit, optimization_level)
-            for circuit in builder.schematics.get_all_schematics().values()
+            for circuit in circuits.reference.get_all_schematics().values()
         ]
-    if processing == "round_trip" and tested_circuits.round_trip_circuits is None:
-        encoded = CircuitEncoder(tested_circuits.reference_circuits).encode()
-        tested_circuits.round_trip_circuits = CircuitDecoder(
-            encoded, optimization_level
-        ).decode()
-        tested_circuits.round_trip_simulator = [
+    if processing == "round_trip" and len(simulators.round_trip) == 0:
+        simulators.round_trip = [
             build_simulator(circuit, optimization_level)
-            for circuit in tested_circuits.round_trip_circuits.get_all_schematics().values()
+            for circuit in circuits.round_trip.get_all_schematics().values()
         ]
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def simulators(request):
     processing: str
     optimization_level: OptimizationLevel
     processing, optimization_level = request.param
 
-    global tested_circuits
+    global simulators_fast
+    global simulators_debug
+
+    if optimization_level == OptimizationLevel.FAST:
+        simulators = simulators_fast
+    elif optimization_level == OptimizationLevel.DEBUG:
+        simulators = simulators_debug
+    else:
+        raise TypeError("Unknown OptimizationLevel.")
 
     build_simulators(processing, optimization_level)
 
     if processing == "reference":
-        return tested_circuits.reference_simulators
+        return simulators.reference
     elif processing == "round_trip":
-        return tested_circuits.round_trip_simulator
+        return simulators.round_trip
     else:
         raise ValueError("Unknown schematics request.")
 

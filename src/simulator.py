@@ -21,6 +21,7 @@ class Simulator(ABC):
             return SimulationErrorCode.SIZE_MISMATCH
 
         self._reset(self.circuit)
+
         for wire, input in zip(self.circuit.inputs.values(), inputs):
             wire.state = input
 

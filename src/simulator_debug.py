@@ -1,3 +1,4 @@
+from typing import List
 from circuit import Circuit
 
 from simulator import Simulator
@@ -17,12 +18,6 @@ class SimulatorDebug(Simulator):
             wire.state != WireExtendedState.UNKNOWN for wire in circuit.inputs.values()
         )
 
-    def _was_simulated(self, circuit: Circuit) -> bool:
-        """Check if the circuit was simulated, meaning that all outputs are determined."""
-        return all(
-            wire.state != WireExtendedState.UNKNOWN for wire in circuit.outputs.values()
-        )
-
     def _simulate(self, circuit: Circuit) -> bool:
         """
         Simulate the circuit's behavior.
@@ -40,25 +35,26 @@ class SimulatorDebug(Simulator):
         Note:
             Increments self.miss counter when sub-component simulation fails
         """
-        if not self._can_simulate(circuit) or self._was_simulated(circuit):
+        if not self._can_simulate(circuit):
             return False
 
         if circuit.identifier == 0:
-            self._simulate_nand(circuit)
-            return True
+            return self._simulate_nand(circuit)
 
-        # There are much more "elegant" ways to do it (using any for example), but my brain
-        # isn't python-wired enough to be sure to understand it tomorrow.
+        components_queue: List[Circuit] = list(circuit.components.values())
+        left = len(components_queue)
         while True:
-            progress_made = False
-            for component in circuit.components.values():
-                if self._simulate(component):
-                    progress_made = True
+            to_simulate: int = left
+            for _ in range(to_simulate):
+                component = components_queue.pop(0)
+                if not self._simulate(component):
+                    components_queue.append(component)
+            left = len(components_queue)
 
-            if not progress_made:
+            if to_simulate == left:
                 break
 
-        return self._was_simulated(circuit)
+        return left == 0
 
     def _reset(self, circuit: Circuit):
         """
@@ -74,8 +70,6 @@ class SimulatorDebug(Simulator):
 
         for wire in circuit.outputs.values():
             wire.state = WireExtendedState.UNKNOWN
-
-        self.components_stack = list(circuit.components.values())
 
         for component in circuit.components.values():
             self._reset(component)

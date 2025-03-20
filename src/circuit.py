@@ -1,6 +1,6 @@
 import copy
 
-from typing import Dict, List
+from typing import Dict
 
 
 from wire import Wire
@@ -48,7 +48,6 @@ class Circuit:
         self.inputs: InputWireDict = dict()
         self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
-        self.components_stack: List[Circuit] = []
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component
@@ -212,42 +211,6 @@ class Circuit:
         # no unused components
         # all ins and all outs used
         # ins > 0, outs > 0, composants > 0
-
-        return True
-
-    def simulate_queue(self) -> bool:
-        """
-        Simulate the circuit's behavior.
-
-        Performs digital logic simulation by either:
-        1. For NAND gates (identifier=0): Directly computes NAND logic
-        2. For complex circuits: Iteratively simulates sub-components until either:
-           - All outputs are determined (success)
-           - Or no further progress can be made (deadlock)
-
-        Returns:
-            bool: True if simulation completed successfully (all outputs determined)
-                 False if simulation cannot proceed or is already complete
-
-        Note:
-            Increments self.miss counter when sub-component simulation fails
-        """
-        if self.identifier == 0:
-            # self._simulate_nand()
-            return True
-
-        # There are much more "elegant" ways to do it (using any for example), but my brain
-        # isn't python-wired enough to be sure to understand it tomorrow.
-        while True:
-            to_simulate = len(self.components_stack)
-            for _ in range(to_simulate):
-                component = self.components_stack.pop(0)
-                if not component.simulate_queue():
-                    self.components_stack.append(component)
-            left = len(self.components_stack)
-
-            if to_simulate == left:
-                break
 
         return True
 

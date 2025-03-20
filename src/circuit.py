@@ -50,7 +50,6 @@ class Circuit:
         self.outputs: OutputWireDict = dict()
         self.components: CircuitDict = dict()
         self.components_stack: List[Circuit] = []
-        self.graph = networkx.DiGraph()
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component

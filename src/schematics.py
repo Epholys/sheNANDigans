@@ -15,8 +15,7 @@ class Schematics:
         return identifier in self.library
 
     def add_schematic(self, circuit: Circuit):
-        optimize = not self._optimization_level == OptimizationLevel.DEBUG
-        circuit.concludes(recursive=False, optimize=optimize)
+        circuit.validate()
 
         if self.has_schematics(circuit.identifier):
             raise ValueError(f"Circuit {circuit.identifier} already exists")

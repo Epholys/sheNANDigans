@@ -1,7 +1,6 @@
 import copy
 
-from itertools import groupby
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import networkx
 
@@ -202,11 +201,6 @@ class Circuit:
             )
             self._propagate_wire_update(subcomponents, old_wire, new_wire)
 
-    def concludes(self, recursive: bool, optimize: bool):
-        if optimize:
-            self.optimize(recursive)
-        self.validate()
-
     def validate(self) -> bool:
         # TODO
         # Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?),
@@ -222,79 +216,6 @@ class Circuit:
         # ins > 0, outs > 0, composants > 0
 
         return True
-
-    def optimize(self, recursive: bool):
-        if len(self.components) == 0:
-            return
-
-        if recursive:
-            for component in self.components.values():
-                component.optimize(recursive)
-
-        components: List[Circuit] = [
-            component for component in self.components.values()
-        ]
-
-        raw_components_inputs: List[Tuple[str, List[Wire]]] = [
-            (f"comp_in_{component.identifier}_{idx}", list(component.inputs.values()))
-            for idx, component in enumerate(components)
-        ]
-
-        components_inputs: List[Tuple[str, Wire]] = [
-            (key, wire) for key, wires in raw_components_inputs for wire in wires
-        ]
-
-        raw_components_outputs: List[Tuple[str, List[Wire]]] = [
-            (f"comp_out_{component.identifier}_{idx}", list(component.outputs.values()))
-            for idx, component in enumerate(components)
-        ]
-
-        components_outputs: List[Tuple[str, Wire]] = [
-            (key, wire) for key, wires in raw_components_outputs for wire in wires
-        ]
-
-        inputs: List[Tuple[str, Wire]] = list(
-            (f"ct_in_{input[0]}_{idx}", input[1])
-            for idx, input in enumerate(self.inputs.items())
-        )
-        outputs: List[Tuple[str, Wire]] = list(
-            (f"ct_out_{output[0]}_{idx}", output[1])
-            for idx, output in enumerate(self.outputs.items())
-        )
-
-        for input in inputs:
-            for component_input in components_inputs:
-                if input[1].id == component_input[1].id:
-                    self.graph.add_edge(input[0], component_input[0])
-
-        for output in outputs:
-            for component_output in components_outputs:
-                if output[1].id == component_output[1].id:
-                    self.graph.add_edge(component_output[0], output[0])
-
-        for component_output in components_outputs:
-            for component_input in components_inputs:
-                if component_input[1] == component_output[1]:
-                    self.graph.add_edge(component_output[0], component_input[0])
-
-        sorted = list(networkx.topological_sort(self.graph))
-        components_named_duplicate = [key for key, _ in components_inputs]
-        components_named = [key for key, _ in groupby(components_named_duplicate)]
-        sorted_only_components = [
-            comp_name for comp_name in sorted if comp_name in components_named_duplicate
-        ]
-
-        indices_order: List[int] = []
-        for node in sorted_only_components:
-            indices_order.append(components_named.index(node))
-        components_list: List[Tuple[CircuitKey, "Circuit"]] = list(
-            self.components.items()
-        )
-        ordered_components: CircuitDict = {}
-        for index in indices_order:
-            (key, component) = components_list[index]
-            ordered_components[key] = component
-        self.components = ordered_components
 
     def simulate_queue(self) -> bool:
         """

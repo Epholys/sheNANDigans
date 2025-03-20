@@ -3,7 +3,7 @@ from circuit import Circuit
 
 from simulator import Simulator
 from circuit_converter import set_wires
-from src.optimization_level import OptimizationLevel
+from optimization_level import OptimizationLevel
 from wire import WireExtendedState
 
 

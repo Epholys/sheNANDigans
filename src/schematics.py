@@ -2,14 +2,12 @@ from copy import deepcopy
 from typing import OrderedDict
 
 from circuit import Circuit, CircuitDict, CircuitKey
-from src.optimization_level import OptimizationLevel
 from wire import Wire
 
 
 class Schematics:
-    def __init__(self, optimization_level: OptimizationLevel):
+    def __init__(self):
         self.library: CircuitDict = OrderedDict()
-        self._optimization_level = optimization_level
 
     def has_schematics(self, identifier: CircuitKey):
         return identifier in self.library
@@ -39,8 +37,8 @@ class Schematics:
 
 
 class SchematicsBuilder:
-    def __init__(self, optimization_level: OptimizationLevel):
-        self.schematics = Schematics(optimization_level)
+    def __init__(self):
+        self.schematics = Schematics()
 
     def add_schematic(self, circuit: Circuit):
         self.schematics.add_schematic(circuit)

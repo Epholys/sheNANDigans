@@ -45,9 +45,9 @@ class Circuit:
         Initialize a new circuit with the given identifier.
         """
         self.identifier = identifier
-        self.inputs: InputWireDict = dict()
-        self.outputs: OutputWireDict = dict()
-        self.components: CircuitDict = dict()
+        self.inputs: InputWireDict = {}
+        self.outputs: OutputWireDict = {}
+        self.components: CircuitDict = {}
 
     def add_component(self, name: CircuitKey, component: "Circuit"):
         self.components[name] = component

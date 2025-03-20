@@ -1,8 +1,8 @@
 from circuit import Circuit
 from simulator import Simulator
 from circuit_converter import set_wires
-from src.circuit_optimizer import optimize
-from src.optimization_level import OptimizationLevel
+from circuit_optimizer import optimize
+from optimization_level import OptimizationLevel
 
 
 class SimulatorFast(Simulator):

@@ -1,7 +1,7 @@
 from typing import Dict, Type
 
 from circuit import Circuit, PortWireDict
-from src.optimization_level import OptimizationLevel
+from optimization_level import OptimizationLevel
 from wire import Wire, WireDebug, WireFast
 
 

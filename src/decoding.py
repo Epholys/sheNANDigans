@@ -2,7 +2,6 @@ from typing import List, NamedTuple
 
 from schematics import Schematics
 from circuit import Circuit, CircuitKey
-from src.simulator_builder import OptimizationLevel
 from wire import Wire
 
 
@@ -96,9 +95,9 @@ class CircuitDecoder:
     One point important to reiterate is that the names of the circuits, inputs, and outputs are lost during the encoding. They are replaced by the index in which their appear. But the order, that defines the functionality, is preserved.
     """
 
-    def __init__(self, data: List[int], optimization_level: OptimizationLevel):
+    def __init__(self, data: List[int]):
         self.data = data.copy()
-        self.schematics = Schematics(optimization_level)
+        self.schematics = Schematics()
 
         self.add_nand()  # TODO merge with schematics.addnand
 

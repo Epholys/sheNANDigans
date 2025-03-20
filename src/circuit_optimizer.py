@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import networkx
 
-from src.circuit import Circuit, CircuitDict, CircuitKey, Wire
+from circuit import Circuit, CircuitDict, CircuitKey, Wire
 
 
 def optimize(circuit: Circuit):

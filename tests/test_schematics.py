@@ -5,10 +5,11 @@ import multiprocessing
 from typing import Callable, List, Tuple
 
 import pytest
+from src.circuit import Circuit
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 from src.schematics import Schematics, SchematicsBuilder
-from src.simulator import SimulationErrorCode, SimulationResult, Simulator
+from src.simulator import Simulator
 from src.simulator_builder import OptimizationLevel, build_simulator
 
 
@@ -30,30 +31,23 @@ class NumericOperations:
         return expected_outputs
 
 
-def check_simulation_failure(result: SimulationResult):
-    if not isinstance(result, SimulationErrorCode):
-        return
-
-    if result == SimulationErrorCode.SIZE_MISMATCH:
-        assert False, (
-            "Simulation impossible : mismatch of the length inputs or outputs."
-        )
-    elif result == SimulationErrorCode.SIMULATION_FAILURE:
-        assert False, "Simulation failed."
+def assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
+    assert len(circuit.inputs) == n_inputs
+    assert len(circuit.outputs) == n_outputs
 
 
 def assert_simulation(data):
     simulator: Simulator
-    n_outputs: int
     operations: NumericOperations
     circuit_inputs: Tuple[bool, ...]
-    simulator, n_outputs, operations, circuit_inputs = data
+    simulator, operations, circuit_inputs = data
 
     expected_outputs = operations.apply(circuit_inputs)
 
-    simulation_result = simulator.simulate(circuit_inputs, n_outputs)
+    simulation_result = simulator.simulate(circuit_inputs)
+    if not simulation_result:
+        assert False, "Simulation Failed"
 
-    check_simulation_failure(simulation_result)
     assert simulation_result == expected_outputs
 
 
@@ -87,12 +81,12 @@ def build_simulators(processing: str, optimization_level: OptimizationLevel):
         raise TypeError("Unknown OptimizationLevel.")
 
     if circuits.reference is None:
-        builder = SchematicsBuilder(optimization_level)
+        builder = SchematicsBuilder()
         builder.build_circuits()
         circuits.reference = builder.schematics
     if circuits.round_trip is None:
         encoded = CircuitEncoder(circuits.reference).encode()
-        circuits.round_trip = CircuitDecoder(encoded, optimization_level).decode()
+        circuits.round_trip = CircuitDecoder(encoded).decode()
 
     if processing != "reference" and processing != "round_trip":
         raise ValueError("Unknown schematics request.")
@@ -149,12 +143,15 @@ class TestSchematics:
     def assert_2_in_1_out(
         self, simulator: Simulator, gate_logic: Callable[[bool, bool], bool]
     ):
+        assert_circuit_signature(simulator._circuit, n_inputs=2, n_outputs=1)
+
         possible_inputs = list(product([True, False], repeat=2))
         expected_outputs = [gate_logic(a, b) for a, b in possible_inputs]
 
         for (a, b), expected_output in zip(possible_inputs, expected_outputs):
-            result = simulator.simulate((a, b), 1)
-            check_simulation_failure(result)
+            result = simulator.simulate((a, b))
+            if not result:
+                assert False, "Simulation Failed"
             assert result == [expected_output]
 
     def test_nand(self, simulators):
@@ -165,8 +162,9 @@ class TestSchematics:
         not_ = simulators[1]
 
         for a in [True, False]:
-            result = not_.simulate([a], 1)
-            check_simulation_failure(result)
+            result = not_.simulate([a])
+            if not result:
+                assert False, "Simulation Failed"
             assert result == [not a]
 
     def test_and(self, simulators):
@@ -192,11 +190,11 @@ class TestSchematics:
         n_outputs: int,
         operations: NumericOperations,
     ):
+        assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
+
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
-        cases = [
-            (simulator, n_outputs, operations, inputs) for inputs in all_possible_inputs
-        ]
+        cases = [(simulator, operations, inputs) for inputs in all_possible_inputs]
 
         if n_inputs >= 16:
             n_tasks = len(cases)

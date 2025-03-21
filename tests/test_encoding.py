@@ -1,18 +1,15 @@
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
-from src.optimization_level import OptimizationLevel
 from src.schematics import SchematicsBuilder
 
 
 def test_roundtrip():
-    builder = SchematicsBuilder(OptimizationLevel.FAST)
+    builder = SchematicsBuilder()
     builder.build_circuits()
     schematics = builder.schematics
 
     reference_encoding = CircuitEncoder(schematics).encode()
-    round_trip_schematics = CircuitDecoder(
-        reference_encoding, OptimizationLevel.FAST
-    ).decode()
+    round_trip_schematics = CircuitDecoder(reference_encoding).decode()
     round_trip_encoding = CircuitEncoder(round_trip_schematics).encode()
 
     if reference_encoding != round_trip_encoding:

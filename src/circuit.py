@@ -1,10 +1,11 @@
-import copy
 
 from typing import Dict
 
 
 from wire import Wire
 
+# Type aliasing definition. There is a lot of them, but it's easier when developing to
+# have clear hints.
 type Key = str | int
 type CircuitKey = Key
 type InputKey = Key
@@ -16,247 +17,210 @@ type CircuitDict = Dict[CircuitKey, "Circuit"]
 
 
 class Circuit:
-    """
-    Represents a digital circuit composed of components and their interconnections.
+    """A digital circuit recursively composed of other circuits
+    and their interconnections.
 
-    A circuit is a collection of components (sub-circuits) connected by wires.
-    It maintains its own inputs, outputs, and internal components, allowing
-    for hierarchical circuit construction.
+    A circuit is a collection of inputs, outputs, and components connected by wires.
+    As components are circuit themselves, it's internal representation is close to
+    a tree.
 
-    Special case: When identifier=0, the circuit acts as a NAND gate,
-    implementing the basic NAND logic operation.
+    The attributes are dictionaries, and depends on them being ordered. Which they are
+    since Python 3.7
 
-    The attributes are ordered dictionaries, to maintain correct simulation after
-    an encoding-decoding round-trip.
+    This class is used as the data structure for all other parts of this project,
+    and as a builder of these data.
 
-    Attributes: # TODO change : auto change ?
-        identifier (str): Unique identifier for the circuit
-        inputs (OrderedDict[Any, Wire]): Input wires of the circuit
-        outputs (OrderedDict[Any, Wire]): Output wires of the circuit
-        components (OrderedDict[Any, Circuit]): Components of the circuit
-        miss (int): Counter of the failed NAND simulation attempts
+    This data structure is independent of simulations and encoding. However, the NAND
+    logic gate is implicitly used in all of these applications. As such, the int
+    identifier '0' is reserved for it, and it's also expected that the leaves of
+    the tree-like components structure are composed exclusively of these gates.
 
-    TODO Add Example
-    TODO Explain provenance model
+    Attributes:
+        identifier: Identifier of the circuit. Uniqueness is necessary if
+        several circuits are bundled into a Schematics library. 0 is reserved for
+        the base NAND circuit.
+
+        inputs: Input wires of the circuit
+        outputs: Output wires of the circuit
+        components: Components of the circuit
     """
 
     def __init__(self, identifier: CircuitKey):
-        """
-        Initialize a new circuit with the given identifier.
-        """
         self.identifier = identifier
         self.inputs: InputWireDict = {}
         self.outputs: OutputWireDict = {}
         self.components: CircuitDict = {}
 
-    def add_component(self, name: CircuitKey, component: "Circuit"):
-        self.components[name] = component
+    def add_component(self, id: CircuitKey, component: "Circuit"):
+        """Add a component.
+
+        Args:
+            id: Identifier of the component.
+            component: The component itself.
+        """
+        self.components[id] = component
 
     def connect_input(
-        self, input: InputKey, target_name: CircuitKey, target_input: InputKey
+        self, input: InputKey, target_id: CircuitKey, target_input: InputKey
     ):
-        """
-        Connect an input wire to a component's input port.
+        """Connect an input wire to a component's input port.
 
         Creates a new input wire if it doesn't exist and connects it to the specified
         component's input port. The connection is propagated through the circuit.
 
         Args:
-            input: ID of the input wire to create/connect
-            target_name: ID of the component to connect to
-            target_input: ID of the input port on the target component
+            input: Identifier of the input wire to create/connect
+            target_name: Identifier of the component to connect to
+            target_input: Identifier of the input port on the target component
 
         Raises:
             ValueError: If the target or its input doesn't exists
         """
-        if target_name not in self.components:
-            raise ValueError(f"Component {target_name} does not exist")
-        target = self.components[target_name]
+        if target_id not in self.components:
+            raise ValueError(f"The component {target_id} does not exist.")
+        target = self.components[target_id]
 
         if target_input not in target.inputs:
             raise ValueError(
-                f"Component {target_name} does not have input wire {target_input}"
+                f"The component {target_id} does not have input wire {target_input}."
             )
 
         if input not in self.inputs:
             self.inputs[input] = Wire()
 
-        # Setting 'input' as the 'target_input' doesn't work, there a edge cases.
+        # The assignment ordering dance is necessary. Setting 'input' as the
+        # 'target_input' doesn't work, there is an edge case.
         # A single input can be connected to several component's input(s).
         # So, it's the components' target inputs that must be set and propagated.
         wire = self.inputs[input]
         old_wire = target.inputs[target_input]
         target.inputs[target_input] = wire
 
-        # Update all matching wire references in the component hierarchy
+        # Update all matching wire references in the component hierarchy.
         self._propagate_wire_update(target, old_wire, wire)
 
     def connect_output(
         self, output: OutputKey, source_name: CircuitKey, source_output: OutputKey
     ):
-        """
-        Connect an output wire to a component's output port.
+        """Connect an output wire to a component's output port.
 
         Creates a new output wire if it doesn't exist and connects it to the specified
-        component's output port. The connection is propagated through the circuit.
+        component's output port.
 
         Args:
-            output: ID of the output wire to create/connect
-            source_component: ID of the component to connect to
-            source_output: ID Name of the output port on the source component
+            output: Identifier of the output wire to create/connect.
+            source_name: Identifier of the component to connect to
+            source_output: Identifier of the output port on the source component
 
         Raises:
             ValueError: If the source or its output doesn't exist
         """
         if source_name not in self.components:
-            raise ValueError(f"Component {source_name} does not exist")
+            raise ValueError(f"The component {source_name} does not exist.")
         source = self.components[source_name]
 
         if source_output not in source.outputs:
             raise ValueError(
-                f"Component {source_name} does not have output wire {source_output}"
+                f"The component {source_name} does not have output wire {source_output}."
             )
 
-        # Contrary to connecting an input, connecting a output is straightforward: the circuit's
-        # output can only come from a single component.
+        # Contrary to the connection of an input, connecting an output is
+        # straightforward: the circuit's output can only come from a single component.
         self.outputs[output] = source.outputs[source_output]
 
     def connect(
         self,
-        source_name: CircuitKey,
+        source_id: CircuitKey,
         source_output: OutputKey,
-        target_name: CircuitKey,
+        target_id: CircuitKey,
         target_input: InputKey,
     ):
-        """
-        Connect an output port of one component to an input port of another component.
+        """Connect an output port of one component to an input port of another component
 
-        Connect two components in the circuit by replacing the target component's input wire
-        by the source component's output. The connection is propagated through the circuit hierarchy.
+        Connect two components in the circuit by replacing the target component's input
+        wire by the source component's output. The connection is propagated through the
+        circuit hierarchy.
 
         Args:
-            source_component: ID of the component providing the output
-            source_output: ID of the output port on the source component
-            target_component: ID of the component receiving the input
-            target_input: ID of the input port on the target component
+            source_id: Identifier of the component providing the output.
+            source_output: Identifier of the output port on the source component.
+            target_id: Identifier of the component receiving the input.
+            target_input: Identifier of the input port on the target component.
 
         Raises:
-            ValueError: If either component doesn't exist in the circuit
-            ValueError: If the specified output port doesn't exist on source component
+            ValueError: If either component doesn't exist in the circuit or if the
+            specified ports doesn't exist on source or target components.
         """
-        if source_name not in self.components:
+        if source_id not in self.components:
             raise ValueError(
-                f"Source component ({source_name}) component does not exist"
+                f"The source component ({source_id}) component does not exist."
             )
 
-        if target_name not in self.components:
+        if target_id not in self.components:
             raise ValueError(
-                f"Target component ({target_name}) component does not exist"
+                f"The target component ({target_id}) component does not exist."
             )
 
-        source = self.components[source_name]
-        target = self.components[target_name]
+        source = self.components[source_id]
+        target = self.components[target_id]
 
         if source_output not in source.outputs:
             raise ValueError(
-                f"Source component {source_name} has no output {source_output}"
+                f"The source component {source_id} has no output {source_output}."
             )
 
         if target_input not in target.inputs:
             raise ValueError(
-                f"Source component {target_name} has no input {target_input}"
+                f"The source component {target_id} has no input {target_input}."
             )
 
+        # Same logic as the connect_input() method.
         wire = source.outputs[source_output]
         old_wire = target.inputs[target_input]
-
         target.inputs[target_input] = wire
 
+        # Update all matching wire references in the component hierarchy.
         self._propagate_wire_update(target, old_wire, wire)
 
     def _propagate_wire_update(
         self, component: "Circuit", old_wire: Wire, new_wire: Wire
     ):
-        """
-        Recursively update all matching wire references in a component hierarchy.
+        """Recursively update all matching wire references in a component hierarchy.
 
         Traverses the entire component tree to ensure consistent wire connections.
         When a wire is replaced, all references to the old wire must be updated.
 
-        This is necessary because updating the input of a component does not update
-        the linked inputs of its own components.
-
         Args:
-            component: Starting component for the recursive update
-            old_wire: Wire to replace
-            new_wire: Wire to replace with
+            component: The starting component from which the wires must be recursively
+            updated.
+
+            old_wire: Wire to replace.
+            new_wire: Wire to replace with.
         """
-        for subcomponents in component.components.values():
-            wire_dict = subcomponents.inputs
-            wire_dict.update(
-                {k: new_wire for k, w in wire_dict.items() if w.id == old_wire.id}
-            )
-            self._propagate_wire_update(subcomponents, old_wire, new_wire)
-
-    def validate(self) -> bool:
-        # TODO
-        # Tous les in sont câblés, tous les outs sont câblés, tous les composants sont câblés (?),
-        # outs <-!-> ins
-        # no cycles
-        # https://en.wikipedia.org/wiki/Topological_sorting https://docs.python.org/3/library/graphlib.html
-        # https://networkx.org/documentation/stable/
-        # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.dag.is_directed_acyclic_graph.html#networkx.algorithms.dag.is_directed_acyclic_graph
-        # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.is_weakly_connected.html
-        # no dangling wires
-        # no unused components
-        # all ins and all outs used
-        # ins > 0, outs > 0, composants > 0
-
-        return True
-
-    def __deepcopy__(self, memo):
-        """Create a deep copy of the wire with a new unique ID.
-
-        Technically, this method isn't necessary: the default Python's deepcopy method is enough.
-        I still prefer to define it: Wire must define this method, so this is a way to
-        have an explicit control flow.
-
-        Args:
-            memo (Any): The memory of already copied objects.
-
-        Returns:
-            Self: A new deepcopy object.
-        """
-        new_circuit = type(self)(self.identifier)
-        memo[id(self)] = new_circuit
-
-        new_circuit.inputs = {
-            key: copy.deepcopy(wire, memo) for key, wire in self.inputs.items()
-        }
-        new_circuit.outputs = {
-            key: copy.deepcopy(wire, memo) for key, wire in self.outputs.items()
-        }
-        new_circuit.components = {
-            key: copy.deepcopy(wire, memo) for key, wire in self.components.items()
-        }
-
-        return new_circuit
+        for sub_components in component.components.values():
+            wire_dict = sub_components.inputs
+            updates = {k: new_wire for k, w in wire_dict.items() if w.id == old_wire.id}
+            if len(updates) != 0:
+                wire_dict.update(updates)
+                self._propagate_wire_update(sub_components, old_wire, new_wire)
 
     def __str__(self, indent: int = 0):
-        """
-        Human-readable string representation of the Circuit with clear indentation.
+        """Human-readable string representation of the Circuit with clear indentation.
         Shows basic information about the circuit structure in a compact format.
+
+        The goal is to represent the structure itself: so the type or state of the wires
+        are not included, only their identifier.
         """
         indent_str = " " * indent
 
         # Format input wires
-        inputs_str = ", ".join(f"{k}: W({v.id}, {v})" for k, v in self.inputs.items())
+        inputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.inputs.items())
 
         # Format output wires
-        outputs_str = ", ".join(f"{k}: W({v.id}, {v})" for k, v in self.outputs.items())
+        outputs_str = ", ".join(f"{k}: : {v.id}" for k, v in self.outputs.items())
 
         representation = (
-            f"C(id={self.identifier}, inputs=({inputs_str}), outputs=({outputs_str})"
+            f"({self.identifier}, inputs={{{inputs_str}}}, outputs={{{outputs_str}}}"
         )
 
         # Format components (only for non-NAND gates)
@@ -277,11 +241,10 @@ class Circuit:
 
         representation += ")"
 
-        # Build the final representation
         return representation
 
     def __repr__(self, indent: int = 4):
-        """Complete debug string of the Circuit, trying to make it legible with indentation"""
+        """Complete debug string of the Circuit, with indentation to make it legible."""
         indent_str = " " * indent
 
         # Format input wires
@@ -291,7 +254,7 @@ class Circuit:
         outputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.outputs.items())
 
         representation = (
-            f"Circuit(id={self.identifier}"
+            f"Circuit(identifier={self.identifier}"
             f", inputs=({inputs_str})"
             f", outputs=({outputs_str})"
         )
@@ -314,5 +277,4 @@ class Circuit:
 
         representation += ")"
 
-        # Build the final representation
         return representation

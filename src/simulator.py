@@ -1,34 +1,36 @@
-from enum import Enum, auto
-from typing import Sequence
+from typing import Literal, Sequence
 from circuit import Circuit
 from abc import ABC, abstractmethod
 
 
-class SimulationErrorCode(Enum):
-    SIZE_MISMATCH = auto()
-    SIMULATION_FAILURE = auto()
-
-
-type SimulationResult = Sequence[bool] | SimulationErrorCode
+type SimulationResult = Sequence[bool] | Literal[False]
 
 
 class Simulator(ABC):
+    """_summary_
+
+    TODO : Tell about NAND
+
+    Args:
+        ABC (_type_): _description_
+    """
+
     def __init__(self, circuit: Circuit):
-        self.circuit = circuit
+        self._circuit = circuit
+        self._was_simulated = False
 
-    def simulate(self, inputs: Sequence[bool], n_outputs: int) -> SimulationResult:
-        if not self._check_size(len(inputs), n_outputs):
-            return SimulationErrorCode.SIZE_MISMATCH
+    def simulate(self, inputs: Sequence[bool]) -> SimulationResult:
+        self._reset(self._circuit)
 
-        self._reset(self.circuit)
-
-        for wire, input in zip(self.circuit.inputs.values(), inputs):
+        for wire, input in zip(self._circuit.inputs.values(), inputs):
             wire.state = input
 
-        if not self._simulate(self.circuit):
-            return SimulationErrorCode.SIMULATION_FAILURE
+        if not self._simulate(self._circuit):
+            return False
 
-        return [bool(wire.state) for wire in list(self.circuit.outputs.values())]
+        self._was_simulated = True
+
+        return [bool(wire.state) for wire in list(self._circuit.outputs.values())]
 
     @abstractmethod
     def _reset(self, circuit: Circuit):
@@ -49,6 +51,18 @@ class Simulator(ABC):
 
     def _check_size(self, n_inputs: int, n_outputs: int) -> bool:
         return (
-            len(self.circuit.inputs) == n_inputs
-            and len(self.circuit.outputs) == n_outputs
+            len(self._circuit.inputs) == n_inputs
+            and len(self._circuit.outputs) == n_outputs
+        )
+
+    def __str__(self):
+        ins = "".join([str(wire) for wire in self._circuit.inputs.values()])
+        outs = "".join([str(wire) for wire in self._circuit.outputs.values()])
+        simulated = "simulated" if self._was_simulated else "not simulated"
+        return f"{self._circuit.identifier} {simulated}: {ins} -> {outs}"
+
+    def __repr__(self):
+        return (
+            f"{type(self).__name__}(_was_simulated={self._was_simulated}, "
+            f"circuit=\n {repr(self._circuit)})"
         )

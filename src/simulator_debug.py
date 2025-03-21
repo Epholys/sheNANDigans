@@ -10,7 +10,7 @@ from wire import WireExtendedState
 class SimulatorDebug(Simulator):
     def __init__(self, circuit: Circuit):
         super().__init__(circuit)
-        set_wires(self.circuit, OptimizationLevel.DEBUG)
+        set_wires(self._circuit, OptimizationLevel.DEBUG)
 
     def _can_simulate(self, circuit: Circuit) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""

@@ -8,8 +8,8 @@ from optimization_level import OptimizationLevel
 class SimulatorFast(Simulator):
     def __init__(self, circuit: Circuit):
         super().__init__(circuit)
-        optimize(self.circuit)
-        set_wires(self.circuit, OptimizationLevel.FAST)
+        optimize(self._circuit)
+        set_wires(self._circuit, OptimizationLevel.FAST)
 
     def _simulate(self, circuit: Circuit):
         """

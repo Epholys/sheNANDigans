@@ -4,6 +4,12 @@ from typing import Any, Self
 
 
 class WireExtendedState(Enum):
+    """The possible states of a Wire.
+
+    This is an "extended state", as it allows an Unknown state to represent
+    uninitialized or not yet computed values.
+    """
+
     UNKNOWN = auto()
     OFF = auto()
     ON = auto()
@@ -40,7 +46,7 @@ type WireState = WireExtendedState | bool
 
 
 class Wire:
-    """Represents a Wire connecting components in a digital circuit.
+    """A Wire connecting components in a digital circuit.
 
     This is a "bare" wire containing only an identifier, in order to build circuits. The
     different type of wires with states used for simulation are child classes.
@@ -66,7 +72,8 @@ class Wire:
     def state(self, value: WireState) -> None:
         raise TypeError("Trying to set the state of a bare Wire.")
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Returns a placeholder as there isn't any underlying state."""
         return "X"
 
     def __repr__(self):
@@ -79,8 +86,7 @@ class Wire:
 
 
 class WireDebug(Wire):
-    """
-    Implementation of a Wire in a digital circuit used for debugging.
+    """A Wire in a digital circuit used for debugging.
 
     Its internal state can not only be ON or OFF, but also UNKNOWN.
     It's useful for debugging, as the unknown state during simulation indicates an error
@@ -108,36 +114,23 @@ class WireDebug(Wire):
             )
 
     def __str__(self):
+        """Returns the underlying state"""
         return str(self._state)
 
     def __repr__(self):
-        """
-        Return detailed string representation of the wire.
-
-        Useful for debugging purpose, to easily track its ID through a circuit.
-        """
+        """Return the full definition of the Wire, including its id."""
         return f"{type(self).__name__}(id={self.id}, state={repr(self._state)}"
 
 
 class WireFast(Wire):
-    """
-    Represents a wire in a digital circuit that carry binary signals.
+    """A Wire in a digital circuit that carries binary signals.
 
-    A wire connects the components in the circuits.
-    It maintains a state (On/Off/Unknown) and has a unique identifier for tracking
-    connections throughout the circuit.
-
-    Attributes:
-        state (WireState): The current state of the wire
-        id (int): Unique identifier for tracking connections
+    This is a "classic" wire, containing a boolean for its state. As such, it's faster
+    than having a more complex state, but there isn't any security if a definition or a
+    simulation is wrong.
     """
 
     def __init__(self):
-        """
-        Initialize a new wire with a unique ID.
-
-        The ID allow to quick check while debugging
-        """
         super().__init__()
         self._state: bool = False
 
@@ -156,17 +149,8 @@ class WireFast(Wire):
             )
 
     def __str__(self):
-        """
-        Return simple string representation of wire state (0/1/X).
-
-        Useful to check the simulations results.
-        """
+        """Returns the underlying state"""
         return "1" if self._state else "0"
 
     def __repr__(self):
-        """
-        Return detailed string representation of the wire.
-
-        Useful for debugging purpose, to easily track its ID through a circuit.
-        """
         return f"WireFast(id={self.id}, state={self._state})"

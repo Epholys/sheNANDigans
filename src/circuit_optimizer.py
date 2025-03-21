@@ -15,7 +15,7 @@ def optimize(circuit: Circuit):
 
     graph = networkx.DiGraph()
 
-    components: List[Circuit] = [component for component in circuit.components.values()]
+    components: List[Circuit] = list(circuit.components.values())
 
     raw_components_inputs: List[Tuple[str, List[Wire]]] = [
         (f"comp_in_{component.identifier}_{idx}", list(component.inputs.values()))
@@ -35,14 +35,14 @@ def optimize(circuit: Circuit):
         (key, wire) for key, wires in raw_components_outputs for wire in wires
     ]
 
-    inputs: List[Tuple[str, Wire]] = list(
+    inputs: List[Tuple[str, Wire]] = [
         (f"ct_in_{input[0]}_{idx}", input[1])
         for idx, input in enumerate(circuit.inputs.items())
-    )
-    outputs: List[Tuple[str, Wire]] = list(
+    ]
+    outputs: List[Tuple[str, Wire]] = [
         (f"ct_out_{output[0]}_{idx}", output[1])
         for idx, output in enumerate(circuit.outputs.items())
-    )
+    ]
 
     for input in inputs:
         for component_input in components_inputs:

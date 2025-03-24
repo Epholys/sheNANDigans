@@ -11,4 +11,4 @@ def build_simulator(circuit: Circuit, level: OptimizationLevel) -> Simulator:
         case OptimizationLevel.FAST:
             return SimulatorFast(circuit)
         case _:
-            raise ValueError("Unkonwn OptimizationLevel.")
+            raise ValueError("Unknown OptimizationLevel.")

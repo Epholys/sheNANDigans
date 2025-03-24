@@ -6,12 +6,7 @@ from wire import Wire
 
 
 class _InputParameters(NamedTuple):
-    """
-    The parameters to connect an input to a circuit.
-
-    The rational is that the inputs' order must be preserved from the encoded circuit,
-    but the encoded inputs are not necessarily in order. As such, we stash them and connect them later.
-    """
+    """The parameters to connect an input of a circuit."""
 
     input_index: int
     component_key: CircuitKey
@@ -19,7 +14,7 @@ class _InputParameters(NamedTuple):
 
 
 class _ConnectionParameters(NamedTuple):
-    """ """
+    """The parameters to connect two components."""
 
     source_key: int
     source_output: int
@@ -27,11 +22,19 @@ class _ConnectionParameters(NamedTuple):
     target_input: int
 
 
-class DecodedCircuit(Circuit):
-    """
-    An intermediate class to decode a circuit.
+class _DecodedCircuit(Circuit):
+    """An intermediate class to decode a circuit.
 
-    It contains data that is not in the Circuit class, but is necessary to decode a circuit.
+    It contains information that is not in the Circuit class,
+    but is necessary to decode a circuit, or at least to
+    check the correctness of the encoded data.
+
+    Attributes:
+        n_components: The number of components in the circuit.
+        n_inputs: The number of inputs in the circuit.
+        n_outputs: The number of outputs in the circuit.
+        stashed_inputs: The inputs that are stashed to be connected later.
+        stashed_connections: The connections that are stashed to be connected later.
     """
 
     def __init__(self, identifier: CircuitKey):
@@ -43,16 +46,19 @@ class DecodedCircuit(Circuit):
         self.stashed_connections: List[_ConnectionParameters] = []
 
     def stash_input(self, input: _InputParameters):
-        """
-        Stash an input to connect it later.
-        """
+        """Stash a circuit's input to connect it later."""
         self.stashed_inputs.append(input)
 
     def apply_inputs(self):
-        """
-        Connect the inputs according to their input_index.
+        """Connect the inputs according to their input_index.
 
-        Note : the index is at the same time the ordering and the identifier of the input.
+        The index is at the same time the ordering and the identifier of the input.
+
+        This is necessary because the encoding does not define the inputs themselves.
+        They are implicitly defined by their appearance during the decoding of the
+        component's inputs. But these appearances are not necessarily in order, so
+        we need to stash them and connect them later. Otherwise, the inputs order is
+        mixed, and the decoded circuit is incorrect.
         """
         self.stashed_inputs.sort(key=lambda x: x.input_index)
         for input in self.stashed_inputs:
@@ -63,16 +69,15 @@ class DecodedCircuit(Circuit):
             )
 
     def stash_connection(self, connection: _ConnectionParameters):
-        """
-        Stash an input to connect it later.
-        """
+        """Stash a connection to apply it later."""
         self.stashed_connections.append(connection)
 
     def apply_connections(self):
-        """
-        Connect the inputs according to their input_index.
+        """Apply the stashed connections.
 
-        Note : the index is at the same time the ordering and the identifier of the input.
+        This is necessary because the components can refer to other components
+        that are not decoded yet. As such, we need to stash the connections
+        and apply them later.
         """
         for connection in self.stashed_connections:
             self.connect(
@@ -82,28 +87,28 @@ class DecodedCircuit(Circuit):
                 connection.target_input,
             )
 
-    def validate(self) -> bool:
-        return super().validate()
-
 
 class CircuitDecoder:
     """
     Decode the data into circuits.
 
-    Please look at the CircuitEncoder to understand the encoding format.
+    Please look at the CircuitEncoder as a reference for the encoding format.
 
-    One point important to reiterate is that the names of the circuits, inputs, and outputs are lost during the encoding. They are replaced by the index in which their appear. But the order, that defines the functionality, is preserved.
+    One important point to reiterate is that the names of the circuits, inputs,
+    and outputs are lost during the encoding. They are replaced by the index in which
+    they appear. But that order, which defines the functionality, is preserved.
     """
 
     def __init__(self, data: List[int]):
         self.data = data.copy()
         self.schematics = Schematics()
 
-        self.add_nand()  # TODO merge with schematics.addnand
+        self._add_nand()  # TODO merge with schematics.add_nand
 
         self.idx = 0
 
-    def add_nand(self):
+    def _add_nand(self):
+        """Add the base NAND gate."""
         nand_gate = Circuit(0)
         nand_gate.inputs[0] = Wire()
         nand_gate.inputs[1] = Wire()
@@ -111,79 +116,86 @@ class CircuitDecoder:
         self.schematics.add_schematic(nand_gate)
 
     def decode(self) -> Schematics:
+        """Decode the data into circuits."""
         while len(self.data) != 0:
             # The index is used as the identifier of the circuit
             self.idx += 1
             # The current circuit being decoded
-            self.circuit = DecodedCircuit(self.idx)
-            self.decode_circuit()
-            self.circuit.validate()
+            self.circuit = _DecodedCircuit(self.idx)
+            self._decode_circuit()
             self.circuit.apply_inputs()
             self.circuit.apply_connections()
             self.schematics.add_schematic(self.circuit)
         return self.schematics
 
-    def decode_circuit(self):
-        self.decode_header()
+    def _decode_circuit(self):
+        """Decode the circuit."""
+        self._decode_header()
         for idx in range(0, self.circuit.n_components):
-            self.decode_component(idx)
-        self.decode_outputs()
+            self._decode_component(idx)
+        self._decode_outputs()
 
-    def decode_header(self):
+    def _decode_header(self):
+        """Decode the header."""
         self.circuit.n_components = self.data.pop(0)
         self.circuit.n_inputs = self.data.pop(0)
         self.circuit.n_outputs = self.data.pop(0)
 
-    def decode_component(self, idx: CircuitKey):
-        """
-        Decode the idx-th component of the circuit.
-        """
+    def _decode_component(self, idx: CircuitKey):
+        """Decode the idx-th component of the circuit."""
         id = self.data.pop(0)
         try:
             component = self.schematics.get_schematic(id)
         except ValueError as e:
             raise ValueError(f"Trying to use the undefined component {id}.") from e
         self.circuit.add_component(idx, component)
-        self.decode_inputs(idx, component)
+        self._decode_component_inputs(idx, component)
 
-    def decode_inputs(self, component_idx: CircuitKey, component: Circuit):
-        """
-        Decode the inputs of 'component', the 'component_idx'-th component of the circuit.
+    def _decode_component_inputs(self, component_idx: CircuitKey, component: Circuit):
+        """Decode the inputs of 'component', the 'component_idx'-th component
+        of the circuit.
         """
         for input_idx in range(0, len(component.inputs)):
             provenance = self.data.pop(0)
             if provenance == 0:
-                self.decode_circuit_provenance(input_idx, component_idx)
+                self._decode_circuit_provenance(input_idx, component_idx)
             elif provenance == 1:
-                self.decode_component_provenance(input_idx, component_idx)
+                self._decode_component_provenance(input_idx, component_idx)
             else:
                 raise ValueError(
-                    f"Provenance {provenance} is not recognized. It must be 0 (circuit's inputs) or 1 (another component inputs)."
+                    f"Provenance {provenance} is not recognized. It must be "
+                    f"0 (circuit's inputs) or 1 (another component's inputs)."
                 )
 
-    def decode_circuit_provenance(self, input_idx: int, component_idx: CircuitKey):
-        """
-        Decode the 'input_idx'-th input of the 'component_idx'-th component of the circuit, originating from the circuit's inputs.
+    def _decode_circuit_provenance(self, input_idx: int, component_idx: CircuitKey):
+        """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
+        circuit, originating from the circuit's inputs.
         """
         circuit_input_idx = self.data.pop(0)
         if circuit_input_idx >= self.circuit.n_inputs:
             raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input the {circuit_input_idx}-th input of the circuit itself, which is not in [0, {self.circuit.n_inputs}[."
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
+                f"asked for its {input_idx}-th input the {circuit_input_idx}-th input "
+                f"of the circuit itself, which does not exists "
+                f"(there is {self.circuit.n_inputs} inputs)."
             )
+
         self.circuit.stash_input(
             _InputParameters(circuit_input_idx, component_idx, input_idx)
         )
 
-    def decode_component_provenance(self, input_idx: int, component_idx: CircuitKey):
+    def _decode_component_provenance(self, input_idx: int, component_idx: CircuitKey):
+        """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
+        circuit, originating from another component's outputs.
         """
-        Decode the 'input_idx'-th input of the 'component_idx'-th component of the circuit, originating from another component's outputs.
-        """
-        (source_idx, source_output_idx) = self.decode_component_wiring()
-
-        if source_output_idx is None:
+        try:
+            (source_idx, source_output_idx) = self._decode_component_wiring()
+        except ValueError as e:
             raise ValueError(
-                f"Circuit {self.circuit.identifier}: the {component_idx}-th component asked for its {input_idx}-th input an output of {source_idx}-th component , which is not in [0,  {len(self.circuit.components)}[."
-            )
+                f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
+                f"asked for its {input_idx}-th input an output from a component that "
+                f"does not exists "
+            ) from e
 
         self.circuit.stash_connection(
             _ConnectionParameters(
@@ -194,28 +206,32 @@ class CircuitDecoder:
             )
         )
 
-    def decode_outputs(self):
-        """
-        Decode the outputs of the current decoded circuit. They must come from one its component.
+    def _decode_outputs(self):
+        """Decode the outputs of the current decoded circuit.
+        They must come from one its component.
         """
         for output_idx in range(0, self.circuit.n_outputs):
-            (source_idx, source_output_idx) = self.decode_component_wiring()
-
-            if source_output_idx is None:
+            try:
+                (source_idx, source_output_idx) = self._decode_component_wiring()
+            except ValueError as e:
                 raise ValueError(
-                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th output the {source_output_idx}-th output of its {source_idx}-th component,  which does not exist."
-                )
+                    f"Circuit {self.circuit.identifier} asked for its {output_idx}-th "
+                    f"output an output from a component that does not exists."
+                ) from e
 
             self.circuit.connect_output(output_idx, source_idx, source_output_idx)
 
-    def decode_component_wiring(self):
-        """
-        Decode the wiring between components: the component index and its output index.
-        The 'None' are here to indicate error so that the callers can raise an Exception with a meaningful message.
+    def _decode_component_wiring(self):
+        """Decode the wiring between components: the component index
+        and its output index.
         """
         source_idx = self.data.pop(0)
+
         if source_idx >= self.circuit.n_components:
-            return (source_idx, None)
+            raise ValueError(
+                f"The {source_idx}-th component does not exist "
+                f"(there is {self.circuit.n_components} components)."
+            )
 
         source_output_idx = self.data.pop(0)
 

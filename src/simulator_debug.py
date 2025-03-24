@@ -2,7 +2,7 @@ from typing import List
 from circuit import Circuit
 
 from simulator import Simulator
-from circuit_converter import set_wires
+from circuit_converter import convert_wires
 from optimization_level import OptimizationLevel
 from wire import WireExtendedState
 
@@ -10,7 +10,7 @@ from wire import WireExtendedState
 class SimulatorDebug(Simulator):
     def __init__(self, circuit: Circuit):
         super().__init__(circuit)
-        set_wires(self._circuit, OptimizationLevel.DEBUG)
+        convert_wires(self._circuit, OptimizationLevel.DEBUG)
 
     def _can_simulate(self, circuit: Circuit) -> bool:
         """Check if the circuit can be simulated, meaning that all inputs are determined."""

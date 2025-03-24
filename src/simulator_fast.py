@@ -1,6 +1,6 @@
 from circuit import Circuit
 from simulator import Simulator
-from circuit_converter import set_wires
+from circuit_converter import convert_wires
 from circuit_optimizer import optimize
 from optimization_level import OptimizationLevel
 
@@ -9,7 +9,7 @@ class SimulatorFast(Simulator):
     def __init__(self, circuit: Circuit):
         super().__init__(circuit)
         optimize(self._circuit)
-        set_wires(self._circuit, OptimizationLevel.FAST)
+        convert_wires(self._circuit, OptimizationLevel.FAST)
 
     def _simulate(self, circuit: Circuit):
         """

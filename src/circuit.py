@@ -1,4 +1,3 @@
-
 from typing import Dict
 
 
@@ -152,26 +151,24 @@ class Circuit:
             specified ports doesn't exist on source or target components.
         """
         if source_id not in self.components:
-            raise ValueError(
-                f"The source component ({source_id}) component does not exist."
-            )
+            raise ValueError(f"The source component {source_id} does not exist.")
 
         if target_id not in self.components:
-            raise ValueError(
-                f"The target component ({target_id}) component does not exist."
-            )
+            raise ValueError(f"The target component {target_id} does not exist.")
 
         source = self.components[source_id]
         target = self.components[target_id]
 
         if source_output not in source.outputs:
             raise ValueError(
-                f"The source component {source_id} has no output {source_output}."
+                f"The source component {source_id}"
+                f"does not have output wire {source_output}."
             )
 
         if target_input not in target.inputs:
             raise ValueError(
-                f"The source component {target_id} has no input {target_input}."
+                f"The source component {target_id}"
+                f"does not have input wire {target_input}."
             )
 
         # Same logic as the connect_input() method.
@@ -244,7 +241,7 @@ class Circuit:
         return representation
 
     def __repr__(self, indent: int = 4):
-        """Complete debug string of the Circuit, with indentation to make it legible."""
+        """Complete debug string of the Circuit, with clear indentation."""
         indent_str = " " * indent
 
         # Format input wires

@@ -1,6 +1,6 @@
-import itertools
 from schematics import SchematicsBuilder
-from wire import WireExtendedState
+from simulator_fast import SimulatorFast
+from simulator_debug import SimulatorDebug
 
 
 def main():
@@ -14,39 +14,25 @@ def main():
     builder = SchematicsBuilder()
     builder.build_circuits()
     library = builder.schematics
-    circuit = library.get_schematic_idx(2)
+    c = library.get_schematic_idx(2)
 
-    print([x for x in itertools.product([circuit.identifier, "OR"], [False])])
+    print(c)
 
-    print(repr(circuit))
-    print(str(circuit))
+    fast = SimulatorFast(c)
+    print(fast)
+    print(c)
 
-    circuit.inputs["A"].state = True
-    circuit.inputs["B"].state = True
+    fast.simulate([True, False, True])
+    print(fast)
+    print(c)
 
-    circuit.simulate()
+    debug = SimulatorDebug(c)
+    print(debug)
+    print(c)
 
-    print(
-        f"{''.join(str(win) for win in circuit.inputs.values())} → {''.join(str(wout) for wout in circuit.outputs.values())}"
-    )
-
-    circuit.debug_mode()
-    circuit.reset()
-    print(repr(circuit))
-    print(str(circuit))
-
-    circuit.inputs["A"].state = WireExtendedState.UNKNOWN
-    circuit.inputs["B"].state = WireExtendedState.OFF
-
-    print(str(circuit))
-
-    circuit.simulate()
-
-    print(
-        f"{''.join(str(win) for win in circuit.inputs.values())} → {''.join(str(wout) for wout in circuit.outputs.values())}"
-    )
-
-    print(circuit)
+    debug.simulate([True, False, True])
+    print(debug)
+    print(c)
 
     # circuit = get_schematic_idx(10, schematics)
     # wires = [wire for wire in circuit.inputs.values()]
@@ -55,7 +41,7 @@ def main():
     # success = circuit.simulate()
     # if not success:
     #     print("simulation failed!")
-    #     print(repr(circuit))
+    #     print(circuit)
     #     return
 
     # perfs = circuit.sum_performance()
@@ -77,11 +63,11 @@ def main():
     # round_trip = CircuitEncoder(decoded).encode()
 
     # print(encoded)
-    # for idx, (a, b) in enumerate(zip(encoded, round_trip)):
+    # for idx, (a, b) in enumerate(zip(encoded, round_trip):
     #     if a != b:
     #         print(f"Index {idx} is different: {a} != {b}")
 
-    # print(len(round_trip))
+    # print(len(round_trip)
     # assert encoded == round_trip
 
     # BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB

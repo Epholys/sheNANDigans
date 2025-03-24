@@ -1,6 +1,6 @@
 from circuit import Circuit
 from simulator import Simulator
-from circuit_converter import convert_wires
+from src.wire_converter import convert_wires
 from circuit_optimizer import optimize
 from optimization_level import OptimizationLevel
 

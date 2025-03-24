@@ -2,7 +2,7 @@ from typing import List
 from circuit import Circuit
 
 from simulator import Simulator
-from circuit_converter import convert_wires
+from src.wire_converter import convert_wires
 from optimization_level import OptimizationLevel
 from wire import WireExtendedState
 

@@ -49,9 +49,7 @@ class GraphTools:
         self.scheme = ColorScheme()
 
 
-def generate_circuit_graph(
-    circuit: Circuit, options: GraphOptions, filename: str, format: str = "png"
-) -> pydot.Graph:
+def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
     """
     Generate a hierarchical visualization of a circuit.
 
@@ -77,11 +75,6 @@ def generate_circuit_graph(
     _build_circuit_graph(
         graph, circuit, "", options, tools, depth=0, is_main_graph=True
     )
-
-    # If filename is provided, save the graph
-    output_file = f"{filename}.{format}"
-    graph.write(output_file, format=format)
-    print(f"Graph saved to {output_file}")
 
     return graph
 
@@ -377,7 +370,14 @@ def visualize_circuit(
     Returns:
         The generated pydot graph
     """
-    return generate_circuit_graph(circuit, options, filename, format)
+    return generate_graph(circuit, options, filename, format)
+
+
+def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
+    """Save the graph to a file"""
+    output_file = f"{filename}.{format}"
+    graph.write(output_file, format=format)
+    return output_file
 
 
 # Example usage
@@ -404,11 +404,16 @@ if __name__ == "__main__":
 
     # Visualize different circuits
     for depth in range(3, 4):
-        visualize_circuit(
-            reference.get_schematic_idx(10),
+        circuit = reference.get_schematic_idx(10)
+        graph = generate_graph(
+            circuit,
             GraphOptions(
                 is_compact=True, is_aligned=True, bold_io=True, max_depth=depth
             ),
+        )
+        output_file = save_graph(
+            graph,
             f"circuit_{10}_{depth}",
             "svg",
         )
+        print(f"Nested graph saved to {output_file}")

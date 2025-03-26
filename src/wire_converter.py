@@ -2,7 +2,9 @@ from typing import Dict, Type
 
 from circuit import Circuit, PortWireDict
 from optimization_level import OptimizationLevel
-from wire import Wire, WireDebug, WireFast
+from src.wire_debug import WireDebug
+from src.wire_fast import WireFast
+from wire import Wire
 
 
 def convert_wires(circuit: Circuit, optimization_level: OptimizationLevel):

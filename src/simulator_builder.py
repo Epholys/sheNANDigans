@@ -5,6 +5,7 @@ from src.optimization_level import OptimizationLevel
 
 
 def build_simulator(circuit: Circuit, level: OptimizationLevel) -> Simulator:
+    """Build a simulator according to the optimization level."""
     match level:
         case OptimizationLevel.DEBUG:
             return SimulatorDebug(circuit)

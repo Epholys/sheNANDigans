@@ -6,38 +6,41 @@ from optimization_level import OptimizationLevel
 
 
 class SimulatorFast(Simulator):
+    """A simulator that does not have any caution.
+
+    To do so, it assumes the circuit is correctly defined. If this is not the case,
+    the simulation will produce wrong results.
+    """
+
     def __init__(self, circuit: Circuit):
         super().__init__(circuit)
+
+        # Optimize the circuit to put it in a topological order.
         optimize(self._circuit)
+
         convert_wires(self._circuit, OptimizationLevel.FAST)
 
     def _simulate(self, circuit: Circuit):
-        """
-        Simulate the circuit's behavior.
+        """Simulate the circuit.
 
-        Performs digital logic simulation by either:
-        1. For NAND gates (identifier=0): Directly computes NAND logic
-        2. For complex circuits: Iteratively simulates sub-components until either:
-           - All outputs are determined (success)
-           - Or no further progress can be made (deadlock)
+        The is a "fast" simulation, meaning it assumes the circuit is correct
+        (no loop / missing connections / etc).
 
         Returns:
-            bool: True if simulation completed successfully (all outputs determined)
-                 False if simulation cannot proceed or is already complete
-
-        Note:
-            Increments self.miss counter when sub-component simulation fails
+            bool: systematically True: there's no check of simulation failure.
         """
+        # Base case: the circuit is a NAND gate.
         if circuit.identifier == 0:
             self._simulate_nand(circuit)
             return True
 
-        # There are much more "elegant" ways to do it (using any for example), but my brain
-        # isn't python-wired enough to be sure to understand it tomorrow.
+        # The components are supposed to be in topological order, so a simple
+        # loop is enough.
         for component in circuit.components.values():
             self._simulate(component)
 
         return True
 
     def _reset(self, circuit: Circuit):
+        """noop: only the inputs are set before simulating."""
         pass

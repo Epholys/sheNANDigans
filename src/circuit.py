@@ -120,7 +120,8 @@ class Circuit:
 
         if source_output not in source.outputs:
             raise ValueError(
-                f"The component {source_name} does not have output wire {source_output}."
+                f"The component {source_name} does not have "
+                f"output wire {source_output}."
             )
 
         # Contrary to the connection of an input, connecting an output is

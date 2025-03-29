@@ -1,9 +1,52 @@
-import networkx
+from enum import Enum
+from dataclasses import dataclass
+from itertools import groupby
+from typing import List, Tuple, Dict, Set, Optional
 
-from src.circuit import Circuit
+import networkx as nx
+
+from circuit import Circuit, CircuitDict, CircuitKey, Key, Wire
 
 
-def optimize(circuit: Circuit):
+class NodeType(Enum):
+    """Enumeration of possible node types in the circuit dependency graph."""
+
+    CIRCUIT_INPUT = "circuit_input"
+    CIRCUIT_OUTPUT = "circuit_output"
+    COMPONENT_INPUT = "component_input"
+    COMPONENT_OUTPUT = "component_output"
+
+
+@dataclass(frozen=True)
+class GraphNode:
+    """A node in the circuit dependency graph.
+
+    Attributes:
+        node_type: The type of node (input/output of circuit/component)
+        component_id: The ID of the component (None for circuit nodes)
+        component_idx: The index of the component in the circuit's component list
+        port_key: The key of the input/output port
+        wire_id: The ID of the wire connected to this node
+    """
+
+    node_type: NodeType
+    component_id: Optional[CircuitKey]
+    component_idx: Optional[int]
+    port_key: Key
+    wire_id: int
+
+    def __str__(self) -> str:
+        """String representation for debugging."""
+        if self.node_type in (NodeType.CIRCUIT_INPUT, NodeType.CIRCUIT_OUTPUT):
+            return f"{self.node_type.value}:{self.port_key}"
+        else:
+            return (
+                f"{self.node_type.value}:{self.component_id}:"
+                f"{self.component_idx}:{self.port_key}"
+            )
+
+
+def optimize(circuit: Circuit) -> None:
     """Optimizes a circuit by recursively optimizing its components and
     reordering them based on topological dependencies.
 
@@ -19,95 +62,150 @@ def optimize(circuit: Circuit):
         optimize(component)
 
     # Build a directed graph representing component dependencies
-    graph = _build_dependency_graph(circuit)
+    graph, component_nodes = build_dependency_graph(circuit)
 
     # Topologically sort components and reorder them
-    _reorder_components(circuit, graph)
+    reorder_components(circuit, graph, component_nodes)
 
 
-def _build_dependency_graph(circuit: Circuit) -> networkx.DiGraph:
+def build_dependency_graph(circuit: Circuit) -> Tuple[nx.DiGraph, Dict[int, GraphNode]]:
     """Builds a directed graph representing the dependencies between circuit components.
 
     Args:
         circuit: The circuit whose components to analyze
 
     Returns:
-        A directed graph where edges represent connections between components
+        A tuple containing:
+        - A directed graph where edges represent connections between components
+        - A dictionary mapping component indices to their input nodes in the graph
     """
-    graph = networkx.DiGraph()
+    graph = nx.DiGraph()
     components = list(circuit.components.values())
 
-    # Map component inputs and outputs to node names in the graph
-    component_inputs = []
-    component_outputs = []
+    # Create nodes for all circuit and component ports
+    circuit_input_nodes: List[GraphNode] = []
+    circuit_output_nodes: List[GraphNode] = []
+    component_input_nodes: List[GraphNode] = []
+    component_output_nodes: List[GraphNode] = []
 
+    # Map wire IDs to nodes for quick lookup
+    wire_to_nodes: Dict[int, List[GraphNode]] = {}
+
+    # Create nodes for circuit inputs
+    for port_key, wire in circuit.inputs.items():
+        node = GraphNode(
+            node_type=NodeType.CIRCUIT_INPUT,
+            component_id=None,
+            component_idx=None,
+            port_key=port_key,
+            wire_id=wire.id,
+        )
+        circuit_input_nodes.append(node)
+        wire_to_nodes.setdefault(wire.id, []).append(node)
+        graph.add_node(node)
+
+    # Create nodes for circuit outputs
+    for port_key, wire in circuit.outputs.items():
+        node = GraphNode(
+            node_type=NodeType.CIRCUIT_OUTPUT,
+            component_id=None,
+            component_idx=None,
+            port_key=port_key,
+            wire_id=wire.id,
+        )
+        circuit_output_nodes.append(node)
+        wire_to_nodes.setdefault(wire.id, []).append(node)
+        graph.add_node(node)
+
+    # Create nodes for component inputs and outputs
     for idx, component in enumerate(components):
-        input_key = f"comp_in_{component.identifier}_{idx}"
-        for wire in component.inputs.values():
-            component_inputs.append((input_key, wire))
+        for port_key, wire in component.inputs.items():
+            node = GraphNode(
+                node_type=NodeType.COMPONENT_INPUT,
+                component_id=component.identifier,
+                component_idx=idx,
+                port_key=port_key,
+                wire_id=wire.id,
+            )
+            component_input_nodes.append(node)
+            wire_to_nodes.setdefault(wire.id, []).append(node)
+            graph.add_node(node)
 
-        output_key = f"comp_out_{component.identifier}_{idx}"
-        for wire in component.outputs.values():
-            component_outputs.append((output_key, wire))
+        for port_key, wire in component.outputs.items():
+            node = GraphNode(
+                node_type=NodeType.COMPONENT_OUTPUT,
+                component_id=component.identifier,
+                component_idx=idx,
+                port_key=port_key,
+                wire_id=wire.id,
+            )
+            component_output_nodes.append(node)
+            wire_to_nodes.setdefault(wire.id, []).append(node)
+            graph.add_node(node)
 
-    # Map circuit inputs and outputs to node names
-    circuit_inputs = [
-        (f"ct_in_{key}_{idx}", wire)
-        for idx, (key, wire) in enumerate(circuit.inputs.items())
-    ]
+    # Add edges based on wire connections
+    for nodes in wire_to_nodes.values():
+        source_nodes = [
+            node
+            for node in nodes
+            if node.node_type in (NodeType.CIRCUIT_INPUT, NodeType.COMPONENT_OUTPUT)
+        ]
 
-    circuit_outputs = [
-        (f"ct_out_{key}_{idx}", wire)
-        for idx, (key, wire) in enumerate(circuit.outputs.items())
-    ]
+        target_nodes = [
+            node
+            for node in nodes
+            if node.node_type in (NodeType.COMPONENT_INPUT, NodeType.CIRCUIT_OUTPUT)
+        ]
 
-    # Add edges from circuit inputs to component inputs
-    for circuit_in_key, circuit_in_wire in circuit_inputs:
-        for comp_in_key, comp_in_wire in component_inputs:
-            if circuit_in_wire.id == comp_in_wire.id:
-                graph.add_edge(circuit_in_key, comp_in_key)
+        for source in source_nodes:
+            for target in target_nodes:
+                graph.add_edge(source, target)
 
-    # Add edges from component outputs to circuit outputs
-    for comp_out_key, comp_out_wire in component_outputs:
-        for circuit_out_key, circuit_out_wire in circuit_outputs:
-            if comp_out_wire.id == circuit_out_wire.id:
-                graph.add_edge(comp_out_key, circuit_out_key)
+    # Create a mapping of component indices to their input nodes
+    component_nodes = {
+        node.component_idx: node
+        for node in component_input_nodes
+        if node.component_idx is not None
+    }
 
-    # Add edges between component outputs and inputs
-    for comp_out_key, comp_out_wire in component_outputs:
-        for comp_in_key, comp_in_wire in component_inputs:
-            if comp_out_wire.id == comp_in_wire.id:
-                graph.add_edge(comp_out_key, comp_in_key)
-
-    return graph
+    return graph, component_nodes
 
 
-def _reorder_components(circuit: Circuit, graph: networkx.DiGraph):
+def reorder_components(
+    circuit: Circuit, graph: nx.DiGraph, component_nodes: Dict[int, GraphNode]
+) -> None:
     """Reorders the components of a circuit based on a topological sort of the dependency graph.
 
     Args:
         circuit: The circuit whose components to reorder
         graph: The directed graph of component dependencies
+        component_nodes: Mapping of component indices to their input nodes
     """
     # Get topologically sorted nodes
-    sorted_nodes = list(networkx.topological_sort(graph))
+    sorted_nodes = list(nx.topological_sort(graph))
 
-    # Extract component names and remove duplicates while preserving order
-    component_names = []
-    seen = set()
-    for node in sorted_nodes:
-        if node.startswith("comp_in_") and node not in seen:
-            component_names.append(node)
-            seen.add(node)
+    # Extract component input nodes in sorted order
+    sorted_component_nodes = [
+        node for node in sorted_nodes if node.node_type == NodeType.COMPONENT_INPUT
+    ]
 
-    # Determine the new order of components
+    # Get unique component indices while preserving order
+    seen_indices: Set[int] = set()
+    ordered_indices: List[int] = []
+
+    for node in sorted_component_nodes:
+        if node.component_idx is not None and node.component_idx not in seen_indices:
+            ordered_indices.append(node.component_idx)
+            seen_indices.add(node.component_idx)
+
+    # Create a new ordered component dictionary
     components_list = list(circuit.components.items())
-    ordered_components = {}
+    ordered_components: CircuitDict = {}
 
-    for node in component_names:
-        # Extract the index from the node name
-        idx = int(node.split("_")[-1])
-        key, component = components_list[idx]
-        ordered_components[key] = component
+    for idx in ordered_indices:
+        if idx < len(components_list):
+            key, component = components_list[idx]
+            ordered_components[key] = component
 
+    # Update the circuit with the ordered components
     circuit.components = ordered_components

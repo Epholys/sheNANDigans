@@ -84,9 +84,9 @@ class SchematicsBuilder:
 
     def add_or(self):
         or_gate = Circuit("OR")
-        or_gate.add_component("NAND_OUT", self.get_schematic_idx(0))
         or_gate.add_component("NAND_A", self.get_schematic_idx(0))
         or_gate.add_component("NAND_B", self.get_schematic_idx(0))
+        or_gate.add_component("NAND_OUT", self.get_schematic_idx(0))
 
         or_gate.connect_input("A", "NAND_A", "A")
         or_gate.connect_input("A", "NAND_A", "B")

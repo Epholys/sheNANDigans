@@ -1,79 +1,113 @@
-from itertools import groupby
-from typing import List, Tuple
-
 import networkx
 
-from circuit import Circuit, CircuitDict, CircuitKey, Wire
+from src.circuit import Circuit
 
 
 def optimize(circuit: Circuit):
-    if len(circuit.components) == 0:
+    """Optimizes a circuit by recursively optimizing its components and
+    reordering them based on topological dependencies.
+
+    Args:
+        circuit: The circuit to optimize
+    """
+    # Base case: empty circuit requires no optimization
+    if not circuit.components:
         return
 
+    # First recursively optimize all sub-components
     for component in circuit.components.values():
         optimize(component)
 
+    # Build a directed graph representing component dependencies
+    graph = _build_dependency_graph(circuit)
+
+    # Topologically sort components and reorder them
+    _reorder_components(circuit, graph)
+
+
+def _build_dependency_graph(circuit: Circuit) -> networkx.DiGraph:
+    """Builds a directed graph representing the dependencies between circuit components.
+
+    Args:
+        circuit: The circuit whose components to analyze
+
+    Returns:
+        A directed graph where edges represent connections between components
+    """
     graph = networkx.DiGraph()
+    components = list(circuit.components.values())
 
-    components: List[Circuit] = list(circuit.components.values())
+    # Map component inputs and outputs to node names in the graph
+    component_inputs = []
+    component_outputs = []
 
-    raw_components_inputs: List[Tuple[str, List[Wire]]] = [
-        (f"comp_in_{component.identifier}_{idx}", list(component.inputs.values()))
-        for idx, component in enumerate(components)
+    for idx, component in enumerate(components):
+        input_key = f"comp_in_{component.identifier}_{idx}"
+        for wire in component.inputs.values():
+            component_inputs.append((input_key, wire))
+
+        output_key = f"comp_out_{component.identifier}_{idx}"
+        for wire in component.outputs.values():
+            component_outputs.append((output_key, wire))
+
+    # Map circuit inputs and outputs to node names
+    circuit_inputs = [
+        (f"ct_in_{key}_{idx}", wire)
+        for idx, (key, wire) in enumerate(circuit.inputs.items())
     ]
 
-    components_inputs: List[Tuple[str, Wire]] = [
-        (key, wire) for key, wires in raw_components_inputs for wire in wires
+    circuit_outputs = [
+        (f"ct_out_{key}_{idx}", wire)
+        for idx, (key, wire) in enumerate(circuit.outputs.items())
     ]
 
-    raw_components_outputs: List[Tuple[str, List[Wire]]] = [
-        (f"comp_out_{component.identifier}_{idx}", list(component.outputs.values()))
-        for idx, component in enumerate(components)
-    ]
+    # Add edges from circuit inputs to component inputs
+    for circuit_in_key, circuit_in_wire in circuit_inputs:
+        for comp_in_key, comp_in_wire in component_inputs:
+            if circuit_in_wire.id == comp_in_wire.id:
+                graph.add_edge(circuit_in_key, comp_in_key)
 
-    components_outputs: List[Tuple[str, Wire]] = [
-        (key, wire) for key, wires in raw_components_outputs for wire in wires
-    ]
+    # Add edges from component outputs to circuit outputs
+    for comp_out_key, comp_out_wire in component_outputs:
+        for circuit_out_key, circuit_out_wire in circuit_outputs:
+            if comp_out_wire.id == circuit_out_wire.id:
+                graph.add_edge(comp_out_key, circuit_out_key)
 
-    inputs: List[Tuple[str, Wire]] = [
-        (f"ct_in_{input[0]}_{idx}", input[1])
-        for idx, input in enumerate(circuit.inputs.items())
-    ]
-    outputs: List[Tuple[str, Wire]] = [
-        (f"ct_out_{output[0]}_{idx}", output[1])
-        for idx, output in enumerate(circuit.outputs.items())
-    ]
+    # Add edges between component outputs and inputs
+    for comp_out_key, comp_out_wire in component_outputs:
+        for comp_in_key, comp_in_wire in component_inputs:
+            if comp_out_wire.id == comp_in_wire.id:
+                graph.add_edge(comp_out_key, comp_in_key)
 
-    for input in inputs:
-        for component_input in components_inputs:
-            if input[1].id == component_input[1].id:
-                graph.add_edge(input[0], component_input[0])
+    return graph
 
-    for output in outputs:
-        for component_output in components_outputs:
-            if output[1].id == component_output[1].id:
-                graph.add_edge(component_output[0], output[0])
 
-    for component_output in components_outputs:
-        for component_input in components_inputs:
-            if component_input[1] == component_output[1]:
-                graph.add_edge(component_output[0], component_input[0])
+def _reorder_components(circuit: Circuit, graph: networkx.DiGraph):
+    """Reorders the components of a circuit based on a topological sort of the dependency graph.
 
-    sorted = list(networkx.topological_sort(graph))
-    components_named_duplicate = [key for key, _ in components_inputs]
-    components_named = [key for key, _ in groupby(components_named_duplicate)]
-    sorted_only_components = [
-        comp_name for comp_name in sorted if comp_name in components_named_duplicate
-    ]
+    Args:
+        circuit: The circuit whose components to reorder
+        graph: The directed graph of component dependencies
+    """
+    # Get topologically sorted nodes
+    sorted_nodes = list(networkx.topological_sort(graph))
 
-    indices_order: List[int] = []
-    for node in sorted_only_components:
-        indices_order.append(components_named.index(node))
-    components_list: List[Tuple[CircuitKey, "Circuit"]] = list(
-        circuit.components.items()
-    )
-    ordered_components: CircuitDict = {}
-    for index in indices_order:
-        (key, component) = components_list[index]
+    # Extract component names and remove duplicates while preserving order
+    component_names = []
+    seen = set()
+    for node in sorted_nodes:
+        if node.startswith("comp_in_") and node not in seen:
+            component_names.append(node)
+            seen.add(node)
+
+    # Determine the new order of components
+    components_list = list(circuit.components.items())
+    ordered_components = {}
+
+    for node in component_names:
+        # Extract the index from the node name
+        idx = int(node.split("_")[-1])
+        key, component = components_list[idx]
         ordered_components[key] = component
+
     circuit.components = ordered_components

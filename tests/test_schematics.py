@@ -2,7 +2,7 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from itertools import product
 import multiprocessing
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import pytest
 from src.circuit import Circuit
@@ -52,8 +52,8 @@ def assert_simulation(data):
 
 
 class TestedCircuits:
-    reference: Schematics | None = None
-    round_trip: Schematics | None = None
+    reference: Optional[Schematics] = None
+    round_trip: Optional[Schematics] = None
 
 
 class Simulators:

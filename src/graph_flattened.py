@@ -1,4 +1,3 @@
-from weakref import ref
 import pydot
 from circuit import Circuit
 from typing import List, Literal, Tuple

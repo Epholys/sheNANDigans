@@ -1,5 +1,5 @@
 import seaborn
-from typing import Dict
+from typing import Dict, Optional
 import pydot
 from circuit import (
     Circuit,
@@ -168,7 +168,7 @@ def _add_ports_nodes(
     graph: pydot.Graph,
     prefix: str,
     color: str,
-    rank: str | None = None,
+    rank: Optional[str] = None,
 ) -> CircuitPorts:
     port_node_ids: CircuitPorts = {}
 

@@ -20,6 +20,11 @@ class NodeType(Enum):
 class GraphNode:
     """A node in the circuit dependency graph.
 
+    This node can represent both the ports of the circuit and the ports of the
+    components. So, it has two optional attributes that are only used for the
+    components. There no checks using the typing system for correctness, but
+    doing so will make the code more complex and less readable.
+
     Attributes:
         node_type: The type of node (input/output of circuit/component)
         component_id: The ID of the component (None for circuit nodes)
@@ -46,12 +51,31 @@ class GraphNode:
             )
 
 
-def optimize(circuit: Circuit) -> None:
-    """Optimizes a circuit by recursively optimizing its components and
-    reordering them based on topological dependencies.
+def optimize(circuit: Circuit):
+    """Optimizes a circuit for efficient simulation by reordering its components.
+    This optimization allows to simulate each component sequentially in a single pass.
+
+    This function performs two main tasks:
+    1. Recursively optimizes all sub-components of the circuit
+    2. Reorders components based on their dependencies using topological sorting
+
+    The reordering algorithm itself is done in several steps:
+
+    The first step is to map the wire connections into a graph structure:
+    - Physical wire connections between circuit inputs/outputs and component ports
+    - Virtual connections within components (from their inputs to their outputs)
+
+    The second step is to do a topological sort of the graph, to untangle the
+    dependency.
+
+    The third and last step to the translate this sorted graph back to the component
+    structure, to have the final order of components optimized for simulation.
 
     Args:
         circuit: The circuit to optimize
+
+    Note:
+        The optimization is performed in-place, modifying the original circuit.
     """
     # Base case: empty circuit requires no optimization
     if not circuit.components:
@@ -72,6 +96,8 @@ def build_dependency_graph(
     circuit: Circuit,
 ) -> nx.DiGraph:
     """Builds a directed graph representing the dependencies between circuit components.
+
+    This a dependency graph of the inputs and outputs using the wiring of the circuit.
 
     Args:
         circuit: The circuit whose components to analyze
@@ -106,25 +132,29 @@ def build_dependency_graph(
     for node in all_nodes:
         graph.add_node(node)
 
-    # Create a wire-to-nodes mapping for efficient edge creation
+    # Create a wire-to-nodes mapping. The wires will be the edges of the graph, so the
+    # values of this dictionary will be the list of the ports to link.
     wire_to_nodes: Dict[int, List[GraphNode]] = {}
     for node in all_nodes:
         wire_to_nodes.setdefault(node.wire_id, []).append(node)
 
     # Add edges based on wire connections
     for wiring_nodes in wire_to_nodes.values():
+        # Get the source nodes of this wire.
         source_nodes = [
             node
             for node in wiring_nodes
             if node.node_type in (NodeType.CIRCUIT_INPUT, NodeType.COMPONENT_OUTPUT)
         ]
 
+        # Get the target nodes of this wire.
         target_nodes = [
             node
             for node in wiring_nodes
             if node.node_type in (NodeType.COMPONENT_INPUT, NodeType.CIRCUIT_OUTPUT)
         ]
 
+        # Add edges from source nodes to target nodes.
         for source in source_nodes:
             for target in target_nodes:
                 graph.add_edge(source, target)
@@ -132,13 +162,13 @@ def build_dependency_graph(
     return graph
 
 
-def reorder_components(circuit: Circuit, graph: nx.DiGraph) -> None:
-    """Reorders the components of a circuit based on a topological sort of the dependency graph.
+def reorder_components(circuit: Circuit, graph: nx.DiGraph):
+    """Reorders the components of a circuit based on a topological sort of the
+    dependency graph.
 
     Args:
         circuit: The circuit whose components to reorder
         graph: The directed graph of component dependencies
-        node_info: Dictionary containing node lists by type
     """
     # Get topologically sorted nodes
     sorted_nodes = list(nx.topological_sort(graph))
@@ -148,10 +178,10 @@ def reorder_components(circuit: Circuit, graph: nx.DiGraph) -> None:
         node for node in sorted_nodes if node.node_type == NodeType.COMPONENT_INPUT
     ]
 
-    # Get unique component indices while preserving order
+    # From the sorted component input nodes, extract the order that should be applied to
+    # the components, using the indices of the components in the circuit dictionary.
     seen_indices: Set[int] = set()
     ordered_indices: List[int] = []
-
     for node in sorted_component_input_nodes:
         if node.component_idx is None:
             raise ValueError(
@@ -162,10 +192,11 @@ def reorder_components(circuit: Circuit, graph: nx.DiGraph) -> None:
             ordered_indices.append(node.component_idx)
             seen_indices.add(node.component_idx)
 
-    # Create a new ordered component dictionary
+    # Create a new ordered component dictionary.
     components_list = list(circuit.components.items())
     ordered_components: CircuitDict = {}
-
+    # Build the new dictionary by applying the order of indices to the original
+    # components list.
     for idx in ordered_indices:
         if idx >= len(components_list):
             raise ValueError(
@@ -173,9 +204,8 @@ def reorder_components(circuit: Circuit, graph: nx.DiGraph) -> None:
                 f"of the components list. It means something went very wrong "
                 f"with the topological sort."
             )
-        if idx < len(components_list):
-            key, component = components_list[idx]
-            ordered_components[key] = component
+        key, component = components_list[idx]
+        ordered_components[key] = component
 
     # Update the circuit with the ordered components
     circuit.components = ordered_components
@@ -184,15 +214,16 @@ def reorder_components(circuit: Circuit, graph: nx.DiGraph) -> None:
 def create_circuit_port_nodes(
     ports: PortWireDict, node_type: NodeType
 ) -> List[GraphNode]:
-    """Creates graph nodes for all circuit input ports.
+    """Creates graph nodes for all circuit ports.
 
     Args:
-        circuit: The circuit to create nodes for
+        ports: The ports dictionary of the circuit to create nodes for
+        node_type: The type of node (input/output)
 
     Returns:
-        A list of graph nodes representing circuit inputs
+        A list of graph nodes representing circuit ports
     """
-    nodes = []
+    nodes: List[GraphNode] = []
     for port_key, wire in ports.items():
         node = GraphNode(
             node_type=node_type,
@@ -208,23 +239,25 @@ def create_circuit_port_nodes(
 def create_component_port_nodes(
     components: List[Circuit], node_type: NodeType
 ) -> List[GraphNode]:
-    """Creates graph nodes for all component input ports.
+    """Creates graph nodes for all component ports.
 
     Args:
         components: The list of components to create nodes for
+        note_type: The type of node (input/output)
 
     Returns:
         A list of graph nodes representing component inputs
     """
 
-    def get_ports(component):
+    def get_ports(component) -> PortWireDict:
+        """Get the ports dictionary of a component based on the node type."""
         return (
             component.inputs
             if node_type == NodeType.COMPONENT_INPUT
             else component.outputs
         )
 
-    nodes = []
+    nodes: List[GraphNode] = []
     for idx, component in enumerate(components):
         for port_key, wire in get_ports(component).items():
             node = GraphNode(

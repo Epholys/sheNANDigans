@@ -2,8 +2,8 @@ from typing import Dict, Type
 
 from circuit import Circuit, PortWireDict
 from optimization_level import OptimizationLevel
-from src.wire_debug import WireDebug
-from src.wire_fast import WireFast
+from wire_debug import WireDebug
+from wire_fast import WireFast
 from wire import Wire
 
 

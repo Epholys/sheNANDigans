@@ -1,4 +1,4 @@
-from src.wire_extended_state import WireExtendedState
+from wire_extended_state import WireExtendedState
 from wire import Wire, WireState
 
 

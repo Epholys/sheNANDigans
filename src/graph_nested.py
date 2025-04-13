@@ -9,38 +9,63 @@ from circuit import (
 )
 from schematics import SchematicsBuilder
 
-palette_size = 256
 
+def golden_ratio_generator(scale: int):
+    """Generate a sequence of indices based on the golden ratio.
 
-def golden_ratio_generator():
+    This generator yields numbers that are evenly spaced on a 0..scale interval.
+    """
     phi = (5**0.5 - 1) / 2  # Golden ratio conjugate (~0.618)
     i = 0
     while True:
-        yield int(palette_size * ((i * phi) % 1))
+        yield int(scale * ((i * phi) % 1))
         i += 1
 
 
 class ColorScheme:
+    """A color scheme for circuit components.
+
+    This class generates a color palette for circuit components using the golden ratio.
+    It ensures that the colors are evenly spaced and visually distinct.
+    """
+
+    # The size of the color palette
+    palette_size = 256
+
     def __init__(self):
-        self.colors: Dict[CircuitKey, str] = {}
-        self.gen = golden_ratio_generator()
-        self.palette = seaborn.husl_palette(
-            n_colors=palette_size, s=0.95, l=0.8, h=0.5
+        self._colors: Dict[CircuitKey, str] = {}
+        self._generator = golden_ratio_generator(self.palette_size)
+        self._palette = seaborn.husl_palette(
+            n_colors=self.palette_size, s=0.95, l=0.8, h=0.5
         ).as_hex()
 
     def get_color(self, id: CircuitKey):
-        if id in self.colors:
-            return self.colors[id]
-        color = self.palette[next(self.gen)]
-        self.colors[id] = color
+        """Get a color for a given circuit component ID.
+        If the color has already been assigned, return the existing color.
+        """
+        if id in self._colors:
+            return self._colors[id]
+        color = self._palette[next(self._generator)]
+        self._colors[id] = color
         return color
 
 
 class GraphOptions:
+    """Options for generating the circuit graph."""
+
     def __init__(self, is_compact: bool, is_aligned: bool, bold_io: bool, max_depth=-1):
+        # 'compact' mean that the NAND gates are not expanded,
+        # but just represented as a box.
         self.is_compact = is_compact
+
+        ## 'aligned' means that the inputs and outputs ports of the circuit are aligned.
+        # in a single vertical line.
         self.is_aligned = is_aligned
-        self.bold_ins_outs: bool = bold_io
+
+        # 'bold_io' means that the inputs and outputs wires of the circuit are bolded.
+        self.bold_io: bool = bold_io
+
+        # 'max_depth' means that the circuit is expanded only to a certain depth.
         self.max_depth: int = max_depth
 
 
@@ -109,7 +134,7 @@ def _build_circuit_graph(
     penwidth = 1
     if is_main_graph:
         graph = parent_graph
-        if options.bold_ins_outs:
+        if options.bold_io:
             penwidth = 2
     else:
         circuit_name = f"cluster_{prefix}_{circuit.identifier}"
@@ -350,27 +375,6 @@ def _connect_components(
                     source_node = components_ports[source_name][source_output_name]
                     target_node = components_ports[target_name][target_input_name]
                     graph.add_edge(pydot.Edge(source_node, target_node))
-
-
-def visualize_circuit(
-    circuit: Circuit,
-    options: GraphOptions,
-    filename: str,
-    format: str = "png",
-) -> pydot.Graph:
-    """
-    Helper function to quickly visualize a schematic from your library.
-
-    Args:
-        circuit_id: ID of the circuit to visualize
-        schematics_builder: Instance of SchematicsBuilder with circuits
-        filename: Optional output filename (without extension)
-        format: Output format (png, svg, pdf, etc.)
-
-    Returns:
-        The generated pydot graph
-    """
-    return generate_graph(circuit, options, filename, format)
 
 
 def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:

@@ -4,6 +4,7 @@ import pydot
 from circuit import (
     Circuit,
     CircuitKey,
+    PortKey,
     PortWireDict,
 )
 from schematics import SchematicsBuilder
@@ -70,8 +71,19 @@ class GraphOptions:
         self.max_depth = max_depth
 
 
+# A mapping between a circuit's ports and its graph node ID
+type CircuitPorts = dict[PortKey, str]
+# A mapping between circuit components and their ports
+type ComponentsPorts = dict[CircuitKey, CircuitPorts]
+
+
 class CircuitBuildContext:
-    """Context for building a circuit graph."""
+    """Context for building a circuit graph.
+
+    It's used to allow recursive building of nested components: a context is created
+    for each component, with its own graph and prefix. So, each component can be built
+    independently, and then added to the parent graph.
+    """
 
     def __init__(
         self,
@@ -86,28 +98,25 @@ class CircuitBuildContext:
         self.prefix = prefix
         self.depth = depth
         self.parent_context = parent_context
-
-        # Port mappings
-        self.circuit_ports: Dict[CircuitKey, str] = {}
-        self.components_ports: Dict[CircuitKey, Dict[CircuitKey, str]] = {}
+        self.circuit_ports: CircuitPorts = {}
+        self.components_ports: ComponentsPorts = {}
 
     def create_component_context(
         self, component: Circuit, component_name: CircuitKey
     ) -> "CircuitBuildContext":
         """Create a new context for a component."""
+        # Unique prefix for the component
+        # This prefix is used to create unique node IDs for the component's ports
         component_prefix = f"{self.prefix}_comp_{component_name}"
 
-        # If this is a cluster subgraph, create it
-        if self.depth > 0 or component.components:
-            graph = pydot.Cluster(
-                f"cluster_{component_prefix}_{component.identifier}",
-                label=f"Circuit {component.identifier}",
-                style="rounded,filled",
-                fillcolor="#f0f0f0",
-                color="#000000",
-            )
-        else:
-            graph = self.graph
+        # Build a new subgraph for the component
+        graph = pydot.Cluster(
+            f"cluster_{component_prefix}",
+            label=f"Circuit {component.identifier}",
+            style="rounded,filled",
+            fillcolor="#f0f0f0",
+            color="#000000",
+        )
 
         return CircuitBuildContext(
             circuit=component,
@@ -118,7 +127,7 @@ class CircuitBuildContext:
         )
 
     def add_component_ports(
-        self, component_name: CircuitKey, ports: Dict[CircuitKey, str]
+        self, component_name: CircuitKey, ports: CircuitPorts
     ) -> None:
         """Add all ports for a component."""
         self.components_ports[component_name] = ports
@@ -149,6 +158,7 @@ class NodeBuilder:
                 node_id,
                 label=f"{port_key}",
                 shape="circle",
+                style="filled",
                 fillcolor=color,
             )
         )
@@ -161,6 +171,7 @@ class NodeBuilder:
                 name,
                 label="NAND",
                 shape="box",
+                style="filled",
                 fillcolor="#ccccff",
             )
         )
@@ -174,6 +185,7 @@ class NodeBuilder:
                 name,
                 label=circuit.identifier,
                 shape="component",
+                style="filled",
                 fillcolor=self.color_scheme.get_color(circuit.identifier),
             )
         )
@@ -184,8 +196,7 @@ class CircuitGraphBuilder:
 
     def __init__(self, options: GraphOptions):
         self.options = options
-        self.color_scheme = ColorScheme()
-        self.node_builder = NodeBuilder(self.color_scheme)
+        self.node_builder = NodeBuilder(ColorScheme())
 
     def build_graph(self, circuit: Circuit) -> pydot.Dot:
         """Build a graph representation of the circuit."""
@@ -248,13 +259,16 @@ class CircuitGraphBuilder:
 
     def _add_ports(
         self, context: CircuitBuildContext, ports: PortWireDict, prefix: str, color: str
-    ) -> None:
+    ) -> CircuitPorts:
         """Add port nodes to the graph."""
+        circuit_ports: CircuitPorts = {}
         for port in ports.keys():
             node_id = self.node_builder.create_port_node(
                 context.graph, port, prefix, color
             )
-            context.circuit_ports[port] = node_id
+            circuit_ports[port] = node_id
+        context.circuit_ports.update(circuit_ports)
+        return circuit_ports
 
     def _add_aligned_ports(
         self,
@@ -265,15 +279,14 @@ class CircuitGraphBuilder:
         rank: str,
     ) -> None:
         """Add port nodes to the graph with rank alignment."""
-        self._add_ports(context, ports, prefix, color)
+        circuit_ports = self._add_ports(context, ports, prefix, color)
 
         # Create a subgraph to align the ports
         subgraph_name = f"aligned_{rank}_{prefix}"
         subgraph = pydot.Subgraph(subgraph_name, rank=rank)
 
-        for port, node_id in context.circuit_ports.items():
-            if node_id.startswith(f"{prefix}_"):
-                subgraph.add_node(pydot.Node(node_id))
+        for node_id in circuit_ports.values():
+            subgraph.add_node(pydot.Node(node_id))
 
         context.graph.add_subgraph(subgraph)
 
@@ -281,78 +294,66 @@ class CircuitGraphBuilder:
         """Build all components in the circuit."""
         components = context.circuit.components
 
+        # Case 1: We're at a NAND gate leaf node and not using compact representation
         if len(components) == 0 and not self.options.is_compact:
-            # We are at the NAND level
             self._build_nand_circuit(context)
             return
 
+        # Process each component
         for component_name, component in components.items():
-            # TODO : coalesce ?
-            if component.identifier == 0 and self.options.is_compact:
-                # Compact NAND representation
-                component_ports = self._build_nand_component(
+            # Case 2: NAND gate with compact representation OR max depth reached
+            if (component.identifier == 0 and self.options.is_compact) or (
+                self.options.max_depth >= 0 and context.depth >= self.options.max_depth
+            ):
+                # Use simplified node representation
+                component_ports = self._build_simple_node(
                     context, component, component_name
                 )
                 context.add_component_ports(component_name, component_ports)
-            elif self.options.max_depth > 0 and context.depth >= self.options.max_depth:
-                # Max depth reached, use simplified node
-                component_ports = self._build_node(context, component, component_name)
-                context.add_component_ports(component_name, component_ports)
             else:
-                # Create a new context for this component
+                # Case 3: Recursively build nested component
                 component_context = context.create_component_context(
                     component, component_name
                 )
-
-                # Build the component recursively
                 self._build_circuit_graph(component_context)
-
-                # Store the component's ports in the parent context
                 context.add_component_ports(
                     component_name, component_context.circuit_ports
                 )
 
     def _build_nand_circuit(self, context: CircuitBuildContext) -> None:
-        """Build a NAND gate circuit."""
+        """Build a NAND gate circuit with connections between ports."""
         name = f"{context.prefix}_nand"
         self.node_builder.create_nand_node(context.graph, name)
 
+        # Connect the NAND gate to its ports
         ports = list(context.circuit_ports.values())
         a, b, out = ports[0], ports[1], ports[2]
         context.graph.add_edge(pydot.Edge(a, name))
         context.graph.add_edge(pydot.Edge(b, name))
-        context.graph.add_edge(pydot.Edge(out, name))
+        context.graph.add_edge(pydot.Edge(name, out))
 
-    def _build_nand_component(
-        self, context: CircuitBuildContext, nand: Circuit, component_name: CircuitKey
-    ) -> Dict[CircuitKey, str]:
-        """Build a compact NAND component."""
-        name = f"{context.prefix}_comp_{component_name}"
-        self.node_builder.create_nand_node(context.graph, name)
-
-        # All ports map to the same node
-        nand_ports = {in_key: name for in_key in nand.inputs.keys()}
-        nand_ports.update({out_key: name for out_key in nand.outputs.keys()})
-
-        return nand_ports
-
-    def _build_node(
+    def _build_simple_node(
         self, context: CircuitBuildContext, circuit: Circuit, component_name: CircuitKey
     ) -> Dict[CircuitKey, str]:
-        """Build a simplified node for a circuit component."""
-        # TODO coalesce w/ _build_nand_component ?
+        """Build a simplified node for a circuit component
+        (used for NAND gates or max depth)."""
         name = f"{context.prefix}_comp_{component_name}"
-        self.node_builder.create_circuit_node(context.graph, circuit, name)
+
+        # Create appropriate node based on circuit type
+        if circuit.identifier == 0:  # NAND gate
+            self.node_builder.create_nand_node(context.graph, name)
+        else:  # Other circuit types
+            self.node_builder.create_circuit_node(context.graph, circuit, name)
 
         # All ports map to the same node
-        node_ports = {in_key: name for in_key in circuit.inputs.keys()}
-        node_ports.update({out_key: name for out_key in circuit.outputs.keys()})
+        node_ports = {port: name for port in circuit.inputs.keys()}
+        node_ports.update({port: name for port in circuit.outputs.keys()})
 
         return node_ports
 
     def _connect_all_parts(self, context: CircuitBuildContext) -> None:
         """Connect all parts of the circuit."""
-        # Determine penwidth for I/O connections
+        # The main graph has its I/O connections bolded
         penwidth = 2 if context.is_main_graph() and self.options.bold_io else 1
 
         # Connect inputs
@@ -368,12 +369,8 @@ class CircuitGraphBuilder:
         self, context: CircuitBuildContext, penwidth: int
     ) -> None:
         """Connect circuit inputs to component inputs."""
-        circuit = context.circuit
-        circuit_ports = context.circuit_ports
-        components_ports = context.components_ports
-
-        for circuit_input_name, input_wire in circuit.inputs.items():
-            for component_name, component in circuit.components.items():
+        for circuit_input_name, input_wire in context.circuit.inputs.items():
+            for component_name, component in context.circuit.components.items():
                 matching_inputs = [
                     input_name
                     for input_name, wire in component.inputs.items()
@@ -381,8 +378,10 @@ class CircuitGraphBuilder:
                 ]
 
                 for component_input_name in matching_inputs:
-                    source_node = circuit_ports[circuit_input_name]
-                    target_node = components_ports[component_name][component_input_name]
+                    source_node = context.circuit_ports[circuit_input_name]
+                    target_node = context.components_ports[component_name][
+                        component_input_name
+                    ]
                     context.graph.add_edge(
                         pydot.Edge(source_node, target_node, penwidth=penwidth)
                     )
@@ -391,12 +390,8 @@ class CircuitGraphBuilder:
         self, context: CircuitBuildContext, penwidth: int
     ) -> None:
         """Connect component outputs to circuit outputs."""
-        circuit = context.circuit
-        circuit_ports = context.circuit_ports
-        components_ports = context.components_ports
-
-        for circuit_output_name, output_wire in circuit.outputs.items():
-            for component_name, component in circuit.components.items():
+        for circuit_output_name, output_wire in context.circuit.outputs.items():
+            for component_name, component in context.circuit.components.items():
                 matching_outputs = [
                     output_name
                     for output_name, wire in component.outputs.items()
@@ -404,21 +399,18 @@ class CircuitGraphBuilder:
                 ]
 
                 for component_output_name in matching_outputs:
-                    source_node = components_ports[component_name][
+                    source_node = context.components_ports[component_name][
                         component_output_name
                     ]
-                    target_node = circuit_ports[circuit_output_name]
+                    target_node = context.circuit_ports[circuit_output_name]
                     context.graph.add_edge(
                         pydot.Edge(source_node, target_node, penwidth=penwidth)
                     )
 
     def _connect_components(self, context: CircuitBuildContext) -> None:
         """Connect component outputs to other component inputs."""
-        circuit = context.circuit
-        components_ports = context.components_ports
-
-        for source_name, source in circuit.components.items():
-            for target_name, target in circuit.components.items():
+        for source_name, source in context.circuit.components.items():
+            for target_name, target in context.circuit.components.items():
                 if source_name == target_name:
                     continue
 
@@ -431,8 +423,12 @@ class CircuitGraphBuilder:
                     ]
 
                     for target_input_name in matching_inputs:
-                        source_node = components_ports[source_name][source_output_name]
-                        target_node = components_ports[target_name][target_input_name]
+                        source_node = context.components_ports[source_name][
+                            source_output_name
+                        ]
+                        target_node = context.components_ports[target_name][
+                            target_input_name
+                        ]
                         context.graph.add_edge(pydot.Edge(source_node, target_node))
 
 
@@ -471,17 +467,18 @@ if __name__ == "__main__":
     reference = schematics_builder.schematics
 
     # Visualize different circuits
-    for depth in range(3, 4):
-        circuit = reference.get_schematic_idx(10)
-        graph = generate_graph(
-            circuit,
-            GraphOptions(
-                is_compact=True, is_aligned=True, bold_io=True, max_depth=depth
-            ),
-        )
-        output_file = save_graph(
-            graph,
-            f"circuit_{10}_{depth}",
-            "svg",
-        )
-        print(f"Nested graph saved to {output_file}")
+    for idx in range(1, 11):
+        for depth in range(0, 6):
+            circuit = reference.get_schematic_idx(idx)
+            graph = generate_graph(
+                circuit,
+                GraphOptions(
+                    is_compact=True, is_aligned=True, bold_io=True, max_depth=depth
+                ),
+            )
+            output_file = save_graph(
+                graph,
+                f"circuit_{idx}_{depth}",
+                "svg",
+            )
+            print(f"Nested graph saved to {output_file}")

@@ -7,8 +7,7 @@
 !.vscode/*.code-snippets
 
 # Personal Documents
-scratchpad.md
-scratchpad.py
+scratchpad*
 
 # Python
 *__pycache__*

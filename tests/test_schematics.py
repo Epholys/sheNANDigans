@@ -1,34 +1,17 @@
 from concurrent.futures import ProcessPoolExecutor
-from functools import partial
 from itertools import product
 import multiprocessing
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Tuple
 
 import pytest
 from src.circuit import Circuit
-from src.decoding import CircuitDecoder
-from src.encoding import CircuitEncoder
-from src.schematics import Schematics, SchematicsBuilder
 from src.simulator import Simulator
-from src.simulator_builder import OptimizationLevel, build_simulator
-
-
-class NumericOperations:
-    def __init__(
-        self,
-        inputs_to_numbers: Callable[[List[bool]], List[int]],
-        number_to_outputs: Callable[[int], List[bool]],
-        operation: Callable[[List[int]], int],
-    ):
-        self.inputs_to_numbers = inputs_to_numbers
-        self.number_to_outputs = number_to_outputs
-        self.operation = operation
-
-    def apply(self, inputs: Tuple[bool, ...]) -> List[bool]:
-        input_numbers = self.inputs_to_numbers(list(inputs))
-        operation_result = self.operation(input_numbers)
-        expected_outputs = self.number_to_outputs(operation_result)
-        return expected_outputs
+from src.simulator_builder import OptimizationLevel
+from tests.numeric_operations import (
+    NumericOperations,
+    bools_to_int,
+    int_to_bools,
+)
 
 
 def assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
@@ -49,84 +32,6 @@ def assert_simulation(data):
         assert False, "Simulation Failed"
 
     assert simulation_result == expected_outputs
-
-
-class TestedCircuits:
-    reference: Optional[Schematics] = None
-    round_trip: Optional[Schematics] = None
-
-
-class Simulators:
-    reference: List[Simulator] = []
-    round_trip: List[Simulator] = []
-
-
-# Todo lazy pytest ?
-
-circuits = TestedCircuits()
-simulators_fast = Simulators()
-simulators_debug = Simulators()
-
-
-def build_simulators(processing: str, optimization_level: OptimizationLevel):
-    global circuits
-    global simulators_fast
-    global simulators_debug
-
-    if optimization_level == OptimizationLevel.FAST:
-        simulators = simulators_fast
-    elif optimization_level == OptimizationLevel.DEBUG:
-        simulators = simulators_debug
-    else:
-        raise TypeError("Unknown OptimizationLevel.")
-
-    if circuits.reference is None:
-        builder = SchematicsBuilder()
-        builder.build_circuits()
-        circuits.reference = builder.schematics
-    if circuits.round_trip is None:
-        encoded = CircuitEncoder(circuits.reference).encode()
-        circuits.round_trip = CircuitDecoder(encoded).decode()
-
-    if processing != "reference" and processing != "round_trip":
-        raise ValueError("Unknown schematics request.")
-
-    if processing == "reference" and len(simulators.reference) == 0:
-        simulators.reference = [
-            build_simulator(circuit, optimization_level)
-            for circuit in circuits.reference.get_all_schematics().values()
-        ]
-    if processing == "round_trip" and len(simulators.round_trip) == 0:
-        simulators.round_trip = [
-            build_simulator(circuit, optimization_level)
-            for circuit in circuits.round_trip.get_all_schematics().values()
-        ]
-
-
-@pytest.fixture(scope="module")
-def simulators(request):
-    processing: str
-    optimization_level: OptimizationLevel
-    processing, optimization_level = request.param
-
-    global simulators_fast
-    global simulators_debug
-
-    if optimization_level == OptimizationLevel.FAST:
-        simulators = simulators_fast
-    elif optimization_level == OptimizationLevel.DEBUG:
-        simulators = simulators_debug
-    else:
-        raise TypeError("Unknown OptimizationLevel.")
-
-    build_simulators(processing, optimization_level)
-
-    if processing == "reference":
-        return simulators.reference
-    elif processing == "round_trip":
-        return simulators.round_trip
-    else:
-        raise ValueError("Unknown schematics request.")
 
 
 @pytest.mark.parametrize(
@@ -207,14 +112,19 @@ class TestSchematics:
             # the process management takes the biggest amount of time (Windows's '_winapi.WaitForMultipleObjects' and WSL's 'select.poll').
             # I'll come back later, when I have more tests and more motivation to go deeper on this subject.
             # Things I know (now) that I can try:
-            # - Automated hyper-parameters tuning
-            # - psutil library
-            # - 'multiprocessing.Pool'
-            # - loky's 'joblib.Parallel'
-            # - Persistent worker pool 'multiprocessing.Pool'
-            # - Persistent workers (probably a good idea when I'll have more parallelizable tests)
-            # - Different chunking approach: not in 'executor.map(chunksize=)' but pre-chunking: 'chunks=[cases[i+chunk_size] for i in range(len(cases), chunk_size)]'
-            # - Analyze pickling
+            # - Keeping this approach:
+            #   - Automated hyper-parameters tuning
+            #   - psutil library
+            #   - 'multiprocessing.Pool'
+            #   - loky's 'joblib.Parallel'
+            #   - Persistent worker pool 'multiprocessing.Pool'
+            #   - Persistent workers (probably a good idea when I'll have more parallelizable tests)
+            #   - Different chunking approach: not in 'executor.map(chunksize=)' but pre-chunking: 'chunks=[cases[i+chunk_size] for i in range(len(cases), chunk_size)]'
+            #   - Analyze pickling
+            # - Other approaches: changing the simulation philosophy:
+            #   - Parallel simulation using topological order
+            #   - Parallel simulation using circuit partitioning
+            #   - Using lower-level libraries (Cython, Numba, NumPy, CuPy, etc.)
             cpu_count = multiprocessing.cpu_count()
             n_processes = cpu_count - 1
             chunk_size = max(1, n_tasks // (n_processes * 4))
@@ -278,7 +188,7 @@ class TestSchematics:
             n_outputs,
             NumericOperations(
                 inputs_to_numbers,
-                number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+                number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
             ),
         )
@@ -323,7 +233,7 @@ class TestSchematics:
             n_outputs,
             NumericOperations(
                 inputs_to_numbers,
-                number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+                number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
             ),
         )
@@ -368,7 +278,7 @@ class TestSchematics:
             n_outputs,
             NumericOperations(
                 inputs_to_numbers,
-                number_to_outputs=lambda n: int_to_bools(n, n_outputs),
+                number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
             ),
         )
@@ -407,25 +317,7 @@ class TestSchematics:
             n_outputs,
             NumericOperations(
                 self.eight_bits_inputs_to_numbers,
-                number_to_outputs=int_to_bools_partial(n_outputs),
+                number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
             ),
         )
-
-
-def bools_to_int(bools: List[bool]):
-    """
-    bools from low to high
-    """
-    return sum(b * (2**n) for n, b in enumerate(bools))
-
-
-def int_to_bools_partial(n: int) -> Callable[[int], List[bool]]:
-    return partial(int_to_bools, n=n)
-
-
-def int_to_bools(x: int, n: int) -> List[bool]:
-    """
-    bools from low to high
-    """
-    return [(x >> shift) & 1 > 0 for shift in range(n)]

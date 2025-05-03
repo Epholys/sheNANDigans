@@ -1,9 +1,15 @@
+from re import L
+from PIL.XVThumbImagePlugin import r
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 from src.schematics import SchematicsBuilder
 
 
 def test_roundtrip():
+    """Test the round trip encoding and decoding.
+
+    It tests the raw values of the encoding and decoding, not the actual circuits.
+    """
     builder = SchematicsBuilder()
     builder.build_circuits()
     schematics = builder.schematics
@@ -13,8 +19,14 @@ def test_roundtrip():
     round_trip_encoding = CircuitEncoder(round_trip_schematics).encode()
 
     if reference_encoding != round_trip_encoding:
-        print("Encoding is different after round trip")
+        if len(reference_encoding) != len(round_trip_encoding):
+            assert False, (
+                f"Encoding is different after round trip: "
+                f"Length is different: {len(reference_encoding)} != {len(round_trip_encoding)}"
+            )
         for idx, (a, b) in enumerate(zip(reference_encoding, round_trip_encoding)):
             if a != b:
-                print(f"Index {idx} is different: {a} != {b}")
-                assert False
+                assert False, (
+                    f"Encoding is different after round trip: "
+                    f"Index {idx} is different: {a} != {b}"
+                )

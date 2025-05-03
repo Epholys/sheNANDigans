@@ -1,15 +1,22 @@
 import pytest
 
 from src.optimization_level import OptimizationLevel
-from tests.schematics_builder import choose_simulators
+from tests.simulators_factory import BuildProcess, SimulatorsFactory
 
 
 @pytest.fixture(scope="module")
-def simulators(request):
-    processing: str
+def simulators_factory():
+    """Fixture to create a memoized SimulatorsFactory instance."""
+    return SimulatorsFactory()
+
+
+@pytest.fixture(scope="module")
+def simulators(request, simulators_factory):
+    """Fixture to provide simulators for different build processes and optimization levels."""
+    processing: BuildProcess
     optimization_level: OptimizationLevel
     processing, optimization_level = request.param
 
-    simulators = choose_simulators(processing, optimization_level)
+    simulators = simulators_factory.get_simulators(processing, optimization_level)
 
     return simulators

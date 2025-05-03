@@ -12,43 +12,47 @@ from tests.numeric_operations import (
     bools_to_int,
     int_to_bools,
 )
-
-
-def assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
-    assert len(circuit.inputs) == n_inputs
-    assert len(circuit.outputs) == n_outputs
-
-
-def assert_simulation(data):
-    simulator: Simulator
-    operations: NumericOperations
-    circuit_inputs: Tuple[bool, ...]
-    simulator, operations, circuit_inputs = data
-
-    expected_outputs = operations.apply(circuit_inputs)
-
-    simulation_result = simulator.simulate(circuit_inputs)
-    if not simulation_result:
-        assert False, "Simulation Failed"
-
-    assert simulation_result == expected_outputs
+from tests.simulators_factory import BuildProcess
 
 
 @pytest.mark.parametrize(
     "simulators",
     [
-        pytest.param(("reference", OptimizationLevel.FAST)),
-        pytest.param(("round_trip", OptimizationLevel.FAST)),
-        pytest.param(("reference", OptimizationLevel.DEBUG), marks=pytest.mark.debug),
-        pytest.param(("round_trip", OptimizationLevel.DEBUG), marks=pytest.mark.debug),
+        pytest.param((BuildProcess.REFERENCE, OptimizationLevel.FAST)),
+        pytest.param((BuildProcess.ROUND_TRIP, OptimizationLevel.FAST)),
+        pytest.param(
+            (BuildProcess.REFERENCE, OptimizationLevel.DEBUG), marks=pytest.mark.debug
+        ),
+        pytest.param(
+            (BuildProcess.ROUND_TRIP, OptimizationLevel.DEBUG), marks=pytest.mark.debug
+        ),
     ],
     indirect=["simulators"],
 )
 class TestSchematics:
-    def assert_2_in_1_out(
+    """Test the circuits behavior on the different cases.
+
+    The goal is to test
+    - The reference circuits (implemented in python) vs the round-trip circuits (going
+    through encoding and decoding).
+    - The different simulators with optimization levels (fast vs debug).
+    """
+
+    def _assert_circuit_signature(
+        self, circuit: Circuit, n_inputs: int, n_outputs: int
+    ):
+        """Assert the signature of a circuit (number of inputs and outputs)."""
+        assert len(circuit.inputs) == n_inputs
+        assert len(circuit.outputs) == n_outputs
+
+    def _assert_logic_gate_simulations(
         self, simulator: Simulator, gate_logic: Callable[[bool, bool], bool]
     ):
-        assert_circuit_signature(simulator._circuit, n_inputs=2, n_outputs=1)
+        """Assert the simulation of a logic gate.
+
+        'gate_logic' is the expected behavior of the gate.
+        """
+        self._assert_circuit_signature(simulator._circuit, n_inputs=2, n_outputs=1)
 
         possible_inputs = list(product([True, False], repeat=2))
         expected_outputs = [gate_logic(a, b) for a, b in possible_inputs]
@@ -59,43 +63,32 @@ class TestSchematics:
                 assert False, "Simulation Failed"
             assert result == [expected_output]
 
-    def test_nand(self, simulators):
-        nand = simulators[0]
-        self.assert_2_in_1_out(nand, lambda a, b: not (a and b))
+    def _assert_single_numeric_simulation(self, data):
+        """Assert the simulation of a numeric operation for a single case."""
+        simulator: Simulator
+        operations: NumericOperations
+        circuit_inputs: Tuple[bool, ...]
+        simulator, operations, circuit_inputs = data
 
-    def test_not(self, simulators):
-        not_ = simulators[1]
+        expected_outputs = operations.apply(circuit_inputs)
 
-        for a in [True, False]:
-            result = not_.simulate([a])
-            if not result:
-                assert False, "Simulation Failed"
-            assert result == [not a]
+        simulation_result = simulator.simulate(circuit_inputs)
+        if not simulation_result:
+            assert False, "Simulation Failed"
 
-    def test_and(self, simulators):
-        and_ = simulators[2]
-        self.assert_2_in_1_out(and_, lambda a, b: a and b)
+        assert simulation_result == expected_outputs
 
-    def test_or(self, simulators):
-        or_ = simulators[3]
-        self.assert_2_in_1_out(or_, lambda a, b: a or b)
-
-    def test_nor(self, simulators):
-        nor = simulators[4]
-        self.assert_2_in_1_out(nor, lambda a, b: not (a or b))
-
-    def test_xor(self, simulators):
-        xor = simulators[5]
-        self.assert_2_in_1_out(xor, lambda a, b: a ^ b)
-
-    def assert_numeric_operations(
+    def _assert_all_numeric_simulations(
         self,
         simulator: Simulator,
         n_inputs: int,
         n_outputs: int,
         operations: NumericOperations,
     ):
-        assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
+        """Assert the behavior of a circuit implementing a numeric operation for all
+        possible inputs.
+        """
+        self._assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
 
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
@@ -120,6 +113,7 @@ class TestSchematics:
             #   - Persistent worker pool 'multiprocessing.Pool'
             #   - Persistent workers (probably a good idea when I'll have more parallelizable tests)
             #   - Different chunking approach: not in 'executor.map(chunksize=)' but pre-chunking: 'chunks=[cases[i+chunk_size] for i in range(len(cases), chunk_size)]'
+            #   - Pre-compute NumericOperations (or at least the inputs)
             #   - Analyze pickling
             # - Other approaches: changing the simulation philosophy:
             #   - Parallel simulation using topological order
@@ -132,7 +126,7 @@ class TestSchematics:
             with ProcessPoolExecutor(max_workers=n_processes) as executor:
                 results = list(
                     executor.map(
-                        assert_simulation,
+                        self._assert_single_numeric_simulation,
                         cases,
                         chunksize=chunk_size,
                     )
@@ -141,7 +135,36 @@ class TestSchematics:
 
         else:
             for case in cases:
-                assert_simulation(case)
+                self._assert_single_numeric_simulation(case)
+
+    def test_nand(self, simulators):
+        nand = simulators[0]
+        self._assert_logic_gate_simulations(nand, lambda a, b: not (a and b))
+
+    def test_not(self, simulators):
+        not_ = simulators[1]
+
+        for a in [True, False]:
+            result = not_.simulate([a])
+            if not result:
+                assert False, "Simulation Failed"
+            assert result == [not a]
+
+    def test_and(self, simulators):
+        and_ = simulators[2]
+        self._assert_logic_gate_simulations(and_, lambda a, b: a and b)
+
+    def test_or(self, simulators):
+        or_ = simulators[3]
+        self._assert_logic_gate_simulations(or_, lambda a, b: a or b)
+
+    def test_nor(self, simulators):
+        nor = simulators[4]
+        self._assert_logic_gate_simulations(nor, lambda a, b: not (a or b))
+
+    def test_xor(self, simulators):
+        xor = simulators[5]
+        self._assert_logic_gate_simulations(xor, lambda a, b: a ^ b)
 
     def test_half_adder(self, simulators):
         half_adder = simulators[6]
@@ -160,7 +183,7 @@ class TestSchematics:
             carry = (number >> 1) & 1
             return [bool(x) for x in [sum, carry]]
 
-        self.assert_numeric_operations(
+        self._assert_all_numeric_simulations(
             half_adder,
             2,
             2,
@@ -182,7 +205,7 @@ class TestSchematics:
             assert len(inputs) == n_inputs
             return [+(b) for b in inputs]
 
-        self.assert_numeric_operations(
+        self._assert_all_numeric_simulations(
             full_adder,
             n_inputs,
             n_outputs,
@@ -227,7 +250,7 @@ class TestSchematics:
 
             return [a, b, c0]
 
-        self.assert_numeric_operations(
+        self._assert_all_numeric_simulations(
             two_bits_adder,
             n_inputs,
             n_outputs,
@@ -272,7 +295,7 @@ class TestSchematics:
 
             return [a, b, c0]
 
-        self.assert_numeric_operations(
+        self._assert_all_numeric_simulations(
             four_bits_adder,
             n_inputs,
             n_outputs,
@@ -311,7 +334,7 @@ class TestSchematics:
         n_inputs = 17
         n_outputs = 9
 
-        self.assert_numeric_operations(
+        self._assert_all_numeric_simulations(
             eight_bits_adder,
             n_inputs,
             n_outputs,

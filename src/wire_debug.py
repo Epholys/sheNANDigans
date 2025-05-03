@@ -26,7 +26,7 @@ class WireDebug(Wire):
             self._state = WireExtendedState.ON if value else WireExtendedState.OFF
         else:
             raise TypeError(
-                f"Trying to set the value of a {type(self).__name__} to an"
+                f"Trying to set the value of a {type(self).__name__} to an "
                 f"unsupported state: {type(value).__name__}."
             )
 

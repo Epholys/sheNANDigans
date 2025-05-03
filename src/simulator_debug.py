@@ -4,7 +4,7 @@ from circuit import Circuit
 from simulator import Simulator
 from src.wire_converter import convert_wires
 from optimization_level import OptimizationLevel
-from src.wire_extended_state import WireExtendedState
+from wire_extended_state import WireExtendedState
 
 
 class SimulatorDebug(Simulator):

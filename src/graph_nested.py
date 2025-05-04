@@ -7,7 +7,7 @@ from circuit import (
     PortWireDict,
 )
 from schematics import SchematicsBuilder
-from src.graph_node_builder import NodeBuilder
+from graph_node_builder import NodeBuilder
 
 
 class GraphOptions:
@@ -380,7 +380,7 @@ if __name__ == "__main__":
     # Visualize different circuits
     for idx in range(10, 11):
         for depth in range(0, 3):
-            circuit = reference.get_schematic_idx(idx)
+            circuit = reference.get_schematic_idx(6)
             graph = generate_graph(
                 circuit,
                 GraphOptions(
@@ -389,7 +389,7 @@ if __name__ == "__main__":
             )
             output_file = save_graph(
                 graph,
-                f"circuit_{idx}_{depth}",
+                f"half_adder",
                 "svg",
             )
             print(f"Nested graph saved to {output_file}")

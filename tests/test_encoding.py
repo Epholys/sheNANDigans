@@ -1,5 +1,3 @@
-from re import L
-from PIL.XVThumbImagePlugin import r
 from src.decoding import CircuitDecoder
 from src.encoding import CircuitEncoder
 from src.schematics import SchematicsBuilder

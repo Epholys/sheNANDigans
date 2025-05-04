@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import List
 
 from circuit import Circuit, CircuitDict, Wire
-from src.schematics import Schematics
+from schematics import Schematics
 
 
 class CircuitEncoder:

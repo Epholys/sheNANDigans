@@ -11,11 +11,13 @@ scratchpad*
 
 # Python
 *__pycache__*
-
-# Images
-*.png
-*.jpg
-*.svg
+.pytest_cache
+.ruff_cache
+.venv
+uv.lock
 
 # Profiling
 *.profiling
+
+# Dev mode
+*egg-info

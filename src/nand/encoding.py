@@ -1,8 +1,8 @@
 from copy import deepcopy
 from typing import List
 
-from circuit import Circuit, CircuitDict, Wire
-from schematics import Schematics
+from nand.circuit import Circuit, CircuitDict, Wire
+from nand.schematics import Schematics
 
 
 class CircuitEncoder:

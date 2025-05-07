@@ -4,9 +4,9 @@ import multiprocessing
 from typing import Callable, List, Tuple
 
 import pytest
-from src.circuit import Circuit
-from src.simulator import Simulator
-from src.simulator_builder import OptimizationLevel
+from nand.circuit import Circuit
+from nand.simulator import Simulator
+from nand.simulator_builder import OptimizationLevel
 from tests.numeric_operations import (
     NumericOperations,
     bools_to_int,

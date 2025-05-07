@@ -1,8 +1,8 @@
 from copy import deepcopy
 from typing import OrderedDict
 
-from circuit import Circuit, CircuitDict, CircuitKey
-from wire import Wire
+from nand.circuit import Circuit, CircuitDict, CircuitKey
+from nand.wire import Wire
 
 
 class Schematics:

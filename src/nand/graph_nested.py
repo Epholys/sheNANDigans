@@ -1,13 +1,13 @@
 from typing import Dict, Optional
 import pydot
-from circuit import (
+from nand.circuit import (
     Circuit,
     CircuitKey,
     PortKey,
     PortWireDict,
 )
-from schematics import SchematicsBuilder
-from graph_node_builder import NodeBuilder
+from nand.schematics import SchematicsBuilder
+from nand.graph_node_builder import NodeBuilder
 
 
 class GraphOptions:
@@ -257,8 +257,8 @@ class NestedGraphBuilder:
             self.node_builder.create_circuit_node(context.graph, circuit, name)
 
         # All ports map to the same node
-        node_ports = {port: name for port in circuit.inputs.keys()}
-        node_ports.update({port: name for port in circuit.outputs.keys()})
+        node_ports = dict.fromkeys(circuit.inputs.keys(), name)
+        node_ports.update(dict.fromkeys(circuit.outputs.keys(), name))
 
         return node_ports
 
@@ -367,11 +367,6 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 
 # Example usage
 if __name__ == "__main__":
-    import os
-
-    # Set Graphviz path if needed
-    os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin"
-
     # Create schematics library
     schematics_builder = SchematicsBuilder()
     schematics_builder.build_circuits()
@@ -389,7 +384,7 @@ if __name__ == "__main__":
             )
             output_file = save_graph(
                 graph,
-                f"half_adder",
+                "half_adder",
                 "svg",
             )
             print(f"Nested graph saved to {output_file}")

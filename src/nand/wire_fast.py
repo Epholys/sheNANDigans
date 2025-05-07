@@ -1,4 +1,4 @@
-from wire import Wire, WireState
+from nand.wire import Wire, WireState
 
 
 class WireFast(Wire):

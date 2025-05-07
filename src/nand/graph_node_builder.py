@@ -2,7 +2,7 @@ from typing import Dict
 import pydot
 import seaborn
 
-from circuit import Circuit, CircuitKey
+from nand.circuit import Circuit, CircuitKey
 
 
 def golden_ratio_generator(scale: int):

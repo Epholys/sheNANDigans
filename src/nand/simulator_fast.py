@@ -1,8 +1,8 @@
-from circuit import Circuit
-from simulator import Simulator
-from wire_converter import convert_wires
-from circuit_optimizer import optimize
-from optimization_level import OptimizationLevel
+from nand.circuit import Circuit
+from nand.simulator import Simulator
+from nand.wire_converter import convert_wires
+from nand.circuit_optimizer import optimize
+from nand.optimization_level import OptimizationLevel
 
 
 class SimulatorFast(Simulator):

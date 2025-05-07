@@ -1,6 +1,6 @@
 import pytest
 
-from src.optimization_level import OptimizationLevel
+from nand.optimization_level import OptimizationLevel
 from tests.simulators_factory import BuildProcess, SimulatorsFactory
 
 

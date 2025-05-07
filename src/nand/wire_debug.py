@@ -1,5 +1,5 @@
-from wire_extended_state import WireExtendedState
-from wire import Wire, WireState
+from nand.wire_extended_state import WireExtendedState
+from nand.wire import Wire, WireState
 
 
 class WireDebug(Wire):

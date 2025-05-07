@@ -1,7 +1,7 @@
 from typing import Dict
 
 
-from wire import Wire
+from nand.wire import Wire
 
 # Type aliasing definition. There is a lot of them, but it's easier when developing to
 # have clear hints.

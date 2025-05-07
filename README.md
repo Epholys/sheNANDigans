@@ -68,7 +68,7 @@ graph = generate_graph(
     half_adder,
     GraphOptions(is_compact=True, is_aligned=True, bold_io=True)
 )
-save_graph(graph, f"half_adder", "svg")
+save_graph(graph, "half_adder", "svg")
 ```
 
 ## What's next?

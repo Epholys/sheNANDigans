@@ -4,7 +4,7 @@ from typing import List, Dict, Set, Optional
 
 import networkx as nx
 
-from circuit import Circuit, CircuitDict, CircuitKey, Key, PortWireDict
+from nand.circuit import Circuit, CircuitDict, CircuitKey, Key, PortWireDict
 
 
 class NodeType(Enum):

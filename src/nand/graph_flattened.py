@@ -1,9 +1,9 @@
 from itertools import product
 import pydot
-from circuit import Circuit
+from nand.circuit import Circuit
 from typing import List, Tuple, Literal
 
-from graph_node_builder import NodeBuilder
+from nand.graph_node_builder import NodeBuilder
 
 # Define type aliases for better readability
 type Connection = Tuple[str, str]  # (source, destination)
@@ -108,7 +108,7 @@ class FlattenedGraphBuilder:
     def _extract_input_connections(
         self, all_nands: NandCollection
     ) -> List[InputConnection]:
-        """Extract connections from circuit inputs to NAND gates."""
+        """Extract connections from nand.circuit inputs to NAND gates."""
         connections = []
 
         for input_name, input_wire in self.circuit.inputs.items():
@@ -232,7 +232,7 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 # Example usage
 if __name__ == "__main__":
     import os
-    from schematics import SchematicsBuilder
+    from nand.schematics import SchematicsBuilder
 
     # Set Graphviz path if needed
     os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin"

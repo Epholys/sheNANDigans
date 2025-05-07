@@ -1,8 +1,8 @@
 from typing import List, NamedTuple
 
-from schematics import Schematics
-from circuit import Circuit, CircuitKey
-from wire import Wire
+from nand.circuit import Circuit, CircuitKey
+from nand.schematics import Schematics
+from nand.wire import Wire
 
 
 class _InputParameters(NamedTuple):

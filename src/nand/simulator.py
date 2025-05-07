@@ -1,5 +1,5 @@
 from typing import Literal, Sequence
-from circuit import Circuit
+from nand.circuit import Circuit
 from abc import ABC, abstractmethod
 
 

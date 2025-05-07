@@ -1,6 +1,6 @@
-from src.decoding import CircuitDecoder
-from src.encoding import CircuitEncoder
-from src.schematics import SchematicsBuilder
+from nand.decoding import CircuitDecoder
+from nand.encoding import CircuitEncoder
+from nand.schematics import SchematicsBuilder
 
 
 def test_roundtrip():

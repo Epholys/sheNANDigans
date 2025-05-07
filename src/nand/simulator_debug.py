@@ -1,10 +1,10 @@
 from typing import List
-from circuit import Circuit
+from nand.circuit import Circuit
 
-from simulator import Simulator
-from wire_converter import convert_wires
-from optimization_level import OptimizationLevel
-from wire_extended_state import WireExtendedState
+from nand.simulator import Simulator
+from nand.wire_converter import convert_wires
+from nand.optimization_level import OptimizationLevel
+from nand.wire_extended_state import WireExtendedState
 
 
 class SimulatorDebug(Simulator):

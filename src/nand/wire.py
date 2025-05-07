@@ -1,7 +1,7 @@
 import itertools
 from typing import Any, Self
 
-from wire_extended_state import WireExtendedState
+from nand.wire_extended_state import WireExtendedState
 
 
 type WireState = WireExtendedState | bool

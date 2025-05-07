@@ -1,12 +1,12 @@
 from enum import Enum
 from typing import List, Tuple
 
-from src.decoding import CircuitDecoder
-from src.encoding import CircuitEncoder
-from src.optimization_level import OptimizationLevel
-from src.schematics import Schematics, SchematicsBuilder
-from src.simulator import Simulator
-from src.simulator_builder import build_simulator
+from nand.decoding import CircuitDecoder
+from nand.encoding import CircuitEncoder
+from nand.optimization_level import OptimizationLevel
+from nand.schematics import Schematics, SchematicsBuilder
+from nand.simulator import Simulator
+from nand.simulator_builder import build_simulator
 
 
 class BuildProcess(Enum):

@@ -1,10 +1,10 @@
 from typing import Dict, Type
 
-from circuit import Circuit, PortWireDict
-from optimization_level import OptimizationLevel
-from wire_debug import WireDebug
-from wire_fast import WireFast
-from wire import Wire
+from nand.circuit import Circuit, PortWireDict
+from nand.optimization_level import OptimizationLevel
+from nand.wire_debug import WireDebug
+from nand.wire_fast import WireFast
+from nand.wire import Wire
 
 
 def convert_wires(circuit: Circuit, optimization_level: OptimizationLevel):

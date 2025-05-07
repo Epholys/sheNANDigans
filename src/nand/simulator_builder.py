@@ -1,7 +1,7 @@
-from simulator import Circuit, Simulator
-from simulator_debug import SimulatorDebug
-from simulator_fast import SimulatorFast
-from optimization_level import OptimizationLevel
+from nand.simulator import Circuit, Simulator
+from nand.simulator_debug import SimulatorDebug
+from nand.simulator_fast import SimulatorFast
+from nand.optimization_level import OptimizationLevel
 
 
 def build_simulator(circuit: Circuit, level: OptimizationLevel) -> Simulator:

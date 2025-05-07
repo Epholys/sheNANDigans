@@ -72,6 +72,8 @@ graph = generate_graph(
 save_graph(graph, "half_adder", "svg")
 ```
 
+![Half-Adder graph](./media/half_adder.svg)
+
 ## What's next?
 
 I have lots of ideas:

@@ -1,0 +1,23 @@
+[project]
+name = "sheNANDigans"
+version = "0.1.0"
+description = "Toy playground to explore the beauty of the NAND gate"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "networkx>=3.4.2",
+    "pydot>=4.0.0",
+    "seaborn>=0.13.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.11.8",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

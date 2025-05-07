@@ -1,16 +1,24 @@
 {
-    "files.associations": {
-        "cstdlib": "c",
-        "cstdint": "c",
-        "interpreter.h": "c",
-        "string.h": "c",
-        "data.h": "c",
-        "ring.h": "c",
-        "test_framework.h": "c",
-        "tassert.h": "c"
-    },
-    "C_Cpp.default.includePath": [
-        "${workspaceFolder}/**"
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "standard",
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        ".",
+        "-p",
+        "test*.py"
     ],
-    "C_Cpp.errorSquiggles": "enabled"
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.analysis.extraPaths": [
+        "./src",
+        "./tests"
+    ],
+    "ruff.lint.select": [
+        "C",
+        "E",
+        "F",
+        "W"
+    ],
 }

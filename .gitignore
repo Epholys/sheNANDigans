@@ -7,16 +7,17 @@
 !.vscode/*.code-snippets
 
 # Personal Documents
-scratchpad.md
+scratchpad*
 
 # Python
 *__pycache__*
-nand/
-
-# Images
-*.png
-*.jpg
-*.svg
+.pytest_cache
+.ruff_cache
+.venv
+uv.lock
 
 # Profiling
 *.profiling
+
+# Dev mode
+*egg-info

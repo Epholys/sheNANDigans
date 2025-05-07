@@ -1,7 +1,7 @@
 [project]
-name = "nand"
+name = "sheNANDigans"
 version = "0.1.0"
-description = "Add your description here"
+description = "Toy playground to explore the beauty of the NAND gate"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

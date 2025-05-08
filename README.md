@@ -4,7 +4,7 @@
 
 This is a toy playground to explore the beauty of the NAND gate.
 
-It started as a way to experiment with creating the smallest possible encoding of logical circuits, but it took on a life of its own—with nested circuit definitions, visualization, simulation, and more to come!
+It started as a way to experiment with creating the smallest possible encoding of logical circuits, but it took on a life of its own with nested circuit definitions, visualization, simulation, and more to come!
 
 ## What are NANDs anyway?
 

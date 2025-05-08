@@ -19,11 +19,11 @@ Well, there's not really (for now!) a single entry point or even some kind of ma
 Defining logical circuits in Python recursively. For example, without any context, here's a half-adder that adds two bits:
 
 ```py
-def build_half_adder():
+def build_half_adder(schematics):
     half_adder = Circuit("Half-Adder")
 
-    half_adder.add_component("XOR", self.get_schematic_idx(5))  # Previously defined
-    half_adder.add_component("AND", self.get_schematic_idx(2))
+    half_adder.add_component("XOR", schematics.get_schematic_idx(5))  # Previously defined
+    half_adder.add_component("AND", schematics.get_schematic_idx(2))
 
     half_adder.connect_input("A", "XOR", "A")
     half_adder.connect_input("B", "XOR", "B")

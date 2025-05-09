@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import List, Tuple
 
-from nand.decoding import CircuitDecoder
-from nand.encoding import CircuitEncoder
+from nand.default_decoder import DefaultDecoder
+from nand.default_encoder import DefaultEncoder
 from nand.optimization_level import OptimizationLevel
 from nand.schematics import Schematics, SchematicsBuilder
 from nand.simulator import Simulator
@@ -31,8 +31,8 @@ class SimulatorsFactory:
             self._circuits[BuildProcess.REFERENCE] = builder.schematics
 
         if BuildProcess.ROUND_TRIP not in self._circuits:
-            encoded = CircuitEncoder(self._circuits[BuildProcess.REFERENCE]).encode()
-            self._circuits[BuildProcess.ROUND_TRIP] = CircuitDecoder(encoded).decode()
+            encoded = DefaultEncoder().encode(self._circuits[BuildProcess.REFERENCE])
+            self._circuits[BuildProcess.ROUND_TRIP] = DefaultDecoder(encoded).decode()
 
     def get_simulators(
         self, build_kind: BuildProcess, optimization_level: OptimizationLevel

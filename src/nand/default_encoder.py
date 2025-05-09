@@ -1,11 +1,14 @@
 from copy import deepcopy
 from typing import List
 
+from bitarray import bitarray
+
 from nand.circuit import Circuit, CircuitDict, Wire
+from nand.circuit_encoder import CircuitEncoder
 from nand.schematics import Schematics
 
 
-class CircuitEncoder:
+class DefaultEncoder(CircuitEncoder):
     """
     Encode a circuit library into a list of integers.
 
@@ -26,23 +29,26 @@ class CircuitEncoder:
     This is done using the indexes of these ports and components.
     """
 
-    def __init__(self, schematics: Schematics):
-        self.library: CircuitDict = deepcopy(schematics.library)
-        self.encoding: List[int] = []
+    def __init__(self):
+        super().__init__()
 
-    def encode(self) -> List[int]:
+    def encode(self, library: Schematics) -> bitarray:
         """
         library = [circuit_1, circuit_2, ...]
 
         Note : circuit_0 is the nand gate, and not encoded as this is the core
         component and expected to be here by default.
         """
-        self.encoding = []
+        self.library: CircuitDict = deepcopy(library.library)
+        self.encoding: List[int] = []
         for circuit in self.library.values():
             if circuit.identifier == 0:
                 continue
             self._encode_circuit(circuit)
-        return self.encoding
+        bit_encoding = bitarray()
+        for i in self.encoding:
+            bit_encoding.frombytes(i.to_bytes(1))
+        return bit_encoding
 
     def _encode_circuit(self, circuit: Circuit):
         """

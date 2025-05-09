@@ -1,5 +1,5 @@
-from nand.decoding import CircuitDecoder
-from nand.encoding import CircuitEncoder
+from nand.default_decoder import DefaultDecoder
+from nand.default_encoder import DefaultEncoder
 from nand.schematics import SchematicsBuilder
 
 
@@ -12,9 +12,9 @@ def test_roundtrip():
     builder.build_circuits()
     schematics = builder.schematics
 
-    reference_encoding = CircuitEncoder(schematics).encode()
-    round_trip_schematics = CircuitDecoder(reference_encoding).decode()
-    round_trip_encoding = CircuitEncoder(round_trip_schematics).encode()
+    reference_encoding = DefaultEncoder().encode(schematics)
+    round_trip_schematics = DefaultDecoder(reference_encoding).decode()
+    round_trip_encoding = DefaultEncoder().encode(round_trip_schematics)
 
     if reference_encoding != round_trip_encoding:
         if len(reference_encoding) != len(round_trip_encoding):

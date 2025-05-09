@@ -1,5 +1,5 @@
-from typing import Dict, Optional
 import pydot
+from typing import Dict, Optional
 from nand.circuit import (
     Circuit,
     CircuitKey,
@@ -375,11 +375,11 @@ if __name__ == "__main__":
     # Visualize different circuits
     for idx in range(10, 11):
         for depth in range(0, 3):
-            circuit = reference.get_schematic_idx(6)
+            circuit = reference.get_schematic_idx(7)
             graph = generate_graph(
                 circuit,
                 GraphOptions(
-                    is_compact=True, is_aligned=True, bold_io=True, max_depth=depth
+                    is_compact=True, is_aligned=True, bold_io=True, max_depth=-1
                 ),
             )
             output_file = save_graph(

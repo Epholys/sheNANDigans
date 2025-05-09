@@ -1,5 +1,7 @@
 from typing import List, NamedTuple
 
+from bitarray import bitarray
+
 from nand.circuit import Circuit, CircuitKey
 from nand.schematics import Schematics
 from nand.wire import Wire
@@ -88,7 +90,7 @@ class _DecodedCircuit(Circuit):
             )
 
 
-class CircuitDecoder:
+class DefaultDecoder:
     """
     Decode the data into circuits.
 
@@ -99,8 +101,8 @@ class CircuitDecoder:
     they appear. But that order, which defines the functionality, is preserved.
     """
 
-    def __init__(self, data: List[int]):
-        self.data = data.copy()
+    def __init__(self, data: bitarray):
+        self.data = list(data.tobytes())
         self.schematics = Schematics()
 
         self._add_nand()  # TODO merge with schematics.add_nand

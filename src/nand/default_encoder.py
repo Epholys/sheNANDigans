@@ -86,6 +86,7 @@ class DefaultEncoder(CircuitEncoder):
         circuit_ids = list(self.library.keys())
         self.encoding.append(circuit_ids.index(component.identifier))
 
+        # TODO move encode input to encode circuit
         self._encode_inputs(component, circuit)
 
     def _encode_inputs(self, component: Circuit, circuit: Circuit):

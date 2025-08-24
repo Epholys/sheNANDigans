@@ -2,10 +2,20 @@ from typing import List, NamedTuple
 
 from bitarray import bitarray
 
+from nand.bit_packed_encoder import bitlength
 from nand.circuit import Circuit, CircuitKey
-from nand.circuit_decoder import CircuitDecoder
+from nand.default_decoder import CircuitDecoder
 from nand.schematics import Schematics
 from nand.wire import Wire
+
+
+def b2i(data: List[int], n: int) -> int:
+    """Convert a list of bits to an integer."""
+    bits = [data.pop(0) for _ in range(n)]
+    print(f"bits: {bits}")
+    s = sum(bit << i for i, bit in enumerate(reversed(bits)))
+    print(f"b2i: {s}")
+    return s
 
 
 class _InputParameters(NamedTuple):
@@ -91,7 +101,7 @@ class _DecodedCircuit(Circuit):
             )
 
 
-class DefaultDecoder(CircuitDecoder):
+class BitPackedDecoder(CircuitDecoder):
     """
     Decode the data into circuits.
 
@@ -103,12 +113,27 @@ class DefaultDecoder(CircuitDecoder):
     """
 
     def __init__(self, data: bitarray):
-        self.data = list(data.tobytes())
+        self.data = list(data.tolist())
+        print(f"data (len={len(self.data)}): {self.data}")
         self.schematics = Schematics()
 
         self._add_nand()  # TODO merge with schematics.add_nand
+        self._decode_header()
 
         self.idx = 0
+
+    def _decode_header(self):
+        """Decode the header."""
+        bits_max = b2i(self.data, 2)
+        print(f"bits_max: {bits_max}")
+        self.bit_circuits = b2i(self.data, bits_max)
+        print(f"bit_circuits: {self.bit_circuits}")
+        self.max_bit_components = b2i(self.data, bits_max)
+        print(f"max_bit_components: {self.max_bit_components}")
+        self.max_bit_inputs = b2i(self.data, bits_max)
+        print(f"max_bit_inputs: {self.max_bit_inputs}")
+        self.max_bit_outputs = b2i(self.data, bits_max)
+        print(f"max_bit_outputs: {self.max_bit_outputs}")
 
     def _add_nand(self):
         """Add the base NAND gate."""
@@ -133,20 +158,32 @@ class DefaultDecoder(CircuitDecoder):
 
     def _decode_circuit(self):
         """Decode the circuit."""
-        self._decode_header()
+        self._decode_circuit_header()
         for idx in range(0, self.circuit.n_components):
             self._decode_component(idx)
         self._decode_outputs()
 
-    def _decode_header(self):
+    def _decode_circuit_header(self):
         """Decode the header."""
-        self.circuit.n_components = self.data.pop(0)
-        self.circuit.n_inputs = self.data.pop(0)
-        self.circuit.n_outputs = self.data.pop(0)
+        print(f"\n\nDecoding circuit {self.circuit.identifier}")
+        self.circuit.n_components = b2i(self.data, self.max_bit_components) + 1
+        self.bl_components = bitlength(self.circuit.n_components - 1)
+        print(f"circuit n_components: {self.circuit.n_components}")
+        print(f"self.bl_components: {self.bl_components}")
+        self.circuit.n_inputs = b2i(self.data, self.max_bit_inputs) + 1
+        self.bl_inputs = bitlength(self.circuit.n_inputs - 1)
+        print(f"circuit n_inputs: {self.circuit.n_inputs}")
+        print(f"self.bl_inputs: {self.bl_inputs}")
+        self.circuit.n_outputs = b2i(self.data, self.max_bit_outputs) + 1
+        self.bl_outputs = bitlength(self.circuit.n_outputs - 1)
+        print(f"circuit n_outputs: {self.circuit.n_outputs}")
+        print(f"self.bl_outputs: {self.bl_outputs}")
 
     def _decode_component(self, idx: CircuitKey):
         """Decode the idx-th component of the circuit."""
-        id = self.data.pop(0)
+        print(f"\nDecoding component #{idx} of circuit {self.circuit.identifier}")
+        id = b2i(self.data, self.bit_circuits)
+        print(f"component id: {id}")
         try:
             component = self.schematics.get_schematic(id)
         except ValueError as e:
@@ -158,8 +195,12 @@ class DefaultDecoder(CircuitDecoder):
         """Decode the inputs of 'component', the 'component_idx'-th component
         of the circuit.
         """
+        print(f"\nDecoding inputs of component {component_idx}")
+        print(f"component has {len(component.inputs)} inputs")
         for input_idx in range(0, len(component.inputs)):
+            print(f"\nDecoding input #{input_idx} of component #{component_idx}")
             provenance = self.data.pop(0)
+            print(f"provenance: {provenance}")
             if provenance == 0:
                 self._decode_circuit_provenance(input_idx, component_idx)
             elif provenance == 1:
@@ -174,7 +215,11 @@ class DefaultDecoder(CircuitDecoder):
         """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
         circuit, originating from the circuit's inputs.
         """
-        circuit_input_idx = self.data.pop(0)
+        print(
+            f"Decoding circuit provenance of input #{input_idx} of component #{component_idx}"
+        )
+        circuit_input_idx = b2i(self.data, self.bl_inputs)
+        print(f"circuit_input_idx: {circuit_input_idx}")
         if circuit_input_idx >= self.circuit.n_inputs:
             raise ValueError(
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
@@ -213,7 +258,12 @@ class DefaultDecoder(CircuitDecoder):
         """Decode the outputs of the current decoded circuit.
         They must come from one its component.
         """
+        print(f"\nDecoding outputs of circuit #{self.circuit.identifier}")
+
         for output_idx in range(0, self.circuit.n_outputs):
+            print(
+                f"\nDecoding output #{output_idx} of circuit {self.circuit.identifier}"
+            )
             try:
                 (source_idx, source_output_idx) = self._decode_component_wiring()
             except ValueError as e:
@@ -228,7 +278,8 @@ class DefaultDecoder(CircuitDecoder):
         """Decode the wiring between components: the component index
         and its output index.
         """
-        source_idx = self.data.pop(0)
+        source_idx = b2i(self.data, self.bl_components)
+        print(f"source_idx: #{source_idx} for component {self.circuit.identifier}")
 
         if source_idx >= self.circuit.n_components:
             raise ValueError(
@@ -236,6 +287,6 @@ class DefaultDecoder(CircuitDecoder):
                 f"(there is {self.circuit.n_components} components)."
             )
 
-        source_output_idx = self.data.pop(0)
+        source_output_idx = b2i(self.data, self.bl_outputs)
 
         return (source_idx, source_output_idx)

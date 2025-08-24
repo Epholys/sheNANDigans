@@ -15,8 +15,10 @@ def simulators(request, simulators_factory):
     """Fixture to provide simulators for different build processes and optimization levels."""
     processing: BuildProcess
     optimization_level: OptimizationLevel
-    processing, optimization_level = request.param
+    processing, optimization_level, encoder_type = request.param
 
-    simulators = simulators_factory.get_simulators(processing, optimization_level)
+    simulators = simulators_factory.get_simulators(
+        processing, optimization_level, encoder_type
+    )
 
     return simulators

@@ -12,19 +12,31 @@ from tests.numeric_operations import (
     bools_to_int,
     int_to_bools,
 )
-from tests.simulators_factory import BuildProcess
+from tests.simulators_factory import BuildProcess, EncoderType
 
 
 @pytest.mark.parametrize(
     "simulators",
     [
-        pytest.param((BuildProcess.REFERENCE, OptimizationLevel.FAST)),
-        pytest.param((BuildProcess.ROUND_TRIP, OptimizationLevel.FAST)),
         pytest.param(
-            (BuildProcess.REFERENCE, OptimizationLevel.DEBUG), marks=pytest.mark.debug
+            (BuildProcess.REFERENCE, OptimizationLevel.FAST, EncoderType.DEFAULT)
         ),
         pytest.param(
-            (BuildProcess.ROUND_TRIP, OptimizationLevel.DEBUG), marks=pytest.mark.debug
+            (BuildProcess.ROUND_TRIP, OptimizationLevel.FAST, EncoderType.BIT_PACKED)
+        ),
+        pytest.param(
+            (BuildProcess.REFERENCE, OptimizationLevel.FAST, EncoderType.DEFAULT)
+        ),
+        pytest.param(
+            (BuildProcess.ROUND_TRIP, OptimizationLevel.FAST, EncoderType.BIT_PACKED)
+        ),
+        pytest.param(
+            (BuildProcess.REFERENCE, OptimizationLevel.DEBUG, EncoderType.DEFAULT),
+            marks=pytest.mark.debug,
+        ),
+        pytest.param(
+            (BuildProcess.ROUND_TRIP, OptimizationLevel.DEBUG, EncoderType.DEFAULT),
+            marks=pytest.mark.debug,
         ),
     ],
     indirect=["simulators"],

@@ -10,40 +10,38 @@ from nand.schematics import Schematics
 
 def bitlength(n: int):
     """
-    Calculate the bit length needed to represent component indices.
-    Returns 0 if there's only one component, otherwise returns the bit length
-    of the highest possible index (len(components) - 1).
+    Calculate the bit length needed to represent an integer.
+    Returns 1 for 0, otherwise returns the bit length of n.
     """
     return max(1, n.bit_length())
 
 
 def i2list(n: int, bit_size: int):
+    """Converts an integer to a list of bits of a specific size."""
     if n < 0:
         raise ValueError("Input must be a non-negative integer")
 
     # Check if n fits in bit_size
-    if n >= (1 << bit_size):  # This is equivalent to 2**bit_size
+    if n >= (1 << bit_size):
         raise ValueError(f"Integer {n} requires more than {bit_size} bits to represent")
 
     # Using f-string formatting with width specifier
     binary_str = f"{n:0{bit_size}b}"
-    print(f"i2list: n={n}, bit_size={bit_size}, binary_str={binary_str}")
     return [int(bit) for bit in binary_str]
 
 
 class BitPackedEncoder(CircuitEncoder):
     """
-    Encode a circuit library into a list of integers.
+    Encode a circuit library into a bitarray using bit-packing for compression.
 
-    This is a relatively simple, not fully optimized, encoding.
-    But it has some little tricks to reduce the size of the encoding.
+    This encoder optimizes the storage space by determining the minimum number of bits
+    required for various indices and counts across the entire library. It first
+    collects statistics on the maximum values for these fields, then constructs a
+    global header that defines the bit widths used in the rest of the encoding.
 
-    The encoding itself is described in the encoding methods, as it's done in one pass.
-
-    The encoding is destructive, in the way that the names of the components, inputs,
-    and outputs are not encoded. Instead, their indexes are encoded, and these will
-    become the new "names" during decoding.  But the order, that defines the
-    functionality, is preserved.
+    The encoding is destructive: the components, inputs, and outputs are replaced by
+    their indices these will become the new "names" during decoding. The order, which
+    preserves functionality, is preserved.
 
     The main task is to define the wiring that connects the inputs, outputs,
     and components together. The core idea is not to define the wires themselves, but to
@@ -57,10 +55,17 @@ class BitPackedEncoder(CircuitEncoder):
 
     def encode(self, library: Schematics) -> bitarray:
         """
-        library = [circuit_1, circuit_2, ...]
+        Orchestrates the encoding process.
 
-        Note : circuit_0 is the nand gate, and not encoded as this is the core
-        component and expected to be here by default.
+        # TODO : update and fix this docstring
+
+        1.  Performs a "dry run" of the encoding to gather statistics about the
+            circuits, such as the maximum number of components, inputs, and outputs.
+        2.  Calculates the necessary bit widths for various fields based on these stats.
+        3.  Constructs a global header with these bit widths.
+        4.  Encodes the circuits one by one into a final bitarray.
+
+        Note: The NAND gate (ID 0) is considered a primitive and is not encoded.
         """
         self.library: CircuitDict = deepcopy(library.library)
         self.encoding: List[
@@ -73,52 +78,42 @@ class BitPackedEncoder(CircuitEncoder):
         self.max_components = 0
         self.max_inputs = 0
         self.max_outputs = 0
-        self.bit_circuits = bitlength(len(self.library) - 1 - 1)  # -1 for the nand gate
-        print(f"length(library) (-1): {len(self.library) - 1}")
-        print(f"bit_circuits: {self.bit_circuits}")
+        # -1 for nand, -1 because a library of 0 circuit is silly.
+        self.bit_circuits = bitlength(len(self.library) - 1 - 1)
 
         for circuit in self.library.values():
             if circuit.identifier == 0:
                 continue
             self._encode_circuit(circuit)
 
-        print("")
-
         bit_components = bitlength(self.max_components - 1)
         bit_inputs = bitlength(self.max_inputs - 1)
         bit_outputs = bitlength(self.max_outputs - 1)
-        print(f"max_components: {self.max_components}")
-        print(f"bit_components: {bit_components}")
-        print(f"max_inputs: {self.max_inputs}")
-        print(f"bit_inputs: {bit_inputs}")
-        print(f"max_outputs: {self.max_outputs}")
-        print(f"bit_outputs: {bit_outputs}")
 
         max_of_all_max = max(bit_components, bit_inputs, bit_outputs, self.bit_circuits)
         bits_max = bitlength(max_of_all_max)
-        b = bitlength(bits_max)
-        print(f"max_of_all_max: {max_of_all_max}")
-        print(f"bits_max: {bits_max}")
-        print(f"b: {b}")
 
         bit_encoding = bitarray()
 
-        print("Encoding header")
+        # Global Header
+        # The first 2 bits define the size of the fields that define the size of
+        # the data
         bit_encoding.extend(i2list(bits_max, 2))
+        # The size of the circuit identifiers
         bit_encoding.extend(i2list(self.bit_circuits, bits_max))
+        # The size of the component counts
         bit_encoding.extend(i2list(bit_components, bits_max))
+        # The size of the input counts
         bit_encoding.extend(i2list(bit_inputs, bits_max))
+        # The size of the output counts
         bit_encoding.extend(i2list(bit_outputs, bits_max))
 
         for i, lit in self.encoding:
             if lit == "COMPONENTS":
-                print(f"Encoding n COMPONENTS: {i} (size {i + 1})")
                 bit_encoding.extend(i2list(i, bit_components))
             elif lit == "INPUTS":
-                print(f"Encoding n INPUTS: {i} (size {i + 1})")
                 bit_encoding.extend(i2list(i, bit_inputs))
             elif lit == "OUTPUTS":
-                print(f"Encoding n OUTPUTS: {i} (size {i + 1})")
                 bit_encoding.extend(i2list(i, bit_outputs))
             else:
                 bit_encoding.extend(i2list(i, lit))
@@ -139,26 +134,22 @@ class BitPackedEncoder(CircuitEncoder):
         n_components is used in decoding to know how many components to read
         n_inputs is used in decoding for safety check
         n_outputs is used in decoding to know how many outputs to read
+        Updates the maximums found so far.
+        We store n-1 values to save space: we assume there is at least one component,
+        one input, and one output in each circuit.
         """
-        print("")
 
         self.encoding.append((len(circuit.components) - 1, "COMPONENTS"))
         self.max_components = max(self.max_components, len(circuit.components))
         self.bit_components = bitlength(len(circuit.components) - 1)
-        print(f"n_components: {len(circuit.components)}")
-        print(f"bit_components: {self.bit_components}")
 
         self.encoding.append((len(circuit.inputs) - 1, "INPUTS"))
         self.max_inputs = max(self.max_inputs, len(circuit.inputs))
         self.bit_inputs = bitlength(len(circuit.inputs) - 1)
-        print(f"n_inputs: {len(circuit.inputs)}")
-        print(f"bit_inputs: {self.bit_inputs}")
 
         self.encoding.append((len(circuit.outputs) - 1, "OUTPUTS"))
         self.max_outputs = max(self.max_outputs, len(circuit.outputs))
         self.bit_outputs = bitlength(len(circuit.outputs) - 1)
-        print(f"n_outputs: {len(circuit.outputs)}")
-        print(f"bit_outputs: {self.bit_outputs}")
 
     def _encode_components(self, circuit: Circuit):
         """
@@ -172,17 +163,14 @@ class BitPackedEncoder(CircuitEncoder):
         component = [id, inputs]
         id is not the identifier of the circuit, but the index of the component in the
         circuit.
+        # TODO explain this better
         But, during decoding this index becomes the identifier of the component.
         """
-        print(f"Encoding component id: {component.identifier}")
         circuit_ids = list(self.library.keys())
-        print(f"circuit_ids: {list(self.library.keys())}")
-        print(f"index: {circuit_ids.index(component.identifier)}")
         self.encoding.append(
             (circuit_ids.index(component.identifier), self.bit_circuits)
         )
 
-        # TODO move encode input to encode circuit
         self._encode_inputs(component, circuit)
 
     def _encode_inputs(self, component: Circuit, circuit: Circuit):
@@ -196,10 +184,6 @@ class BitPackedEncoder(CircuitEncoder):
                 location = index in the circuit inputs
             if provenance = 1:
                 location = wiring (see _encode_component_wiring())
-
-        provenance seems to be useless (we could remove it and encode directly the
-        location with a special value for circuit inputs), but it *will* be useful for
-        the bit-packing optimization.
         """
         circuit_input = [wire.id for wire in circuit.inputs.values()]
 
@@ -222,8 +206,9 @@ class BitPackedEncoder(CircuitEncoder):
     def _encode_component_wiring(self, wire: Wire, components: CircuitDict):
         """
         wiring = [component_idx, output_idx]
-        component_idx is the index of the component in the circuit
-        output_idx is the index of the output in the component
+        component_idx is the index of source component within the current circuit.
+        output_idx is the index of the output in the component pin on that source
+        component.
         """
         for idx, sub_component in enumerate(components.values()):
             outputs = [wire.id for wire in sub_component.outputs.values()]

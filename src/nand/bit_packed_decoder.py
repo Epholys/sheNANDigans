@@ -4,18 +4,17 @@ from bitarray import bitarray
 
 from nand.bit_packed_encoder import bitlength
 from nand.circuit import Circuit, CircuitKey
-from nand.default_decoder import CircuitDecoder
+from nand.circuit_decoder import CircuitDecoder
 from nand.schematics import Schematics
 from nand.wire import Wire
 
 
 def b2i(data: List[int], n: int) -> int:
-    """Convert a list of bits to an integer."""
+    """Convert the first n bits from a list of bits to an integer."""
+    if len(data) < n:
+        raise ValueError("Not enough bits in data to form an integer.")
     bits = [data.pop(0) for _ in range(n)]
-    print(f"bits: {bits}")
-    s = sum(bit << i for i, bit in enumerate(reversed(bits)))
-    print(f"b2i: {s}")
-    return s
+    return sum(bit << i for i, bit in enumerate(reversed(bits)))
 
 
 class _InputParameters(NamedTuple):
@@ -103,37 +102,46 @@ class _DecodedCircuit(Circuit):
 
 class BitPackedDecoder(CircuitDecoder):
     """
-    Decode the data into circuits.
+    Decode the bit-packed data into circuits.
 
-    Please look at the CircuitEncoder as a reference for the encoding format.
+    This decoder is designed to work with the output of `BitPackedEncoder`.
+    The encoding is a compressed binary format where integer sizes are optimized
+    based on the overall structure of the circuit library.
 
-    One important point to reiterate is that the names of the circuits, inputs,
-    and outputs are lost during the encoding. They are replaced by the index in which
-    they appear. But that order, which defines the functionality, is preserved.
+    The encoding is destructive, meaning the original names of circuits, inputs,
+    and outputs are not preserved. They are identified by their index during decoding.
+    However, the functional order is maintained.
+
+    The format consists of a global header followed by a sequence of circuit
+    definitions. The global header contains the bit sizes for various fields used
+    throughout the rest of the data, allowing for a compact representation.
     """
 
     def __init__(self, data: bitarray):
         self.data = list(data.tolist())
-        print(f"data (len={len(self.data)}): {self.data}")
         self.schematics = Schematics()
 
-        self._add_nand()  # TODO merge with schematics.add_nand
-        self._decode_header()
+        self._add_nand()
+        self._decode_global_header()
 
         self.idx = 0
 
-    def _decode_header(self):
-        """Decode the header."""
+    def _decode_global_header(self):
+        """Decode the global header of the bitstream.
+
+        The global header defines the bit widths for several key fields:
+        - bits_max: The number of bits used to encode the bit widths themselves.
+        - bit_circuits: The number of bits for a circuit identifier.
+        - max_bit_components: The number of bits for the count of components in a
+          circuit.
+        - max_bit_inputs: The number of bits for the count of inputs in a circuit.
+        - max_bit_outputs: The number of bits for the count of outputs in a circuit.
+        """
         bits_max = b2i(self.data, 2)
-        print(f"bits_max: {bits_max}")
         self.bit_circuits = b2i(self.data, bits_max)
-        print(f"bit_circuits: {self.bit_circuits}")
         self.max_bit_components = b2i(self.data, bits_max)
-        print(f"max_bit_components: {self.max_bit_components}")
         self.max_bit_inputs = b2i(self.data, bits_max)
-        print(f"max_bit_inputs: {self.max_bit_inputs}")
         self.max_bit_outputs = b2i(self.data, bits_max)
-        print(f"max_bit_outputs: {self.max_bit_outputs}")
 
     def _add_nand(self):
         """Add the base NAND gate."""
@@ -145,7 +153,7 @@ class BitPackedDecoder(CircuitDecoder):
 
     def decode(self) -> Schematics:
         """Decode the data into circuits."""
-        while len(self.data) != 0:
+        while len(self.data) > 0:
             # The index is used as the identifier of the circuit
             self.idx += 1
             # The current circuit being decoded
@@ -157,33 +165,33 @@ class BitPackedDecoder(CircuitDecoder):
         return self.schematics
 
     def _decode_circuit(self):
-        """Decode the circuit."""
+        """Decode a single circuit from the data stream."""
         self._decode_circuit_header()
         for idx in range(0, self.circuit.n_components):
             self._decode_component(idx)
         self._decode_outputs()
 
     def _decode_circuit_header(self):
-        """Decode the header."""
-        print(f"\n\nDecoding circuit {self.circuit.identifier}")
+        """Decode the header for the current circuit.
+
+        This header contains the number of components, inputs, and outputs for this
+        specific circuit. From these counts, we can determine the bit widths needed
+        for component indices, input indices, and output indices within this circuit's
+        scope.
+        """
+        # TODO : explain the offsets.
         self.circuit.n_components = b2i(self.data, self.max_bit_components) + 1
         self.bl_components = bitlength(self.circuit.n_components - 1)
-        print(f"circuit n_components: {self.circuit.n_components}")
-        print(f"self.bl_components: {self.bl_components}")
+
         self.circuit.n_inputs = b2i(self.data, self.max_bit_inputs) + 1
         self.bl_inputs = bitlength(self.circuit.n_inputs - 1)
-        print(f"circuit n_inputs: {self.circuit.n_inputs}")
-        print(f"self.bl_inputs: {self.bl_inputs}")
+
         self.circuit.n_outputs = b2i(self.data, self.max_bit_outputs) + 1
         self.bl_outputs = bitlength(self.circuit.n_outputs - 1)
-        print(f"circuit n_outputs: {self.circuit.n_outputs}")
-        print(f"self.bl_outputs: {self.bl_outputs}")
 
     def _decode_component(self, idx: CircuitKey):
         """Decode the idx-th component of the circuit."""
-        print(f"\nDecoding component #{idx} of circuit {self.circuit.identifier}")
         id = b2i(self.data, self.bit_circuits)
-        print(f"component id: {id}")
         try:
             component = self.schematics.get_schematic(id)
         except ValueError as e:
@@ -195,12 +203,8 @@ class BitPackedDecoder(CircuitDecoder):
         """Decode the inputs of 'component', the 'component_idx'-th component
         of the circuit.
         """
-        print(f"\nDecoding inputs of component {component_idx}")
-        print(f"component has {len(component.inputs)} inputs")
         for input_idx in range(0, len(component.inputs)):
-            print(f"\nDecoding input #{input_idx} of component #{component_idx}")
             provenance = self.data.pop(0)
-            print(f"provenance: {provenance}")
             if provenance == 0:
                 self._decode_circuit_provenance(input_idx, component_idx)
             elif provenance == 1:
@@ -208,18 +212,14 @@ class BitPackedDecoder(CircuitDecoder):
             else:
                 raise ValueError(
                     f"Provenance {provenance} is not recognized. It must be "
-                    f"0 (circuit's inputs) or 1 (another component's inputs)."
+                    f"0 (circuit's inputs) or 1 (another component's outputs)."
                 )
 
     def _decode_circuit_provenance(self, input_idx: int, component_idx: CircuitKey):
         """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
         circuit, originating from the circuit's inputs.
         """
-        print(
-            f"Decoding circuit provenance of input #{input_idx} of component #{component_idx}"
-        )
         circuit_input_idx = b2i(self.data, self.bl_inputs)
-        print(f"circuit_input_idx: {circuit_input_idx}")
         if circuit_input_idx >= self.circuit.n_inputs:
             raise ValueError(
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
@@ -256,14 +256,9 @@ class BitPackedDecoder(CircuitDecoder):
 
     def _decode_outputs(self):
         """Decode the outputs of the current decoded circuit.
-        They must come from one its component.
+        They must come from one of its components.
         """
-        print(f"\nDecoding outputs of circuit #{self.circuit.identifier}")
-
         for output_idx in range(0, self.circuit.n_outputs):
-            print(
-                f"\nDecoding output #{output_idx} of circuit {self.circuit.identifier}"
-            )
             try:
                 (source_idx, source_output_idx) = self._decode_component_wiring()
             except ValueError as e:
@@ -275,11 +270,10 @@ class BitPackedDecoder(CircuitDecoder):
             self.circuit.connect_output(output_idx, source_idx, source_output_idx)
 
     def _decode_component_wiring(self):
-        """Decode the wiring between components: the component index
+        """Decode the wiring between components: the source component index
         and its output index.
         """
         source_idx = b2i(self.data, self.bl_components)
-        print(f"source_idx: #{source_idx} for component {self.circuit.identifier}")
 
         if source_idx >= self.circuit.n_components:
             raise ValueError(

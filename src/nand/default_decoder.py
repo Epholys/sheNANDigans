@@ -103,6 +103,12 @@ class DefaultDecoder(CircuitDecoder):
     """
 
     def __init__(self, data: bitarray):
+        """
+        Initializes the decoder with the bitarray data.
+
+        Args:
+            data: The bitarray containing the encoded circuit library.
+        """
         self.data = list(data.tobytes())
         self.schematics = Schematics()
 
@@ -132,14 +138,14 @@ class DefaultDecoder(CircuitDecoder):
         return self.schematics
 
     def _decode_circuit(self):
-        """Decode the circuit."""
+        """Decode a single circuit from the data stream."""
         self._decode_header()
         for idx in range(0, self.circuit.n_components):
             self._decode_component(idx)
         self._decode_outputs()
 
     def _decode_header(self):
-        """Decode the header."""
+        """Decode the header of the current circuit."""
         self.circuit.n_components = self.data.pop(0)
         self.circuit.n_inputs = self.data.pop(0)
         self.circuit.n_outputs = self.data.pop(0)
@@ -211,7 +217,7 @@ class DefaultDecoder(CircuitDecoder):
 
     def _decode_outputs(self):
         """Decode the outputs of the current decoded circuit.
-        They must come from one its component.
+        They must come from one of its component.
         """
         for output_idx in range(0, self.circuit.n_outputs):
             try:

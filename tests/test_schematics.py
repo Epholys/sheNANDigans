@@ -1,5 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor
 from itertools import product
+import itertools
 import multiprocessing
 from typing import Callable, List, Tuple
 
@@ -15,30 +16,34 @@ from tests.numeric_operations import (
 from tests.simulators_factory import BuildProcess, EncoderType
 
 
+def build_parameters():
+    """Build the parameters for the tests.
+
+    The parameters are a combination of:
+    - BuildProcess: REFERENCE, ROUND_TRIP
+    - OptimizationLevel: FAST, DEBUG
+    - EncoderType: DEFAULT, BIT_PACKED
+
+    The DEBUG optimization level is marked as 'debug' to be able to run it
+    separately.
+    """
+    params = []
+
+    processes = [BuildProcess.REFERENCE, BuildProcess.ROUND_TRIP]
+    opt_levels = [OptimizationLevel.FAST, OptimizationLevel.DEBUG]
+    encoders = [EncoderType.DEFAULT, EncoderType.BIT_PACKED]
+    for p, o, e in itertools.product(processes, opt_levels, encoders):
+        mark_debug = pytest.mark.debug if o is OptimizationLevel.DEBUG else None
+        if mark_debug:
+            params.append(pytest.param((p, o, e), marks=mark_debug))
+        else:
+            params.append(pytest.param((p, o, e)))
+    return params
+
+
 @pytest.mark.parametrize(
     "simulators",
-    [
-        pytest.param(
-            (BuildProcess.REFERENCE, OptimizationLevel.FAST, EncoderType.DEFAULT)
-        ),
-        pytest.param(
-            (BuildProcess.ROUND_TRIP, OptimizationLevel.FAST, EncoderType.BIT_PACKED)
-        ),
-        pytest.param(
-            (BuildProcess.REFERENCE, OptimizationLevel.FAST, EncoderType.DEFAULT)
-        ),
-        pytest.param(
-            (BuildProcess.ROUND_TRIP, OptimizationLevel.FAST, EncoderType.BIT_PACKED)
-        ),
-        pytest.param(
-            (BuildProcess.REFERENCE, OptimizationLevel.DEBUG, EncoderType.DEFAULT),
-            marks=pytest.mark.debug,
-        ),
-        pytest.param(
-            (BuildProcess.ROUND_TRIP, OptimizationLevel.DEBUG, EncoderType.DEFAULT),
-            marks=pytest.mark.debug,
-        ),
-    ],
+    build_parameters(),
     indirect=["simulators"],
 )
 class TestSchematics:

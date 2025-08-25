@@ -1,11 +1,11 @@
 from typing import Type
+from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit_decoder import CircuitDecoder
 from nand.circuit_encoder import CircuitEncoder
 from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.schematics import SchematicsBuilder
-from nand.scratchpad import BitPackedDecoder
 
 
 def test_default_encoder():

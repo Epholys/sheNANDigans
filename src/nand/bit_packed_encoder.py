@@ -3,31 +3,10 @@ from typing import List, Literal, Tuple
 
 from bitarray import bitarray
 
+from nand.bits_utils import bitlength, int2bitlist
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
 from nand.schematics import Schematics
-
-
-def bitlength(n: int):
-    """
-    Calculate the bit length needed to represent an integer.
-    Returns 1 for 0, otherwise returns the bit length of n.
-    """
-    return max(1, n.bit_length())
-
-
-def i2list(n: int, bit_size: int):
-    """Converts an integer to a list of bits of a specific size."""
-    if n < 0:
-        raise ValueError("Input must be a non-negative integer")
-
-    # Check if n fits in bit_size
-    if n >= (1 << bit_size):
-        raise ValueError(f"Integer {n} requires more than {bit_size} bits to represent")
-
-    # Using f-string formatting with width specifier
-    binary_str = f"{n:0{bit_size}b}"
-    return [int(bit) for bit in binary_str]
 
 
 class BitPackedEncoder(CircuitEncoder):
@@ -98,25 +77,25 @@ class BitPackedEncoder(CircuitEncoder):
         # Global Header
         # The first 2 bits define the size of the fields that define the size of
         # the data
-        bit_encoding.extend(i2list(bits_max, 2))
+        bit_encoding.extend(int2bitlist(bits_max, 2))
         # The size of the circuit identifiers
-        bit_encoding.extend(i2list(self.bit_circuits, bits_max))
+        bit_encoding.extend(int2bitlist(self.bit_circuits, bits_max))
         # The size of the component counts
-        bit_encoding.extend(i2list(bit_components, bits_max))
+        bit_encoding.extend(int2bitlist(bit_components, bits_max))
         # The size of the input counts
-        bit_encoding.extend(i2list(bit_inputs, bits_max))
+        bit_encoding.extend(int2bitlist(bit_inputs, bits_max))
         # The size of the output counts
-        bit_encoding.extend(i2list(bit_outputs, bits_max))
+        bit_encoding.extend(int2bitlist(bit_outputs, bits_max))
 
         for i, lit in self.encoding:
             if lit == "COMPONENTS":
-                bit_encoding.extend(i2list(i, bit_components))
+                bit_encoding.extend(int2bitlist(i, bit_components))
             elif lit == "INPUTS":
-                bit_encoding.extend(i2list(i, bit_inputs))
+                bit_encoding.extend(int2bitlist(i, bit_inputs))
             elif lit == "OUTPUTS":
-                bit_encoding.extend(i2list(i, bit_outputs))
+                bit_encoding.extend(int2bitlist(i, bit_outputs))
             else:
-                bit_encoding.extend(i2list(i, lit))
+                bit_encoding.extend(int2bitlist(i, lit))
 
         return bit_encoding
 

@@ -3,18 +3,11 @@ from typing import List, NamedTuple
 from bitarray import bitarray
 
 from nand.bit_packed_encoder import bitlength
+from nand.bits_utils import bits2int
 from nand.circuit import Circuit, CircuitKey
 from nand.circuit_decoder import CircuitDecoder
 from nand.schematics import Schematics
 from nand.wire import Wire
-
-
-def b2i(data: List[int], n: int) -> int:
-    """Convert the first n bits from a list of bits to an integer."""
-    if len(data) < n:
-        raise ValueError("Not enough bits in data to form an integer.")
-    bits = [data.pop(0) for _ in range(n)]
-    return sum(bit << i for i, bit in enumerate(reversed(bits)))
 
 
 class _InputParameters(NamedTuple):
@@ -137,11 +130,11 @@ class BitPackedDecoder(CircuitDecoder):
         - max_bit_inputs: The number of bits for the count of inputs in a circuit.
         - max_bit_outputs: The number of bits for the count of outputs in a circuit.
         """
-        bits_max = b2i(self.data, 2)
-        self.bit_circuits = b2i(self.data, bits_max)
-        self.max_bit_components = b2i(self.data, bits_max)
-        self.max_bit_inputs = b2i(self.data, bits_max)
-        self.max_bit_outputs = b2i(self.data, bits_max)
+        bits_max = bits2int(self.data, 2)
+        self.bit_circuits = bits2int(self.data, bits_max)
+        self.max_bit_components = bits2int(self.data, bits_max)
+        self.max_bit_inputs = bits2int(self.data, bits_max)
+        self.max_bit_outputs = bits2int(self.data, bits_max)
 
     def _add_nand(self):
         """Add the base NAND gate."""
@@ -180,18 +173,18 @@ class BitPackedDecoder(CircuitDecoder):
         scope.
         """
         # TODO : explain the offsets.
-        self.circuit.n_components = b2i(self.data, self.max_bit_components) + 1
+        self.circuit.n_components = bits2int(self.data, self.max_bit_components) + 1
         self.bl_components = bitlength(self.circuit.n_components - 1)
 
-        self.circuit.n_inputs = b2i(self.data, self.max_bit_inputs) + 1
+        self.circuit.n_inputs = bits2int(self.data, self.max_bit_inputs) + 1
         self.bl_inputs = bitlength(self.circuit.n_inputs - 1)
 
-        self.circuit.n_outputs = b2i(self.data, self.max_bit_outputs) + 1
+        self.circuit.n_outputs = bits2int(self.data, self.max_bit_outputs) + 1
         self.bl_outputs = bitlength(self.circuit.n_outputs - 1)
 
     def _decode_component(self, idx: CircuitKey):
         """Decode the idx-th component of the circuit."""
-        id = b2i(self.data, self.bit_circuits)
+        id = bits2int(self.data, self.bit_circuits)
         try:
             component = self.schematics.get_schematic(id)
         except ValueError as e:
@@ -219,7 +212,7 @@ class BitPackedDecoder(CircuitDecoder):
         """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
         circuit, originating from the circuit's inputs.
         """
-        circuit_input_idx = b2i(self.data, self.bl_inputs)
+        circuit_input_idx = bits2int(self.data, self.bl_inputs)
         if circuit_input_idx >= self.circuit.n_inputs:
             raise ValueError(
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
@@ -273,7 +266,7 @@ class BitPackedDecoder(CircuitDecoder):
         """Decode the wiring between components: the source component index
         and its output index.
         """
-        source_idx = b2i(self.data, self.bl_components)
+        source_idx = bits2int(self.data, self.bl_components)
 
         if source_idx >= self.circuit.n_components:
             raise ValueError(
@@ -281,6 +274,6 @@ class BitPackedDecoder(CircuitDecoder):
                 f"(there is {self.circuit.n_components} components)."
             )
 
-        source_output_idx = b2i(self.data, self.bl_outputs)
+        source_output_idx = bits2int(self.data, self.bl_outputs)
 
         return (source_idx, source_output_idx)

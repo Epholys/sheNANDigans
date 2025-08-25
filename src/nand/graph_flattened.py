@@ -242,6 +242,8 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     reference = schematics_builder.schematics
 
+    # TODO : test with round trips.
+
     # Generate raw graphs for different circuits
     for idx in [7]:  # Visualize specific circuits
         for n, a in list(product([True, False], repeat=2)):

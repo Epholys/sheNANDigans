@@ -1,13 +1,17 @@
 import pydot
 from typing import Dict, Optional
+from nand.bit_packed_decoder import BitPackedDecoder
+from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit import (
     Circuit,
     CircuitKey,
     PortKey,
     PortWireDict,
 )
+from nand.default_decoder import DefaultDecoder
 from nand.schematics import SchematicsBuilder
 from nand.graph_node_builder import NodeBuilder
+from nand.default_encoder import DefaultEncoder
 
 
 class GraphOptions:
@@ -354,6 +358,30 @@ def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
     Returns:
         The generated pydot graph object
     """
+
+    def _counter():
+        count = 0
+        while True:
+            yield count
+            count += 1
+
+    counter = _counter()
+
+    # WIP TODO : works but the identifier should be a identifier and a name
+    def uniquify(circuit: Circuit):
+        for k in list(circuit.inputs.keys()):
+            new_key = f"{k}_{next(counter)}"
+            circuit.inputs[new_key] = circuit.inputs.pop(k)
+        for k in list(circuit.outputs.keys()):
+            new_key = f"{k}_{next(counter)}"
+            circuit.outputs[new_key] = circuit.outputs.pop(k)
+        for component in circuit.components.values():
+            if component.identifier != 0:
+                component.identifier = f"{component.identifier}_{next(counter)}"
+            uniquify(component)
+
+    uniquify(circuit)
+
     builder = NestedGraphBuilder(options)
     return builder.build_graph(circuit)
 
@@ -372,19 +400,25 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     reference = schematics_builder.schematics
 
+    default_round_trip = DefaultDecoder(DefaultEncoder().encode(reference)).decode()
+    bit_packed_round_trip = BitPackedDecoder(
+        BitPackedEncoder().encode(reference)
+    ).decode()
+
     # Visualize different circuits
-    for idx in range(10, 11):
-        for depth in range(0, 3):
-            circuit = reference.get_schematic_idx(7)
-            graph = generate_graph(
-                circuit,
-                GraphOptions(
-                    is_compact=True, is_aligned=True, bold_io=True, max_depth=-1
-                ),
-            )
-            output_file = save_graph(
-                graph,
-                "half_adder",
-                "svg",
-            )
-            print(f"Nested graph saved to {output_file}")
+    for schematics, schematics_type in [
+        (reference, "reference"),
+        (default_round_trip, "default_round_trip"),
+        (bit_packed_round_trip, "bit_packed_round_trip"),
+    ]:
+        circuit = schematics.get_schematic_idx(7)
+        graph = generate_graph(
+            circuit,
+            GraphOptions(is_compact=True, is_aligned=True, bold_io=True, max_depth=-1),
+        )
+        output_file = save_graph(
+            graph,
+            f"half_adder_{schematics_type}",
+            "svg",
+        )
+        print(f"Nested graph saved to {output_file}")

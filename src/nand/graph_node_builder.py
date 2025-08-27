@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 import pydot
 import seaborn
 
@@ -52,14 +52,20 @@ class NodeBuilder:
         self.color_scheme = ColorScheme()
 
     def create_port_node(
-        self, graph: pydot.Graph, port_key: CircuitKey, prefix: str, color: str
+        self,
+        graph: pydot.Graph,
+        port_key: CircuitKey,
+        prefix: str,
+        color: str,
+        port_name: Optional[str] = None,
     ) -> str:
         """Create a node for a circuit port."""
         node_id = f"{prefix}_{port_key}"
+        node_name = port_name if port_name is not None else str(port_key)
         graph.add_node(
             pydot.Node(
                 node_id,
-                label=f"{port_key}",
+                label=node_name,
                 shape="circle",
                 style="filled",
                 fillcolor=color,
@@ -67,11 +73,11 @@ class NodeBuilder:
         )
         return node_id
 
-    def create_nand_node(self, graph: pydot.Graph, name: str) -> None:
+    def create_nand_node(self, graph: pydot.Graph, key: str) -> None:
         """Create a node for a NAND gate."""
         graph.add_node(
             pydot.Node(
-                name,
+                key,
                 label="NAND",
                 shape="box",
                 style="filled",
@@ -80,13 +86,13 @@ class NodeBuilder:
         )
 
     def create_circuit_node(
-        self, graph: pydot.Graph, circuit: Circuit, name: str
+        self, graph: pydot.Graph, circuit: Circuit, key: str
     ) -> None:
         """Create a node for a circuit component."""
         graph.add_node(
             pydot.Node(
-                name,
-                label=circuit.identifier,
+                key,
+                label=circuit.name,
                 shape="component",
                 style="filled",
                 fillcolor=self.color_scheme.get_color(circuit.identifier),

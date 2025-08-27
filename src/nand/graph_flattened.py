@@ -1,8 +1,12 @@
 from itertools import product
 import pydot
+from nand.bit_packed_decoder import BitPackedDecoder
+from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit import Circuit
 from typing import List, Tuple, Literal
 
+from nand.default_decoder import DefaultDecoder
+from nand.default_encoder import DefaultEncoder
 from nand.graph_node_builder import NodeBuilder
 
 # Define type aliases for better readability
@@ -242,21 +246,28 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     reference = schematics_builder.schematics
 
-    # TODO : test with round trips.
+    default_round_trip = DefaultDecoder(DefaultEncoder().encode(reference)).decode()
+    bit_packed_round_trip = BitPackedDecoder(
+        BitPackedEncoder().encode(reference)
+    ).decode()
 
-    # Generate raw graphs for different circuits
-    for idx in [7]:  # Visualize specific circuits
+    # Visualize different circuits
+    for schematics, schematics_type in [
+        (reference, "reference"),
+        (default_round_trip, "default_round_trip"),
+        (bit_packed_round_trip, "bit_packed_round_trip"),
+    ]:
         for n, a in list(product([True, False], repeat=2)):
             try:
-                circuit = reference.get_schematic_idx(idx)
+                circuit = schematics.get_schematic_idx(7)
                 graph_builder = FlattenedGraphBuilder(
                     circuit,
                     GraphOptions(is_nested=n, is_aligned=a, bold_io=True),
                 )
                 graph = graph_builder.generate_graph()
                 output_file = save_graph(
-                    graph, f"flattened_circuit_{idx}_{n}_{a}", "svg"
+                    graph, f"flattened_circuit_{n}_{a}_{schematics_type}", "svg"
                 )
                 print(f"Flattened graph saved to {output_file}")
             except Exception as e:
-                print(f"Error visualizing circuit {idx}: {e}")
+                print(f"Error visualizing circuit: {e}")

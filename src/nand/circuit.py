@@ -11,8 +11,11 @@ type InputKey = Key
 type OutputKey = Key
 type PortKey = InputKey | OutputKey
 type InputWireDict = Dict[InputKey, Wire]
+type InputNameDict = Dict[InputKey, str]
 type OutputWireDict = Dict[OutputKey, Wire]
+type OutputNameDict = Dict[OutputKey, str]
 type PortWireDict = InputWireDict | OutputWireDict
+type PortNameDict = InputNameDict | OutputNameDict
 type CircuitDict = Dict[CircuitKey, "Circuit"]
 
 
@@ -46,9 +49,13 @@ class Circuit:
     """
 
     def __init__(self, identifier: CircuitKey):
-        self.identifier = identifier
+        self.identifier: CircuitKey = identifier
+        self.name: str = str(identifier)
         self.inputs: InputWireDict = {}
+        # TODO document ports names + think about single object instead of two dicts ?
+        self.inputs_names: InputNameDict = {}
         self.outputs: OutputWireDict = {}
+        self.outputs_names: OutputNameDict = {}
         self.components: CircuitDict = {}
 
     def add_component(self, id: CircuitKey, component: "Circuit"):
@@ -87,6 +94,7 @@ class Circuit:
 
         if input not in self.inputs:
             self.inputs[input] = Wire()
+            self.inputs_names[input] = str(input)
 
         # The assignment ordering dance is necessary. Setting 'input' as the
         # 'target_input' doesn't work, there is an edge case.
@@ -128,6 +136,7 @@ class Circuit:
         # Contrary to the connection of an input, connecting an output is
         # straightforward: the circuit's output can only come from a single component.
         self.outputs[output] = source.outputs[source_output]
+        self.outputs_names[output] = str(output)
 
     def connect(
         self,
@@ -214,13 +223,15 @@ class Circuit:
 
         # Format input wires
         inputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.inputs.items())
+        inputs_names_str = ", ".join(
+            f"{k}: {self.inputs_names[k]}" for k in self.inputs_names.keys()
+        )
 
         # Format output wires
         outputs_str = ", ".join(f"{k}: : {v.id}" for k, v in self.outputs.items())
+        # TODO outputs names
 
-        representation = (
-            f"({self.identifier}, inputs={{{inputs_str}}}, outputs={{{outputs_str}}}"
-        )
+        representation = f"({self.identifier}, inputs={{{inputs_str}}}, inputs_names={{{inputs_names_str}}}, outputs={{{outputs_str}}}"
 
         # Format components (only for non-NAND gates)
         if self.identifier != 0:
@@ -245,6 +256,8 @@ class Circuit:
     def __repr__(self, indent: int = 4):
         """Complete debug string of the Circuit, with clear indentation."""
         indent_str = " " * indent
+
+        # TODO port names
 
         # Format input wires
         inputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.inputs.items())

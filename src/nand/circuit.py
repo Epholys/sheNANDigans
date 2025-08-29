@@ -5,18 +5,18 @@ from nand.wire import Wire
 
 # Type aliasing definition. There is a lot of them, but it's easier when developing to
 # have clear hints.
-type Key = str | int
-type CircuitKey = Key
-type InputKey = Key
-type OutputKey = Key
-type PortKey = InputKey | OutputKey
-type InputWireDict = Dict[InputKey, Wire]
-type InputNameDict = Dict[InputKey, str]
-type OutputWireDict = Dict[OutputKey, Wire]
-type OutputNameDict = Dict[OutputKey, str]
+type _Id = str | int
+type CircuitId = _Id
+type InputId = _Id
+type OutputId = _Id
+type PortId = InputId | OutputId
+type InputWireDict = Dict[InputId, Wire]
+type InputNameDict = Dict[InputId, str]
+type OutputWireDict = Dict[OutputId, Wire]
+type OutputNameDict = Dict[OutputId, str]
 type PortWireDict = InputWireDict | OutputWireDict
 type PortNameDict = InputNameDict | OutputNameDict
-type CircuitDict = Dict[CircuitKey, "Circuit"]
+type CircuitDict = Dict[CircuitId, "Circuit"]
 
 
 class Circuit:
@@ -48,8 +48,8 @@ class Circuit:
         components: Components of the circuit
     """
 
-    def __init__(self, identifier: CircuitKey):
-        self.identifier: CircuitKey = identifier
+    def __init__(self, identifier: CircuitId):
+        self.identifier: CircuitId = identifier
         self.name: str = str(identifier)
         self.inputs: InputWireDict = {}
         # TODO document ports names + think about single object instead of two dicts ?
@@ -58,7 +58,7 @@ class Circuit:
         self.outputs_names: OutputNameDict = {}
         self.components: CircuitDict = {}
 
-    def add_component(self, id: CircuitKey, component: "Circuit"):
+    def add_component(self, id: CircuitId, component: "Circuit"):
         """Add a component.
 
         Args:
@@ -68,7 +68,7 @@ class Circuit:
         self.components[id] = component
 
     def connect_input(
-        self, input: InputKey, target_id: CircuitKey, target_input: InputKey
+        self, input_id: InputId, target_id: CircuitId, target_input_id: InputId
     ):
         """Connect an input wire to a component's input port.
 
@@ -87,28 +87,31 @@ class Circuit:
             raise ValueError(f"The component {target_id} does not exist.")
         target = self.components[target_id]
 
-        if target_input not in target.inputs:
+        if target_input_id not in target.inputs:
             raise ValueError(
-                f"The component {target_id} does not have input wire {target_input}."
+                f"The component {target_id} does not have input wire {target_input_id}."
             )
 
-        if input not in self.inputs:
-            self.inputs[input] = Wire()
-            self.inputs_names[input] = str(input)
+        if input_id not in self.inputs:
+            self.inputs[input_id] = Wire()
+            self.inputs_names[input_id] = str(input_id)
 
         # The assignment ordering dance is necessary. Setting 'input' as the
         # 'target_input' doesn't work, there is an edge case.
         # A single input can be connected to several component's input(s).
         # So, it's the components' target inputs that must be set and propagated.
-        wire = self.inputs[input]
-        old_wire = target.inputs[target_input]
-        target.inputs[target_input] = wire
+        wire = self.inputs[input_id]
+        old_wire = target.inputs[target_input_id]
+        target.inputs[target_input_id] = wire
 
         # Update all matching wire references in the component hierarchy.
         self._propagate_wire_update(target, old_wire, wire)
 
     def connect_output(
-        self, output: OutputKey, source_name: CircuitKey, source_output: OutputKey
+        self,
+        output_id: OutputId,
+        source_id: CircuitId,
+        source_output_id: OutputId,
     ):
         """Connect an output wire to a component's output port.
 
@@ -123,27 +126,27 @@ class Circuit:
         Raises:
             ValueError: If the source or its output doesn't exist
         """
-        if source_name not in self.components:
-            raise ValueError(f"The component {source_name} does not exist.")
-        source = self.components[source_name]
+        if source_id not in self.components:
+            raise ValueError(f"The component {source_id} does not exist.")
+        source = self.components[source_id]
 
-        if source_output not in source.outputs:
+        if source_output_id not in source.outputs:
             raise ValueError(
-                f"The component {source_name} does not have "
-                f"output wire {source_output}."
+                f"The component {source_id} does not have "
+                f"output wire {source_output_id}."
             )
 
         # Contrary to the connection of an input, connecting an output is
         # straightforward: the circuit's output can only come from a single component.
-        self.outputs[output] = source.outputs[source_output]
-        self.outputs_names[output] = str(output)
+        self.outputs[output_id] = source.outputs[source_output_id]
+        self.outputs_names[output_id] = str(output_id)
 
     def connect(
         self,
-        source_id: CircuitKey,
-        source_output: OutputKey,
-        target_id: CircuitKey,
-        target_input: InputKey,
+        source_id: CircuitId,
+        source_output_id: OutputId,
+        target_id: CircuitId,
+        target_input_id: InputId,
     ):
         """Connect an output port of one component to an input port of another component
 
@@ -170,22 +173,22 @@ class Circuit:
         source = self.components[source_id]
         target = self.components[target_id]
 
-        if source_output not in source.outputs:
+        if source_output_id not in source.outputs:
             raise ValueError(
                 f"The source component {source_id}"
-                f"does not have output wire {source_output}."
+                f"does not have output wire {source_output_id}."
             )
 
-        if target_input not in target.inputs:
+        if target_input_id not in target.inputs:
             raise ValueError(
                 f"The source component {target_id}"
-                f"does not have input wire {target_input}."
+                f"does not have input wire {target_input_id}."
             )
 
         # Same logic as the connect_input() method.
-        wire = source.outputs[source_output]
-        old_wire = target.inputs[target_input]
-        target.inputs[target_input] = wire
+        wire = source.outputs[source_output_id]
+        old_wire = target.inputs[target_input_id]
+        target.inputs[target_input_id] = wire
 
         # Update all matching wire references in the component hierarchy.
         self._propagate_wire_update(target, old_wire, wire)
@@ -229,7 +232,7 @@ class Circuit:
 
         # Format output wires
         outputs_str = ", ".join(f"{k}: : {v.id}" for k, v in self.outputs.items())
-        # TODO outputs names
+        # TODO outputs names or only in __repr__() ?
 
         representation = f"({self.identifier}, inputs={{{inputs_str}}}, inputs_names={{{inputs_names_str}}}, outputs={{{outputs_str}}}"
 

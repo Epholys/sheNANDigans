@@ -2,7 +2,7 @@ from typing import Dict, Optional
 import pydot
 import seaborn
 
-from nand.circuit import Circuit, CircuitKey
+from nand.circuit import Circuit, CircuitId
 
 
 def golden_ratio_generator(scale: int):
@@ -28,13 +28,13 @@ class ColorScheme:
     PALETTE_SIZE = 32
 
     def __init__(self):
-        self._colors: Dict[CircuitKey, str] = {}
+        self._colors: Dict[CircuitId, str] = {}
         self._generator = golden_ratio_generator(self.PALETTE_SIZE)
         self._palette = seaborn.husl_palette(
             n_colors=self.PALETTE_SIZE, s=0.95, l=0.8, h=0.5
         ).as_hex()
 
-    def get_color(self, id: CircuitKey) -> str:
+    def get_color(self, id: CircuitId) -> str:
         """Get a color for a given circuit component ID.
         If the color has already been assigned, return the existing color.
         """
@@ -54,14 +54,14 @@ class NodeBuilder:
     def create_port_node(
         self,
         graph: pydot.Graph,
-        port_key: CircuitKey,
+        port_id: CircuitId,
         prefix: str,
         color: str,
         port_name: Optional[str] = None,
     ) -> str:
         """Create a node for a circuit port."""
-        node_id = f"{prefix}_{port_key}"
-        node_name = port_name if port_name is not None else str(port_key)
+        node_id = f"{prefix}_{port_id}"
+        node_name = port_name if port_name is not None else str(port_id)
         graph.add_node(
             pydot.Node(
                 node_id,

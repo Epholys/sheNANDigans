@@ -1,10 +1,7 @@
 from math import ceil, sqrt
-from bitarray import bitarray
 from nand.bit_packed_encoder import BitPackedEncoder
-from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
-from nand.schematics import Schematics, SchematicsBuilder
-import os
+from nand.schematics import SchematicsBuilder
 
 builder = SchematicsBuilder()
 builder.build_circuits()

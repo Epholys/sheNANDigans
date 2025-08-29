@@ -4,8 +4,9 @@ from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit import (
     Circuit,
-    CircuitKey,
-    PortKey,
+    CircuitId,
+    InputId,
+    PortId,
     PortNameDict,
     PortWireDict,
 )
@@ -37,9 +38,9 @@ class GraphOptions:
 
 
 # A mapping between a circuit's ports and its graph node ID + name
-type CircuitPorts = dict[PortKey, Tuple[str, str]]
+type PortNodeDict = Dict[PortId, Tuple[str, str]]
 # A mapping between circuit components and their ports
-type ComponentsPorts = dict[CircuitKey, CircuitPorts]
+type ComponentsPortsDict = Dict[CircuitId, PortNodeDict]
 
 
 class CircuitBuildContext:
@@ -63,16 +64,16 @@ class CircuitBuildContext:
         self.prefix = prefix
         self.depth = depth
         self.parent_context = parent_context
-        self.circuit_ports: CircuitPorts = {}
-        self.components_ports: ComponentsPorts = {}
+        self.port_nodes: PortNodeDict = {}
+        self.components_ports: ComponentsPortsDict = {}
 
     def create_component_context(
-        self, component: Circuit, component_name: CircuitKey
+        self, component: Circuit, component_id: CircuitId
     ) -> "CircuitBuildContext":
         """Create a new context for a component."""
         # Unique prefix for the component
         # This prefix is used to create unique node IDs for the component's ports
-        component_prefix = f"{self.prefix}_comp_{component_name}"
+        component_prefix = f"{self.prefix}_comp_{component_id}"
 
         # Build a new subgraph for the component
         graph = pydot.Cluster(
@@ -91,11 +92,9 @@ class CircuitBuildContext:
             parent_context=self,
         )
 
-    def add_component_ports(
-        self, component_name: CircuitKey, ports: CircuitPorts
-    ) -> None:
+    def add_component_ports(self, component_id: CircuitId, ports: PortNodeDict) -> None:
         """Add all ports for a component."""
-        self.components_ports[component_name] = ports
+        self.components_ports[component_id] = ports
 
     def is_main_graph(self) -> bool:
         """Check if this is the main graph context."""
@@ -190,20 +189,20 @@ class NestedGraphBuilder:
         ports_names: PortNameDict,
         prefix: str,
         color: str,
-    ) -> CircuitPorts:
+    ) -> PortNodeDict:
         """Add port nodes to the graph."""
-        circuit_ports: CircuitPorts = {}
-        for port_key in ports.keys():
+        port_nodes: PortNodeDict = {}
+        for port_id in ports.keys():
             node_id = self.node_builder.create_port_node(
                 context.graph,
-                port_key,
+                port_id,
                 prefix,
                 color,
-                port_name=ports_names[port_key],
+                port_name=ports_names[port_id],
             )
-            circuit_ports[port_key] = node_id, ports_names[port_key]
-        context.circuit_ports.update(circuit_ports)
-        return circuit_ports
+            port_nodes[port_id] = node_id, ports_names[port_id]
+        context.port_nodes.update(port_nodes)
+        return port_nodes
 
     def _add_aligned_ports(
         self,
@@ -236,25 +235,23 @@ class NestedGraphBuilder:
             return
 
         # Process each component
-        for component_key, component in components.items():
+        for component_id, component in components.items():
             # Case 2: NAND gate with compact representation OR max depth reached
             if (component.identifier == 0 and self.options.is_compact) or (
                 self.options.max_depth >= 0 and context.depth >= self.options.max_depth
             ):
                 # Use simplified node representation
                 component_ports = self._build_simple_node(
-                    context, component, component_key
+                    context, component, str(component_id)
                 )
-                context.add_component_ports(component_key, component_ports)
+                context.add_component_ports(component_id, component_ports)
             else:
                 # Case 3: Recursively build nested component
                 component_context = context.create_component_context(
-                    component, component_key
+                    component, component_id
                 )
                 self._build_circuit_graph(component_context)
-                context.add_component_ports(
-                    component_key, component_context.circuit_ports
-                )
+                context.add_component_ports(component_id, component_context.port_nodes)
 
     def _build_nand_circuit(self, context: CircuitBuildContext) -> None:
         """Build a NAND gate circuit with connections between ports."""
@@ -262,7 +259,7 @@ class NestedGraphBuilder:
         self.node_builder.create_nand_node(context.graph, key)
 
         # Connect the NAND gate to its ports
-        ports = list(context.circuit_ports.values())
+        ports = list(context.port_nodes.values())
         a, b, out = ports[0], ports[1], ports[2]
         context.graph.add_edge(pydot.Edge(a[0], key))
         context.graph.add_edge(pydot.Edge(b[0], key))
@@ -272,11 +269,11 @@ class NestedGraphBuilder:
         self,
         context: CircuitBuildContext,
         circuit: Circuit,
-        component_key: CircuitKey,
-    ) -> Dict[CircuitKey, Tuple[str, str]]:
+        component_id: CircuitId,
+    ) -> Dict[InputId, Tuple[str, str]]:
         """Build a simplified node for a circuit component
         (used for NAND gates or max depth)."""
-        key = f"{context.prefix}_comp_{component_key}"
+        key = f"{context.prefix}_comp_{component_id}"
 
         # Create appropriate node based on circuit type
         if circuit.identifier == 0:  # NAND gate
@@ -285,9 +282,11 @@ class NestedGraphBuilder:
             self.node_builder.create_circuit_node(context.graph, circuit, key)
 
         # All ports map to the same node
-        node_ports = dict.fromkeys(circuit.inputs.keys(), (key, circuit.identifier))
+        node_ports = dict.fromkeys(
+            circuit.inputs.keys(), (key, str(circuit.identifier))
+        )
         node_ports.update(
-            dict.fromkeys(circuit.outputs.keys(), (key, circuit.identifier))
+            dict.fromkeys(circuit.outputs.keys(), (key, str(circuit.identifier)))
         )
 
         return node_ports
@@ -310,18 +309,18 @@ class NestedGraphBuilder:
         self, context: CircuitBuildContext, penwidth: int
     ) -> None:
         """Connect circuit inputs to component inputs."""
-        for circuit_input_name, input_wire in context.circuit.inputs.items():
-            for component_name, component in context.circuit.components.items():
+        for circuit_input_id, input_wire in context.circuit.inputs.items():
+            for component_id, component in context.circuit.components.items():
                 matching_inputs = [
-                    input_name
-                    for input_name, wire in component.inputs.items()
+                    input_id
+                    for input_id, wire in component.inputs.items()
                     if wire.id == input_wire.id
                 ]
 
-                for component_input_name in matching_inputs:
-                    source_node = context.circuit_ports[circuit_input_name]
-                    target_node = context.components_ports[component_name][
-                        component_input_name
+                for component_input_id in matching_inputs:
+                    source_node = context.port_nodes[circuit_input_id]
+                    target_node = context.components_ports[component_id][
+                        component_input_id
                     ]
                     context.graph.add_edge(
                         pydot.Edge(source_node[0], target_node[0], penwidth=penwidth)
@@ -331,44 +330,44 @@ class NestedGraphBuilder:
         self, context: CircuitBuildContext, penwidth: int
     ) -> None:
         """Connect component outputs to circuit outputs."""
-        for circuit_output_name, output_wire in context.circuit.outputs.items():
-            for component_name, component in context.circuit.components.items():
+        for circuit_output_id, output_wire in context.circuit.outputs.items():
+            for component_id, component in context.circuit.components.items():
                 matching_outputs = [
-                    output_name
-                    for output_name, wire in component.outputs.items()
+                    output_id
+                    for output_id, wire in component.outputs.items()
                     if wire.id == output_wire.id
                 ]
 
-                for component_output_name in matching_outputs:
-                    source_node = context.components_ports[component_name][
-                        component_output_name
+                for component_output_id in matching_outputs:
+                    source_node = context.components_ports[component_id][
+                        component_output_id
                     ]
-                    target_node = context.circuit_ports[circuit_output_name]
+                    target_node = context.port_nodes[circuit_output_id]
                     context.graph.add_edge(
                         pydot.Edge(source_node[0], target_node[0], penwidth=penwidth)
                     )
 
     def _connect_components(self, context: CircuitBuildContext) -> None:
         """Connect component outputs to other component inputs."""
-        for source_name, source in context.circuit.components.items():
-            for target_name, target in context.circuit.components.items():
-                if source_name == target_name:
+        for source_id, source in context.circuit.components.items():
+            for target_id, target in context.circuit.components.items():
+                if source_id == target_id:
                     continue
 
-                for source_output_name, source_output_wire in source.outputs.items():
+                for source_output_id, source_output_wire in source.outputs.items():
                     # Find all target inputs with matching wire id
                     matching_inputs = [
-                        target_input_name
-                        for target_input_name, target_input_wire in target.inputs.items()
+                        target_input_id
+                        for target_input_id, target_input_wire in target.inputs.items()
                         if target_input_wire.id == source_output_wire.id
                     ]
 
-                    for target_input_name in matching_inputs:
-                        source_node = context.components_ports[source_name][
-                            source_output_name
+                    for target_input_id in matching_inputs:
+                        source_node = context.components_ports[source_id][
+                            source_output_id
                         ]
-                        target_node = context.components_ports[target_name][
-                            target_input_name
+                        target_node = context.components_ports[target_id][
+                            target_input_id
                         ]
                         context.graph.add_edge(
                             pydot.Edge(source_node[0], target_node[0])
@@ -398,13 +397,13 @@ def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
     # WIP TODO : factorize
     def uniquify(circuit: Circuit):
         for k in list(circuit.inputs.keys()):
-            new_key = f"{k}_{next(counter)}"
-            circuit.inputs[new_key] = circuit.inputs.pop(k)
-            circuit.inputs_names[new_key] = circuit.inputs_names.pop(k)
+            new_id = f"{k}_{next(counter)}"
+            circuit.inputs[new_id] = circuit.inputs.pop(k)
+            circuit.inputs_names[new_id] = circuit.inputs_names.pop(k)
         for k in list(circuit.outputs.keys()):
-            new_key = f"{k}_{next(counter)}"
-            circuit.outputs[new_key] = circuit.outputs.pop(k)
-            circuit.outputs_names[new_key] = circuit.outputs_names.pop(k)
+            new_id = f"{k}_{next(counter)}"
+            circuit.outputs[new_id] = circuit.outputs.pop(k)
+            circuit.outputs_names[new_id] = circuit.outputs_names.pop(k)
         for component in circuit.components.values():
             if component.identifier != 0:
                 component.identifier = f"{component.identifier}_{next(counter)}"

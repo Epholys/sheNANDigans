@@ -4,7 +4,7 @@ from typing import List, Dict, Set, Optional
 
 import networkx as nx
 
-from nand.circuit import Circuit, CircuitDict, CircuitKey, Key, PortWireDict
+from nand.circuit import Circuit, CircuitDict, CircuitId, PortId, PortWireDict
 
 
 class NodeType(Enum):
@@ -30,24 +30,24 @@ class GraphNode:
         component_id: The ID of the component (None for circuit nodes)
         component_idx: The index of the component in the circuit's component list
         (None for circuit nodes)
-        port_key: The key of the input/output port
+        port_id: The key of the input/output port
         wire_id: The ID of the wire connected to this node
     """
 
     node_type: NodeType
-    component_id: Optional[CircuitKey]
+    component_id: Optional[CircuitId]
     component_idx: Optional[int]
-    port_key: Key
+    port_id: PortId
     wire_id: int
 
     def __str__(self) -> str:
         """String representation for debugging."""
         if self.node_type in (NodeType.CIRCUIT_INPUT, NodeType.CIRCUIT_OUTPUT):
-            return f"{self.node_type.value}:{self.port_key}"
+            return f"{self.node_type.value}:{self.port_id}"
         else:
             return (
                 f"{self.node_type.value}:{self.component_id}:"
-                f"{self.component_idx}:{self.port_key}"
+                f"{self.component_idx}:{self.port_id}"
             )
 
 
@@ -224,12 +224,12 @@ def create_circuit_port_nodes(
         A list of graph nodes representing circuit ports
     """
     nodes: List[GraphNode] = []
-    for port_key, wire in ports.items():
+    for port_id, wire in ports.items():
         node = GraphNode(
             node_type=node_type,
             component_id=None,
             component_idx=None,
-            port_key=port_key,
+            port_id=port_id,
             wire_id=wire.id,
         )
         nodes.append(node)
@@ -259,12 +259,12 @@ def create_component_port_nodes(
 
     nodes: List[GraphNode] = []
     for idx, component in enumerate(components):
-        for port_key, wire in get_ports(component).items():
+        for port_id, wire in get_ports(component).items():
             node = GraphNode(
                 node_type=node_type,
                 component_id=component.identifier,
                 component_idx=idx,
-                port_key=port_key,
+                port_id=port_id,
                 wire_id=wire.id,
             )
             nodes.append(node)

@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import OrderedDict
 
-from nand.circuit import Circuit, CircuitDict, CircuitKey
+from nand.circuit import Circuit, CircuitDict, CircuitId
 from nand.wire import Wire
 
 
@@ -9,7 +9,7 @@ class Schematics:
     def __init__(self):
         self.library: CircuitDict = OrderedDict()
 
-    def has_schematics(self, identifier: CircuitKey):
+    def has_schematics(self, identifier: CircuitId):
         return identifier in self.library
 
     def add_schematic(self, circuit: Circuit):
@@ -18,7 +18,7 @@ class Schematics:
 
         self.library[circuit.identifier] = circuit
 
-    def get_schematic(self, identifier: CircuitKey) -> Circuit:
+    def get_schematic(self, identifier: CircuitId) -> Circuit:
         if not self.has_schematics(identifier):
             raise ValueError(f"Circuit {identifier} does not exist")
         return deepcopy(self.library[identifier])

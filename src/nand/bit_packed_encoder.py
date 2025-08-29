@@ -14,9 +14,36 @@ class BitPackedEncoder(CircuitEncoder):
     Encode a circuit library into a bitarray using bit-packing for compression.
 
     This encoder optimizes the storage space by determining the minimum number of bits
-    required for various indices and counts across the entire library. It first
-    collects statistics on the maximum values for these fields, then constructs a
-    global header that defines the bit widths used in the rest of the encoding.
+    required for various indices and counts across the entire library.
+
+    There is a bit counting for each circuit, which is dynamically computed with the
+    number of circuits, components, inputs, and outputs. The number of bits necessary
+    for them is encoded in the circuit header.
+
+    There is a second level bit counting, this time to know how many bits are necessary
+    to encode *the number of bit necessary* for the count of components, inputs, and
+    outputs for the circuits.
+
+    Finally, there's a third level of bit counting, to know how many bits are necessary
+    to encode the number of bits above. It's two bit long.
+
+    These last two levels are encoded in a global header.
+
+    There indirections allow with very few bits to encode a huge set.
+
+    Please note that there's always an offset of 1: 0 component, input, or output
+    is considered impossible. So a '00' encoded should be decoded as 1, '1' as 2,
+    '10' as 3, etc.
+
+    For example, with the third level of bit counting being 3 :
+        - It means that 3 bits are necessary for the second level.
+        - So, the second level is encoded in 3 bits. The range available at this level
+        is [1, (1 << 3) + 1] = [1, 8].
+        - So, the number of components, inputs and outputs, can be encoded in a maximum
+        of 8 bits. The range available for them [1, 256], which seems to me already
+        overkill for big circuits.
+
+    An example of global header
 
     The encoding is destructive: the components, inputs, and outputs are replaced by
     their indices these will become the new "names" during decoding. The order, which

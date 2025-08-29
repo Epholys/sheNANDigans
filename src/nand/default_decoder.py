@@ -1,6 +1,6 @@
 from bitarray import bitarray
 
-from nand.circuit import Circuit, CircuitId
+from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
 from nand.decoded_circuit import (
     ConnectionParameters,

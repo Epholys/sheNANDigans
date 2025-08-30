@@ -3,7 +3,7 @@ from typing import List, Literal, Tuple
 
 from bitarray import bitarray
 
-from nand.bits_utils import bitlength, int2bitlist
+from nand.bits_utils import bitlength_with_offset, int2bitlist, int2bitlist_with_offset
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
 from nand.schematics import Schematics
@@ -85,34 +85,34 @@ class BitPackedEncoder(CircuitEncoder):
         self.max_inputs = 0
         self.max_outputs = 0
         # -1 for nand, -1 because a library of 0 circuit is silly.
-        self.bit_circuits = bitlength(len(self.library) - 1 - 1)
+        self.bit_circuits = bitlength_with_offset(len(self.library))
 
         for circuit in self.library.values():
             if circuit.identifier == 0:
                 continue
             self._encode_circuit(circuit)
 
-        bit_components = bitlength(self.max_components - 1)
-        bit_inputs = bitlength(self.max_inputs - 1)
-        bit_outputs = bitlength(self.max_outputs - 1)
+        bit_components = bitlength_with_offset(self.max_components)
+        bit_inputs = bitlength_with_offset(self.max_inputs)
+        bit_outputs = bitlength_with_offset(self.max_outputs)
 
         max_of_all_max = max(bit_components, bit_inputs, bit_outputs, self.bit_circuits)
-        bits_max = bitlength(max_of_all_max)
+        bits_max = bitlength_with_offset(max_of_all_max)
 
         bit_encoding = bitarray()
 
         # Global Header
         # The first 2 bits define the size of the fields that define the size of
         # the data
-        bit_encoding.extend(int2bitlist(bits_max, 2))
+        bit_encoding.extend(int2bitlist_with_offset(bits_max, 2))
         # The size of the circuit identifiers
-        bit_encoding.extend(int2bitlist(self.bit_circuits, bits_max))
+        bit_encoding.extend(int2bitlist_with_offset(self.bit_circuits, bits_max))
         # The size of the component counts
-        bit_encoding.extend(int2bitlist(bit_components, bits_max))
+        bit_encoding.extend(int2bitlist_with_offset(bit_components, bits_max))
         # The size of the input counts
-        bit_encoding.extend(int2bitlist(bit_inputs, bits_max))
+        bit_encoding.extend(int2bitlist_with_offset(bit_inputs, bits_max))
         # The size of the output counts
-        bit_encoding.extend(int2bitlist(bit_outputs, bits_max))
+        bit_encoding.extend(int2bitlist_with_offset(bit_outputs, bits_max))
 
         for i, lit in self.encoding:
             if lit == "COMPONENTS":
@@ -147,15 +147,15 @@ class BitPackedEncoder(CircuitEncoder):
 
         self.encoding.append((len(circuit.components) - 1, "COMPONENTS"))
         self.max_components = max(self.max_components, len(circuit.components))
-        self.bit_components = bitlength(len(circuit.components) - 1)
+        self.bit_components = bitlength_with_offset(len(circuit.components))
 
         self.encoding.append((len(circuit.inputs) - 1, "INPUTS"))
         self.max_inputs = max(self.max_inputs, len(circuit.inputs))
-        self.bit_inputs = bitlength(len(circuit.inputs) - 1)
+        self.bit_inputs = bitlength_with_offset(len(circuit.inputs))
 
         self.encoding.append((len(circuit.outputs) - 1, "OUTPUTS"))
         self.max_outputs = max(self.max_outputs, len(circuit.outputs))
-        self.bit_outputs = bitlength(len(circuit.outputs) - 1)
+        self.bit_outputs = bitlength_with_offset(len(circuit.outputs))
 
     def _encode_components(self, circuit: Circuit):
         """

@@ -10,12 +10,17 @@ def bits2int(data: List[int], n: int) -> int:
     return sum(bit << i for i, bit in enumerate(reversed(bits)))
 
 
-def bitlength(n: int):
+def bits2int_with_offset(data: List[int], n: int) -> int:
+    return bits2int(data, n) + 1
+
+
+def bitlength_with_offset(n: int):
     """
+    # TODO offset to avoid forgiving them ? Like bits2int
     Calculate the bit length needed to represent an integer.
     Returns 1 for 0, otherwise returns the bit length of n.
     """
-    return max(1, n.bit_length())
+    return max(1, (n - 1).bit_length())
 
 
 def int2bitlist(n: int, bit_size: int):
@@ -28,3 +33,7 @@ def int2bitlist(n: int, bit_size: int):
         raise ValueError(f"Integer {n} requires more than {bit_size} bits to represent")
 
     return [(n >> i) & 1 for i in range(bit_size - 1, -1, -1)]
+
+
+def int2bitlist_with_offset(n: int, bit_size: int):
+    return int2bitlist(n - 1, bit_size)

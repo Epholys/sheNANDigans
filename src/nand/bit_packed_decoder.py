@@ -1,7 +1,7 @@
 from bitarray import bitarray
 
-from nand.bit_packed_encoder import bitlength
-from nand.bits_utils import bits2int
+from nand.bit_packed_encoder import bitlength_with_offset
+from nand.bits_utils import bits2int, bits2int_with_offset
 from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
 from nand.decoded_circuit import ConnectionParameters, DecodedCircuit, InputParameters
@@ -46,11 +46,11 @@ class BitPackedDecoder(CircuitDecoder):
         - max_bit_inputs: The number of bits for the count of inputs in a circuit.
         - max_bit_outputs: The number of bits for the count of outputs in a circuit.
         """
-        bits_max = bits2int(self.data, 2)
-        self.bit_circuits = bits2int(self.data, bits_max)
-        self.max_bit_components = bits2int(self.data, bits_max)
-        self.max_bit_inputs = bits2int(self.data, bits_max)
-        self.max_bit_outputs = bits2int(self.data, bits_max)
+        bits_max = bits2int_with_offset(self.data, 2)
+        self.bit_circuits = bits2int_with_offset(self.data, bits_max)
+        self.max_bit_components = bits2int_with_offset(self.data, bits_max)
+        self.max_bit_inputs = bits2int_with_offset(self.data, bits_max)
+        self.max_bit_outputs = bits2int_with_offset(self.data, bits_max)
 
     def _add_nand(self):
         """Add the base NAND gate."""
@@ -93,14 +93,16 @@ class BitPackedDecoder(CircuitDecoder):
         scope.
         """
         # TODO : explain the offsets.
-        self.circuit.n_components = bits2int(self.data, self.max_bit_components) + 1
-        self.bl_components = bitlength(self.circuit.n_components - 1)
+        self.circuit.n_components = bits2int_with_offset(
+            self.data, self.max_bit_components
+        )
+        self.bl_components = bitlength_with_offset(self.circuit.n_components)
 
-        self.circuit.n_inputs = bits2int(self.data, self.max_bit_inputs) + 1
-        self.bl_inputs = bitlength(self.circuit.n_inputs - 1)
+        self.circuit.n_inputs = bits2int_with_offset(self.data, self.max_bit_inputs)
+        self.bl_inputs = bitlength_with_offset(self.circuit.n_inputs)
 
-        self.circuit.n_outputs = bits2int(self.data, self.max_bit_outputs) + 1
-        self.bl_outputs = bitlength(self.circuit.n_outputs - 1)
+        self.circuit.n_outputs = bits2int_with_offset(self.data, self.max_bit_outputs)
+        self.bl_outputs = bitlength_with_offset(self.circuit.n_outputs)
 
     def _decode_component(self, idx: int):
         """Decode the idx-th component of the circuit."""

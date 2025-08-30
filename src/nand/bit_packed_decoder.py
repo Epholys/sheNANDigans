@@ -1,7 +1,7 @@
 from bitarray import bitarray
 
 from nand.bit_packed_encoder import bitlength_with_offset
-from nand.bits_utils import bits2int, bits2int_with_offset
+from nand.bits_utils import read_bits, read_bits_with_offset
 from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
 from nand.decoded_circuit import ConnectionParameters, DecodedCircuit, InputParameters
@@ -46,11 +46,11 @@ class BitPackedDecoder(CircuitDecoder):
         - max_bit_inputs: The number of bits for the count of inputs in a circuit.
         - max_bit_outputs: The number of bits for the count of outputs in a circuit.
         """
-        bits_max = bits2int_with_offset(self.data, 2)
-        self.bit_circuits = bits2int_with_offset(self.data, bits_max)
-        self.max_bit_components = bits2int_with_offset(self.data, bits_max)
-        self.max_bit_inputs = bits2int_with_offset(self.data, bits_max)
-        self.max_bit_outputs = bits2int_with_offset(self.data, bits_max)
+        header_bitlength = read_bits_with_offset(self.data, 2)
+        self.circuits_bitlength = read_bits_with_offset(self.data, header_bitlength)
+        self.n_components_bitlength = read_bits_with_offset(self.data, header_bitlength)
+        self.n_inputs_bitlength = read_bits_with_offset(self.data, header_bitlength)
+        self.n_outputs_bitlength = read_bits_with_offset(self.data, header_bitlength)
 
     def _add_nand(self):
         """Add the base NAND gate."""
@@ -93,20 +93,24 @@ class BitPackedDecoder(CircuitDecoder):
         scope.
         """
         # TODO : explain the offsets.
-        self.circuit.n_components = bits2int_with_offset(
-            self.data, self.max_bit_components
+        self.circuit.n_components = read_bits_with_offset(
+            self.data, self.n_components_bitlength
         )
-        self.bl_components = bitlength_with_offset(self.circuit.n_components)
+        self.components_bitlength = bitlength_with_offset(self.circuit.n_components)
 
-        self.circuit.n_inputs = bits2int_with_offset(self.data, self.max_bit_inputs)
-        self.bl_inputs = bitlength_with_offset(self.circuit.n_inputs)
+        self.circuit.n_inputs = read_bits_with_offset(
+            self.data, self.n_inputs_bitlength
+        )
+        self.inputs_bitlength = bitlength_with_offset(self.circuit.n_inputs)
 
-        self.circuit.n_outputs = bits2int_with_offset(self.data, self.max_bit_outputs)
-        self.bl_outputs = bitlength_with_offset(self.circuit.n_outputs)
+        self.circuit.n_outputs = read_bits_with_offset(
+            self.data, self.n_outputs_bitlength
+        )
+        self.outputs_bitlength = bitlength_with_offset(self.circuit.n_outputs)
 
     def _decode_component(self, idx: int):
         """Decode the idx-th component of the circuit."""
-        id = bits2int(self.data, self.bit_circuits)
+        id = read_bits(self.data, self.circuits_bitlength)
         try:
             component = self.schematics.get_schematic(id)
         except ValueError as e:
@@ -134,7 +138,7 @@ class BitPackedDecoder(CircuitDecoder):
         """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
         circuit, originating from the circuit's inputs.
         """
-        circuit_input_idx = bits2int(self.data, self.bl_inputs)
+        circuit_input_idx = read_bits(self.data, self.inputs_bitlength)
         if circuit_input_idx >= self.circuit.n_inputs:
             raise ValueError(
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
@@ -188,7 +192,7 @@ class BitPackedDecoder(CircuitDecoder):
         """Decode the wiring between components: the source component index
         and its output index.
         """
-        source_idx = bits2int(self.data, self.bl_components)
+        source_idx = read_bits(self.data, self.components_bitlength)
 
         if source_idx >= self.circuit.n_components:
             raise ValueError(
@@ -196,6 +200,6 @@ class BitPackedDecoder(CircuitDecoder):
                 f"(there is {self.circuit.n_components} components)."
             )
 
-        source_output_idx = bits2int(self.data, self.bl_outputs)
+        source_output_idx = read_bits(self.data, self.outputs_bitlength)
 
         return (source_idx, source_output_idx)

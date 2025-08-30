@@ -21,33 +21,29 @@ class BitPackedEncoder(CircuitEncoder):
     for them is encoded in the circuit header.
 
     There is a second level bit counting, this time to know how many bits are necessary
-    to encode *the number of bit necessary* for the count of components, inputs, and
-    outputs for the circuits.
+    to encode *the number of bit necessary* for the count of circuits, components,
+    inputs, and outputs for the circuits.
 
     Finally, there's a third level of bit counting, to know how many bits are necessary
     to encode the number of bits above. It's two bit long.
 
     These last two levels are encoded in a global header.
 
-    There indirections allow with very few bits to encode a huge set.
+    Note that there's an offset of 1 each time a value of '0' does not make any sense
+    For example, 0 component, input, or output for a circuit is considered impossible.
+    So, if we have a circuit with 4 components, this number of components will be
+    encoded as [11], and not [100]
+    Or, if we have 16 inputs maximum for the library, the bit length saved for the
+    second level will be [1111] and not [10000].
 
-    Please note that there's always an offset of 1: 0 component, input, or output
-    is considered impossible. So a '00' encoded should be decoded as 1, '1' as 2,
-    '10' as 3, etc.
+    It's really minor gains, but we're here to encode in the smallest amount of bits
+    possible!
 
-    For example, with the third level of bit counting being 3 :
-        - It means that 3 bits are necessary for the second level.
-        - So, the second level is encoded in 3 bits. The range available at this level
-        is [1, (1 << 3) + 1] = [1, 8].
-        - So, the number of components, inputs and outputs, can be encoded in a maximum
-        of 8 bits. The range available for them [1, 256], which seems to me already
-        overkill for big circuits.
-
-    An example of global header
+    More details are in the methods themselves.
 
     The encoding is destructive: the components, inputs, and outputs are replaced by
     their indices these will become the new "names" during decoding. The order, which
-    preserves functionality, is preserved.
+    define functionality, is preserved.
 
     The main task is to define the wiring that connects the inputs, outputs,
     and components together. The core idea is not to define the wires themselves, but to
@@ -62,16 +58,6 @@ class BitPackedEncoder(CircuitEncoder):
     def encode(self, library: Schematics) -> bitarray:
         """
         Orchestrates the encoding process.
-
-        # TODO : update and fix this docstring
-
-        1.  Performs a "dry run" of the encoding to gather statistics about the
-            circuits, such as the maximum number of components, inputs, and outputs.
-        2.  Calculates the necessary bit widths for various fields based on these stats.
-        3.  Constructs a global header with these bit widths.
-        4.  Encodes the circuits one by one into a final bitarray.
-
-        Note: The NAND gate (ID 0) is considered a primitive and is not encoded.
         """
         self.library: CircuitDict = deepcopy(library.library)
         self.encoding: List[
@@ -81,46 +67,111 @@ class BitPackedEncoder(CircuitEncoder):
             ]
         ] = []
 
+        # Variables to keep count of the maximum number of components, inputs, and
+        # outputs in the library. They will be in the global header.
         self.max_components = 0
         self.max_inputs = 0
         self.max_outputs = 0
-        # -1 for nand, -1 because a library of 0 circuit is silly.
-        self.bit_circuits = bitlength_with_offset(len(self.library))
 
+        # See below for explanation.
+        self.circuits_bitlength: int = bitlength_with_offset(len(self.library))
+
+        # Core encoding
         for circuit in self.library.values():
             if circuit.identifier == 0:
                 continue
             self._encode_circuit(circuit)
 
-        bit_components = bitlength_with_offset(self.max_components)
-        bit_inputs = bitlength_with_offset(self.max_inputs)
-        bit_outputs = bitlength_with_offset(self.max_outputs)
+        # Compute the number of bits necessary to encode the number of circuits,
+        # maximum number of components, inputs and outputs necessary
+        # (second level indirection).
+        # Offset because 0 component, input, or output is considered impossible.
+        # For example, if we have a maximum number 'max_components' of 8 components:
+        # - Here, during encoding:
+        #     - '8' is encoded as '1000', so the number of bits to encode this maximum
+        #       number would be 4.
+        #     - But, with the offset, this max number becomes a "virtual" 7 that we can
+        #       encode in 3 bits.
+        #     - 'bit_components' is 3, we encode it in the global header.
+        # - During decoding:
+        #     - We decode '3' in the global header, and deduce that 3 bits are enough
+        #       to decode the number of component for each circuit.
+        #     - For each local circuit header, we will decode the number of components
+        #       by reading 3 bits.
+        max_components_bitlength = bitlength_with_offset(self.max_components)
+        max_inputs_bitlength = bitlength_with_offset(self.max_inputs)
+        max_outputs_bitlength = bitlength_with_offset(self.max_outputs)
 
-        max_of_all_max = max(bit_components, bit_inputs, bit_outputs, self.bit_circuits)
-        bits_max = bitlength_with_offset(max_of_all_max)
+        # Here is the third level of indirection. We do the same as the previous step,
+        # but with the maximum number of all the maximum numbers.
+        # For example, if we have 9 circuits, 8 components maximum, 17 inputs maximum,
+        # and 9 output maximum:
+        # Here, during encoding.
+        #   - There respective bit_length (as computed above), would be: 4, 3, 5, and 4.
+        #   - 5 is the global maximum, we can encode it as 3 bits.
+        #   - With the offset, we have a "virtual" 4 bits, which can be encoded in 3
+        #     bits (no change).
+        #   - 'bits_max' is 3, we encode it in the global header prelude.
+        # During decoding:
+        #   - We decode '3' in the global header prelude, and deduce that 3 bits are
+        #     enough to decode the number of circuits, and maximum number of components,
+        #     inputs, and outputs.
+        #   - For each of these elements, we will decode them by reading 3 bits.
+        # **Important note**: the number of circuit does not have 3 levels, only 2.
+        max_bitlength = max(
+            self.circuits_bitlength,
+            max_components_bitlength,
+            max_inputs_bitlength,
+            max_outputs_bitlength,
+        )
+        core_bitlength = bitlength_with_offset(max_bitlength)
 
         bit_encoding = bitarray()
 
         # Global Header
-        # The first 2 bits define the size of the fields that define the size of
-        # the data
-        bit_encoding.extend(int2bitlist_with_offset(bits_max, 2))
-        # The size of the circuit identifiers
-        bit_encoding.extend(int2bitlist_with_offset(self.bit_circuits, bits_max))
-        # The size of the component counts
-        bit_encoding.extend(int2bitlist_with_offset(bit_components, bits_max))
-        # The size of the input counts
-        bit_encoding.extend(int2bitlist_with_offset(bit_inputs, bits_max))
-        # The size of the output counts
-        bit_encoding.extend(int2bitlist_with_offset(bit_outputs, bits_max))
+        # Now, we will encode these previous numbers. But there's a new twist: these
+        # encoding are also offset by one, as a bit size of '0' makes no sense.
+        # So, if we keep the previous example:
+        # Here, during encoding:
+        #   - We want to encode 'bits_max', which is 3. With the offset,
+        #     it will be '10' and not '11'. It's encoded in 2 bits, hardcoded.
+        #   - To encode the other elements, we use the maximum number of bits. For the
+        #     max number of components 8, we want to encode the bit length '3'
+        #     (see above), which will be encoded as '010' (and not '011'). Note
+        #     that this number is encoded in 3 bits: the 'bits_max' value.
+        # During decoding:
+        #   - We will read 2 bits: '10' = 2. We deduce that the number of bits
+        #     to decode the rest of the header is 2 + 1 = 3, with the offset.
+        #   - For the number of components, we will read 3 bits: '010' = 2. We
+        #     deduce number of bits to read to decode the number of components
+        #     will be 2 + 1 = 3, with the offset.
+        #   - For the circuit with the maximum of 8 components, we will read the
+        #     3 bits '111' = 7 + 1 = 8, with the offset. It's all coming together!
+        # These indirections allows to have quite a big range. At the 3rd level,
+        # the maximum is '11', so 3 + 1 = 4 bits. So, at the 2nd level, we have
+        # a maximum of '1111', which is 15 + 1 = 16. And, at the 1st level, for
+        # the maximum number of components, inputs, and outputs: 2 ** 16 (65'536). TODO ????????
+        bit_encoding.extend(int2bitlist_with_offset(core_bitlength, 2))
+        bit_encoding.extend(
+            int2bitlist_with_offset(self.circuits_bitlength, core_bitlength)
+        )
+        bit_encoding.extend(
+            int2bitlist_with_offset(max_components_bitlength, core_bitlength)
+        )
+        bit_encoding.extend(
+            int2bitlist_with_offset(max_inputs_bitlength, core_bitlength)
+        )
+        bit_encoding.extend(
+            int2bitlist_with_offset(max_outputs_bitlength, core_bitlength)
+        )
 
         for i, lit in self.encoding:
             if lit == "COMPONENTS":
-                bit_encoding.extend(int2bitlist(i, bit_components))
+                bit_encoding.extend(int2bitlist(i, max_components_bitlength))
             elif lit == "INPUTS":
-                bit_encoding.extend(int2bitlist(i, bit_inputs))
+                bit_encoding.extend(int2bitlist(i, max_inputs_bitlength))
             elif lit == "OUTPUTS":
-                bit_encoding.extend(int2bitlist(i, bit_outputs))
+                bit_encoding.extend(int2bitlist(i, max_outputs_bitlength))
             else:
                 bit_encoding.extend(int2bitlist(i, lit))
 
@@ -140,22 +191,23 @@ class BitPackedEncoder(CircuitEncoder):
         n_components is used in decoding to know how many components to read
         n_inputs is used in decoding for safety check
         n_outputs is used in decoding to know how many outputs to read
-        Updates the maximums found so far.
-        We store n-1 values to save space: we assume there is at least one component,
-        one input, and one output in each circuit.
         """
-
+        # We "stash" the encoding: the number of components (with offset), will
+        # be encoded in a number of bits deduced by the global maximum
+        # (see comment above)
         self.encoding.append((len(circuit.components) - 1, "COMPONENTS"))
+        # Update the global maximum.
         self.max_components = max(self.max_components, len(circuit.components))
-        self.bit_components = bitlength_with_offset(len(circuit.components))
+        # Compute how many bits are necessary to encode the index of components.
+        self.components_bitlength = bitlength_with_offset(len(circuit.components))
 
         self.encoding.append((len(circuit.inputs) - 1, "INPUTS"))
         self.max_inputs = max(self.max_inputs, len(circuit.inputs))
-        self.bit_inputs = bitlength_with_offset(len(circuit.inputs))
+        self.inputs_bitlength = bitlength_with_offset(len(circuit.inputs))
 
         self.encoding.append((len(circuit.outputs) - 1, "OUTPUTS"))
         self.max_outputs = max(self.max_outputs, len(circuit.outputs))
-        self.bit_outputs = bitlength_with_offset(len(circuit.outputs))
+        self.outputs_bitlength = bitlength_with_offset(len(circuit.outputs))
 
     def _encode_components(self, circuit: Circuit):
         """
@@ -174,7 +226,7 @@ class BitPackedEncoder(CircuitEncoder):
         """
         circuit_ids = list(self.library.keys())
         self.encoding.append(
-            (circuit_ids.index(component.identifier), self.bit_circuits)
+            (circuit_ids.index(component.identifier), self.circuits_bitlength)
         )
 
         self._encode_inputs(component, circuit)
@@ -196,7 +248,9 @@ class BitPackedEncoder(CircuitEncoder):
         for input in component.inputs.values():
             if input.id in circuit_input:
                 self.encoding.append((0, 1))
-                self.encoding.append((circuit_input.index(input.id), self.bit_inputs))
+                self.encoding.append(
+                    (circuit_input.index(input.id), self.inputs_bitlength)
+                )
             else:
                 self.encoding.append((1, 1))
                 self._encode_component_wiring(input, circuit.components)
@@ -219,7 +273,7 @@ class BitPackedEncoder(CircuitEncoder):
         for idx, sub_component in enumerate(components.values()):
             outputs = [wire.id for wire in sub_component.outputs.values()]
             if wire.id in outputs:
-                self.encoding.append((idx, self.bit_components))
-                self.encoding.append((outputs.index(wire.id), self.bit_outputs))
+                self.encoding.append((idx, self.components_bitlength))
+                self.encoding.append((outputs.index(wire.id), self.outputs_bitlength))
                 return
         raise ValueError(f"Wire {wire.id} not found in any sub_component outputs")

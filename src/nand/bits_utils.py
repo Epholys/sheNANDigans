@@ -1,7 +1,7 @@
 from typing import List
 
 
-def bits2int(data: List[int], n: int) -> int:
+def read_bits(data: List[int], n: int) -> int:
     """Convert the first n bits from a list of bits (integer of value 0 or 1) to an
     integer."""
     if len(data) < n:
@@ -10,8 +10,8 @@ def bits2int(data: List[int], n: int) -> int:
     return sum(bit << i for i, bit in enumerate(reversed(bits)))
 
 
-def bits2int_with_offset(data: List[int], n: int) -> int:
-    return bits2int(data, n) + 1
+def read_bits_with_offset(data: List[int], n: int) -> int:
+    return read_bits(data, n) + 1
 
 
 def bitlength_with_offset(n: int):

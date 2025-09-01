@@ -429,10 +429,10 @@ if __name__ == "__main__":
     schematics_builder.build_circuits()
     reference = schematics_builder.schematics
 
-    default_round_trip = DefaultDecoder(DefaultEncoder().encode(reference)).decode()
-    bit_packed_round_trip = BitPackedDecoder(
+    default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
+    bit_packed_round_trip = BitPackedDecoder().decode(
         BitPackedEncoder().encode(reference)
-    ).decode()
+    )
 
     # Visualize different circuits
     for schematics, schematics_type in [

@@ -26,7 +26,7 @@ def _test_roundtrip(encoder: Type[CircuitEncoder], decoder: Type[CircuitDecoder]
     schematics = builder.schematics
 
     reference_encoding = encoder().encode(schematics)
-    round_trip_schematics = decoder(reference_encoding).decode()
+    round_trip_schematics = decoder().decode(reference_encoding)
     round_trip_encoding = encoder().encode(round_trip_schematics)
 
     if reference_encoding != round_trip_encoding:

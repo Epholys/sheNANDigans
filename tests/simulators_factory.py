@@ -60,7 +60,7 @@ class SimulatorsFactory:
                 self._circuits[BuildProcess.REFERENCE, encoder_type]
             )
             self._circuits[BuildProcess.ROUND_TRIP, encoder_type] = (
-                encoder_type.get_decoder()(encoded).decode()
+                encoder_type.get_decoder()().decode(encoded)
             )
 
     def get_simulators(

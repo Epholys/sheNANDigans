@@ -79,9 +79,10 @@ class DefaultEncoder(CircuitEncoder):
     def _encode_component(self, component: Circuit, circuit: Circuit):
         """
         component = [id, inputs]
-        id is not the identifier of the circuit, but the index of the component in the
-        circuit.
-        But, during decoding this index becomes the identifier of the component.
+
+        During encoding, the full id of the circuit is lost. But its index in the
+        library is unique, and that's what we encode.
+        During decoding, this index will be the new id.
         """
         circuit_ids = list(self.library.keys())
         self.encoding.append(circuit_ids.index(component.identifier))
@@ -101,7 +102,7 @@ class DefaultEncoder(CircuitEncoder):
                 location = wiring (see _encode_component_wiring())
 
         provenance seems to be useless (we could remove it and encode directly the
-        location with a special value for circuit inputs), but it *will* be useful for
+        location considering the input like any component), but it *will* be useful for
         the bit-packing optimization.
         """
         circuit_input = [wire.id for wire in circuit.inputs.values()]

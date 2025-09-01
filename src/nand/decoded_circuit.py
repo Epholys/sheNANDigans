@@ -40,20 +40,18 @@ class DecodedCircuit(Circuit):
     check the correctness of the encoded data.
 
     Attributes:
-        n_components: The number of components in the circuit.
-        n_inputs: The number of inputs in the circuit.
-        n_outputs: The number of outputs in the circuit.
+        inputs_count: The decoded count of components in the circuit.
+        inputs_count: The decoded count of inputs in the circuit.
+        outputs_count: The decoded count of outputs in the circuit.
         stashed_inputs: The inputs that are stashed to be connected later.
         stashed_connections: The connections that are stashed to be connected later.
     """
 
     def __init__(self, identifier: CircuitId):
         super().__init__(identifier)
-        self.n_components = 0
-        # TODO : unecessary ?
-        self.n_inputs = 0
-        # TODO : unecessary ?
-        self.n_outputs = 0
+        self.components_count = 0
+        self.inputs_count = 0
+        self.outputs_count = 0
         self.stashed_inputs: List[InputParameters] = []
         self.stashed_connections: List[ConnectionParameters] = []
 

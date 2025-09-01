@@ -8,7 +8,6 @@ from nand.decoded_circuit import (
     InputParameters,
 )
 from nand.schematics import Schematics
-from nand.wire import Wire
 
 
 class DefaultDecoder(CircuitDecoder):
@@ -20,37 +19,27 @@ class DefaultDecoder(CircuitDecoder):
     One important point to reiterate is that the names of the circuits, inputs,
     and outputs are lost during the encoding. They are replaced by the index in which
     they appear. But that order, which defines the functionality, is preserved.
+
+    'DefaultDecoder' comments are the source of truth, so this class is voluntarily
+    less commented.
     """
 
-    def __init__(self, data: bitarray):
+    def __init__(self):
         """
         Initializes the decoder with the bitarray data.
 
         Args:
             data: The bitarray containing the encoded circuit library.
         """
-        self.data = list(data.tobytes())
         self.schematics = Schematics()
-
-        self._add_nand()  # TODO merge with schematics.add_nand
+        self.schematics.add_schematic(self._build_nand())
 
         self.idx = 0
 
-    def _add_nand(self):
-        """Add the base NAND gate."""
-        nand_gate = Circuit(0)
-        nand_gate = Circuit(0)
-        nand_gate.inputs[0] = Wire()
-        nand_gate.inputs_names[0] = "0"
-        nand_gate.inputs[1] = Wire()
-        nand_gate.inputs_names[1] = "1"
-        nand_gate.outputs[0] = Wire()
-        nand_gate.outputs_names[0] = "0"
-
-        self.schematics.add_schematic(nand_gate)
-
-    def decode(self) -> Schematics:
+    def decode(self, data: bitarray) -> Schematics:
         """Decode the data into circuits."""
+        self.data = list(data.tobytes())
+
         while len(self.data) != 0:
             # The index is used as the identifier of the circuit
             self.idx += 1
@@ -65,25 +54,27 @@ class DefaultDecoder(CircuitDecoder):
     def _decode_circuit(self):
         """Decode a single circuit from the data stream."""
         self._decode_header()
-        for idx in range(0, self.circuit.n_components):
+        for idx in range(0, self.circuit.components_count):
             self._decode_component(idx)
         self._decode_outputs()
 
     def _decode_header(self):
         """Decode the header of the current circuit."""
-        self.circuit.n_components = self.data.pop(0)
-        self.circuit.n_inputs = self.data.pop(0)
-        self.circuit.n_outputs = self.data.pop(0)
+        self.circuit.components_count = self.data.pop(0)
+        self.circuit.inputs_count = self.data.pop(0)
+        self.circuit.outputs_count = self.data.pop(0)
 
-    def _decode_component(self, idx: int):
-        """Decode the idx-th component of the circuit."""
-        id = self.data.pop(0)
+    def _decode_component(self, component_idx: int):
+        """Decode the 'component_idx'-th component of the circuit."""
+        circuit_id = self.data.pop(0)
         try:
-            component = self.schematics.get_schematic(id)
+            component = self.schematics.get_schematic(circuit_id)
         except ValueError as e:
-            raise ValueError(f"Trying to use the undefined component {id}.") from e
-        self.circuit.add_component(idx, component)
-        self._decode_component_inputs(idx, component)
+            raise ValueError(
+                f"Trying to use the undefined component {circuit_id}."
+            ) from e
+        self.circuit.add_component(component_idx, component)
+        self._decode_component_inputs(component_idx, component)
 
     def _decode_component_inputs(self, component_idx: int, component: Circuit):
         """Decode the inputs of 'component', the 'component_idx'-th component
@@ -106,12 +97,12 @@ class DefaultDecoder(CircuitDecoder):
         circuit, originating from the circuit's inputs.
         """
         circuit_input_idx = self.data.pop(0)
-        if circuit_input_idx >= self.circuit.n_inputs:
+        if circuit_input_idx >= self.circuit.inputs_count:
             raise ValueError(
                 f"Circuit {self.circuit.identifier}: the {component_idx}-th component "
                 f"asked for its {input_idx}-th input the {circuit_input_idx}-th input "
                 f"of the circuit itself, which does not exists "
-                f"(there is {self.circuit.n_inputs} inputs)."
+                f"(there is {self.circuit.inputs_count} inputs)."
             )
 
         self.circuit.stash_input(
@@ -144,7 +135,7 @@ class DefaultDecoder(CircuitDecoder):
         """Decode the outputs of the current decoded circuit.
         They must come from one of its component.
         """
-        for output_idx in range(0, self.circuit.n_outputs):
+        for output_idx in range(0, self.circuit.outputs_count):
             try:
                 (source_idx, source_output_idx) = self._decode_component_wiring()
             except ValueError as e:
@@ -161,10 +152,10 @@ class DefaultDecoder(CircuitDecoder):
         """
         source_idx = self.data.pop(0)
 
-        if source_idx >= self.circuit.n_components:
+        if source_idx >= self.circuit.components_count:
             raise ValueError(
                 f"The {source_idx}-th component does not exist "
-                f"(there is {self.circuit.n_components} components)."
+                f"(there is {self.circuit.components_count} components)."
             )
 
         source_output_idx = self.data.pop(0)

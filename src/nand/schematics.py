@@ -46,6 +46,7 @@ class SchematicsBuilder:
 
     def add_nand(self):
         nand_gate = Circuit(0)
+        nand_gate.name = "NAND"
         nand_gate.inputs["A"] = Wire()
         nand_gate.inputs_names["A"] = "A"
         nand_gate.inputs["B"] = Wire()

@@ -40,11 +40,22 @@ class Circuit:
 
     Attributes:
         identifier: Identifier of the circuit. Uniqueness is necessary if
-        several circuits are bundled into a Schematics library. 0 is reserved for
-        the base NAND circuit.
+                    several circuits are bundled into a Schematics library.
+                    0 is reserved for the base NAND circuit.
+
+        name: The name of the circuit. Usually the same as the identifier, but useful
+              for the graphs.
 
         inputs: Input wires of the circuit
+
+        inputs_name: Name of the inputs. Usually the same as the identifier, but useful
+                     for the graphs.
+
         outputs: Output wires of the circuit
+
+        outputs_name: Name of the inputs. Usually the same as the identifier, but useful
+                      for the graphs.
+
         components: Components of the circuit
     """
 
@@ -52,7 +63,6 @@ class Circuit:
         self.identifier: CircuitId = identifier
         self.name: str = str(identifier)
         self.inputs: InputWireDict = {}
-        # TODO document ports names + think about single object instead of two dicts ?
         self.inputs_names: InputNameDict = {}
         self.outputs: OutputWireDict = {}
         self.outputs_names: OutputNameDict = {}
@@ -226,15 +236,13 @@ class Circuit:
 
         # Format input wires
         inputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.inputs.items())
-        inputs_names_str = ", ".join(
-            f"{k}: {self.inputs_names[k]}" for k in self.inputs_names.keys()
-        )
 
         # Format output wires
         outputs_str = ", ".join(f"{k}: : {v.id}" for k, v in self.outputs.items())
-        # TODO outputs names or only in __repr__() ?
 
-        representation = f"({self.identifier}, inputs={{{inputs_str}}}, inputs_names={{{inputs_names_str}}}, outputs={{{outputs_str}}}"
+        representation = (
+            f"({self.identifier}, inputs={{{inputs_str}}}, outputs={{{outputs_str}}}"
+        )
 
         # Format components (only for non-NAND gates)
         if self.identifier != 0:
@@ -260,16 +268,21 @@ class Circuit:
         """Complete debug string of the Circuit, with clear indentation."""
         indent_str = " " * indent
 
-        # TODO port names
-
         # Format input wires
-        inputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.inputs.items())
+        inputs_str = ", ".join(
+            f'{k} ("{self.inputs_names[k]}"): {repr(wire)}'
+            for k, wire in self.inputs.items()
+        )
 
         # Format output wires
-        outputs_str = ", ".join(f"{k}: {repr(v)}" for k, v in self.outputs.items())
+        outputs_str = ", ".join(
+            f'{k} ("{self.outputs_names[k]}"): {repr(wire)}'
+            for k, wire in self.outputs.items()
+        )
 
         representation = (
             f"Circuit(identifier={self.identifier}"
+            f' ("{self.name}")'
             f", inputs=({inputs_str})"
             f", outputs=({outputs_str})"
         )

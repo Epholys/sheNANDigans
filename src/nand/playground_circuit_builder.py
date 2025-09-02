@@ -1,63 +1,13 @@
-from copy import deepcopy
-from typing import OrderedDict
-
-from nand.circuit import Circuit, CircuitDict, CircuitId
-from nand.wire import Wire
+from nand.circuit import Circuit
+from nand.circuit_builder import CircuitBuilder
 
 
-class CircuitLibrary:
+class PlaygroundCircuitBuilder(CircuitBuilder):
     def __init__(self):
-        self.library: CircuitDict = OrderedDict()
-
-    def has_circuit(self, identifier: CircuitId):
-        return identifier in self.library
-
-    def add_circuit(self, circuit: Circuit):
-        if self.has_circuit(circuit.identifier):
-            raise ValueError(f"Circuit {circuit.identifier} already exists")
-
-        self.library[circuit.identifier] = circuit
-
-    def get_circuit(self, identifier: CircuitId) -> Circuit:
-        if not self.has_circuit(identifier):
-            raise ValueError(f"Circuit {identifier} does not exist")
-        return deepcopy(self.library[identifier])
-
-    def get_all_circuits(self) -> CircuitDict:
-        return {k: deepcopy(circuit) for k, circuit in self.library.items()}
-
-    def get_circuit_from_idx(self, idx: int) -> Circuit:
-        try:
-            circuit: Circuit = list(self.library.values())[idx]
-        except IndexError as e:
-            raise ValueError(f"Circuit of index {idx} does not exist") from e
-        return deepcopy(circuit)
-
-
-class CircuitBuilder:
-    def __init__(self):
-        self.library = CircuitLibrary()
-
-    def add_circuit(self, circuit: Circuit):
-        self.library.add_circuit(circuit)
-
-    def get_circuit_from_idx(self, idx: int):
-        return self.library.get_circuit_from_idx(idx)
-
-    def add_nand(self):
-        nand_gate = Circuit(0)
-        nand_gate.name = "NAND"
-        nand_gate.inputs["A"] = Wire()
-        nand_gate.inputs_names["A"] = "A"
-        nand_gate.inputs["B"] = Wire()
-        nand_gate.inputs_names["B"] = "B"
-        nand_gate.outputs["OUT"] = Wire()
-        nand_gate.outputs_names["OUT"] = "OUT"
-
-        self.library.add_circuit(nand_gate)
+        super().__init__()
 
     def build_circuits(self):
-        self.add_nand()
+        super().build_circuits()
         self.add_not()
         self.add_and()
         self.add_or()
@@ -71,27 +21,27 @@ class CircuitBuilder:
 
     def add_not(self):
         not_gate = Circuit("NOT")
-        not_gate.add_component("NAND", self.get_circuit_from_idx(0))
+        not_gate.add_component("NAND", self.library.get_circuit(0))
         not_gate.connect_input("IN", "NAND", "A")
         not_gate.connect_input("IN", "NAND", "B")
         not_gate.connect_output("OUT", "NAND", "OUT")
-        self.add_circuit(not_gate)
+        self.library.add_circuit(not_gate)
 
     def add_and(self):
         and_gate = Circuit("AND")
-        and_gate.add_component("NAND", self.get_circuit_from_idx(0))
-        and_gate.add_component("NOT", self.get_circuit_from_idx(1))
+        and_gate.add_component("NAND", self.library.get_circuit(0))
+        and_gate.add_component("NOT", self.library.get_circuit("NOT"))
         and_gate.connect_input("A", "NAND", "A")
         and_gate.connect_input("B", "NAND", "B")
         and_gate.connect_output("OUT", "NOT", "OUT")
         and_gate.connect("NAND", "OUT", "NOT", "IN")
-        self.add_circuit(and_gate)
+        self.library.add_circuit(and_gate)
 
     def add_or(self):
         or_gate = Circuit("OR")
-        or_gate.add_component("NAND_A", self.get_circuit_from_idx(0))
-        or_gate.add_component("NAND_B", self.get_circuit_from_idx(0))
-        or_gate.add_component("NAND_OUT", self.get_circuit_from_idx(0))
+        or_gate.add_component("NAND_A", self.library.get_circuit(0))
+        or_gate.add_component("NAND_B", self.library.get_circuit(0))
+        or_gate.add_component("NAND_OUT", self.library.get_circuit(0))
 
         or_gate.connect_input("A", "NAND_A", "A")
         or_gate.connect_input("A", "NAND_A", "B")
@@ -103,12 +53,12 @@ class CircuitBuilder:
         or_gate.connect("NAND_A", "OUT", "NAND_OUT", "A")
         or_gate.connect("NAND_B", "OUT", "NAND_OUT", "B")
 
-        self.add_circuit(or_gate)
+        self.library.add_circuit(or_gate)
 
     def add_nor(self):
         nor_gate = Circuit("NOR")
-        nor_gate.add_component("OR", self.get_circuit_from_idx(3))
-        nor_gate.add_component("NOT", self.get_circuit_from_idx(1))
+        nor_gate.add_component("OR", self.library.get_circuit("OR"))
+        nor_gate.add_component("NOT", self.library.get_circuit("NOT"))
 
         nor_gate.connect_input("A", "OR", "A")
         nor_gate.connect_input("B", "OR", "B")
@@ -117,14 +67,14 @@ class CircuitBuilder:
 
         nor_gate.connect("OR", "OUT", "NOT", "IN")
 
-        self.add_circuit(nor_gate)
+        self.library.add_circuit(nor_gate)
 
     def add_xor(self):
         xor_gate = Circuit("XOR")
-        xor_gate.add_component("NAND_A", self.get_circuit_from_idx(0))
-        xor_gate.add_component("NAND_B1", self.get_circuit_from_idx(0))
-        xor_gate.add_component("NAND_B2", self.get_circuit_from_idx(0))
-        xor_gate.add_component("NAND_OUT", self.get_circuit_from_idx(0))
+        xor_gate.add_component("NAND_A", self.library.get_circuit(0))
+        xor_gate.add_component("NAND_B1", self.library.get_circuit(0))
+        xor_gate.add_component("NAND_B2", self.library.get_circuit(0))
+        xor_gate.add_component("NAND_OUT", self.library.get_circuit(0))
 
         xor_gate.connect_input("A", "NAND_A", "A")
         xor_gate.connect_input("B", "NAND_A", "B")
@@ -139,12 +89,12 @@ class CircuitBuilder:
         xor_gate.connect("NAND_B1", "OUT", "NAND_OUT", "A")
         xor_gate.connect("NAND_B2", "OUT", "NAND_OUT", "B")
 
-        self.add_circuit(xor_gate)
+        self.library.add_circuit(xor_gate)
 
     def add_half_adder(self):
         half_adder = Circuit("Half-Adder")
-        half_adder.add_component("XOR", self.get_circuit_from_idx(5))
-        half_adder.add_component("AND", self.get_circuit_from_idx(2))
+        half_adder.add_component("XOR", self.library.get_circuit("XOR"))
+        half_adder.add_component("AND", self.library.get_circuit("AND"))
 
         half_adder.connect_input("A", "XOR", "A")
         half_adder.connect_input("B", "XOR", "B")
@@ -154,15 +104,15 @@ class CircuitBuilder:
         half_adder.connect_output("SUM", "XOR", "OUT")
         half_adder.connect_output("CARRY", "AND", "OUT")
 
-        self.add_circuit(half_adder)
+        self.library.add_circuit(half_adder)
 
     def add_full_adder(self):
         full_adder = Circuit("Full-Adder")
-        full_adder.add_component("XOR_ONE", self.get_circuit_from_idx(5))
-        full_adder.add_component("XOR_TWO", self.get_circuit_from_idx(5))
-        full_adder.add_component("AND_ONE", self.get_circuit_from_idx(2))
-        full_adder.add_component("AND_TWO", self.get_circuit_from_idx(2))
-        full_adder.add_component("OR", self.get_circuit_from_idx(3))
+        full_adder.add_component("XOR_ONE", self.library.get_circuit("XOR"))
+        full_adder.add_component("XOR_TWO", self.library.get_circuit("XOR"))
+        full_adder.add_component("AND_ONE", self.library.get_circuit("AND"))
+        full_adder.add_component("AND_TWO", self.library.get_circuit("AND"))
+        full_adder.add_component("OR", self.library.get_circuit("OR"))
 
         full_adder.connect_input("A", "XOR_ONE", "A")
         full_adder.connect_input("B", "XOR_ONE", "B")
@@ -181,12 +131,12 @@ class CircuitBuilder:
         full_adder.connect("AND_ONE", "OUT", "OR", "A")
         full_adder.connect("AND_TWO", "OUT", "OR", "B")
 
-        self.add_circuit(full_adder)
+        self.library.add_circuit(full_adder)
 
     def add_2bits_adder(self):
         two_bits_adder = Circuit("2-Bits Adder")
-        two_bits_adder.add_component("ADDER_0", self.get_circuit_from_idx(7))
-        two_bits_adder.add_component("ADDER_1", self.get_circuit_from_idx(7))
+        two_bits_adder.add_component("ADDER_0", self.library.get_circuit("Full-Adder"))
+        two_bits_adder.add_component("ADDER_1", self.library.get_circuit("Full-Adder"))
 
         two_bits_adder.connect_input("A0", "ADDER_0", "A")
         two_bits_adder.connect_input("B0", "ADDER_0", "B")
@@ -201,12 +151,16 @@ class CircuitBuilder:
         two_bits_adder.connect_output("S1", "ADDER_1", "SUM")
         two_bits_adder.connect_output("Cout", "ADDER_1", "Cout")
 
-        self.add_circuit(two_bits_adder)
+        self.library.add_circuit(two_bits_adder)
 
     def add_4bits_adder(self):
         four_bits_adder = Circuit("4-Bits Adder")
-        four_bits_adder.add_component("2BITS_ADDER_0", self.get_circuit_from_idx(8))
-        four_bits_adder.add_component("2BITS_ADDER_1", self.get_circuit_from_idx(8))
+        four_bits_adder.add_component(
+            "2BITS_ADDER_0", self.library.get_circuit("2-Bits Adder")
+        )
+        four_bits_adder.add_component(
+            "2BITS_ADDER_1", self.library.get_circuit("2-Bits Adder")
+        )
 
         four_bits_adder.connect_input("A0", "2BITS_ADDER_0", "A0")
         four_bits_adder.connect_input("B0", "2BITS_ADDER_0", "B0")
@@ -227,13 +181,17 @@ class CircuitBuilder:
 
         four_bits_adder.connect("2BITS_ADDER_0", "Cout", "2BITS_ADDER_1", "C0")
 
-        self.add_circuit(four_bits_adder)
+        self.library.add_circuit(four_bits_adder)
 
     def add_8bits_adder(self):
         eight_bits_adder = Circuit("8-Bits Adder")
 
-        eight_bits_adder.add_component("4BITS_ADDER_0", self.get_circuit_from_idx(9))
-        eight_bits_adder.add_component("4BITS_ADDER_1", self.get_circuit_from_idx(9))
+        eight_bits_adder.add_component(
+            "4BITS_ADDER_0", self.library.get_circuit("4-Bits Adder")
+        )
+        eight_bits_adder.add_component(
+            "4BITS_ADDER_1", self.library.get_circuit("4-Bits Adder")
+        )
 
         eight_bits_adder.connect_input("A0", "4BITS_ADDER_0", "A0")
         eight_bits_adder.connect_input("B0", "4BITS_ADDER_0", "B0")
@@ -268,4 +226,4 @@ class CircuitBuilder:
 
         eight_bits_adder.connect_output("Cout", "4BITS_ADDER_1", "Cout")
 
-        self.add_circuit(eight_bits_adder)
+        self.library.add_circuit(eight_bits_adder)

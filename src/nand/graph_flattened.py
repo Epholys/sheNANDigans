@@ -8,6 +8,7 @@ from typing import List, Tuple, Literal
 from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.graph_node_builder import NodeBuilder
+from nand.playground_circuit_builder import PlaygroundCircuitBuilder
 
 """
 Abandon all hope, ye who enter here, for these sigils were partly inscribed by the
@@ -242,13 +243,12 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 # Example usage
 if __name__ == "__main__":
     import os
-    from nand.circuits_library import CircuitBuilder
 
     # Set Graphviz path if needed
     os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin"
 
     # Create circuit library
-    circuit_builder = CircuitBuilder()
+    circuit_builder = PlaygroundCircuitBuilder()
     circuit_builder.build_circuits()
     reference = circuit_builder.library
 

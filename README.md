@@ -48,7 +48,7 @@ assert result == [False, True]  # 1 + 0 = 01
 And a way to encode and decode:
 
 ```py
-builder = CircuitBuilder()
+builder = PlaygroundCircuitBuilder()
 builder.build_circuits()
 library = builder.library
 

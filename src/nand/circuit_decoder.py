@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from bitarray import bitarray
 
 from nand.circuit import Circuit, Wire
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_builder import CircuitLibrary
 
 
 class CircuitDecoder(ABC):

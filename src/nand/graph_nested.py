@@ -11,9 +11,9 @@ from nand.circuit import (
     PortWireDict,
 )
 from nand.default_decoder import DefaultDecoder
-from nand.circuits_library import CircuitBuilder
 from nand.graph_node_builder import NodeBuilder
 from nand.default_encoder import DefaultEncoder
+from nand.playground_circuit_builder import PlaygroundCircuitBuilder
 
 
 """
@@ -437,7 +437,7 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 # Example usage
 if __name__ == "__main__":
     # Create circuit library
-    circuits_builder = CircuitBuilder()
+    circuits_builder = PlaygroundCircuitBuilder()
     circuits_builder.build_circuits()
     reference = circuits_builder.library
 

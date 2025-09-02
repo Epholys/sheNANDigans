@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from bitarray import bitarray
 
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_builder import CircuitLibrary
 
 
 class CircuitEncoder(ABC):

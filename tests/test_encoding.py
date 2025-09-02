@@ -5,7 +5,7 @@ from nand.circuit_decoder import CircuitDecoder
 from nand.circuit_encoder import CircuitEncoder
 from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
-from nand.circuits_library import CircuitBuilder
+from nand.playground_circuit_builder import PlaygroundCircuitBuilder
 
 
 def test_default_encoder():
@@ -21,7 +21,7 @@ def _test_roundtrip(encoder: Type[CircuitEncoder], decoder: Type[CircuitDecoder]
 
     It tests the raw values of the encoding and decoding, not the actual circuits.
     """
-    builder = CircuitBuilder()
+    builder = PlaygroundCircuitBuilder()
     builder.build_circuits()
     library = builder.library
 

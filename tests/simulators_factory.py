@@ -5,10 +5,11 @@ from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.optimization_level import OptimizationLevel
-from nand.circuits_library import CircuitLibrary, CircuitBuilder
+from nand.circuit_builder import CircuitLibrary, CircuitBuilder
 from nand.simulator import Simulator
 from nand.simulator_builder import build_simulator
 from nand.bit_packed_encoder import BitPackedEncoder
+from nand.playground_circuit_builder import PlaygroundCircuitBuilder
 
 
 class BuildProcess(Enum):
@@ -51,7 +52,7 @@ class SimulatorsFactory:
     def _build_circuits(self, encoder_type: EncoderType) -> None:
         """Build the circuits for the different build processes."""
         if BuildProcess.REFERENCE not in self._circuits:
-            builder = CircuitBuilder()
+            builder = PlaygroundCircuitBuilder()
             builder.build_circuits()
             self._circuits[BuildProcess.REFERENCE, encoder_type] = builder.library
 

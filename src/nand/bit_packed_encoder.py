@@ -7,7 +7,7 @@ from bitarray import bitarray
 from nand.bits_utils import bitlength_with_offset, int2bitlist, int2bitlist_with_offset
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_builder import CircuitLibrary
 
 
 class EncodedCircuitMetadata:

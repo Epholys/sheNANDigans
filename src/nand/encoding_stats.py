@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from nand.circuit_encoder import CircuitEncoder
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_builder import CircuitLibrary
 
 type Length = int
 type Percentage = float

@@ -5,7 +5,7 @@ from nand.bits_utils import read_bits, read_bits_with_offset
 from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
 from nand.decoded_circuit import ConnectionParameters, DecodedCircuit, InputParameters
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_library import CircuitLibrary
 
 
 class BitPackedDecoder(CircuitDecoder):

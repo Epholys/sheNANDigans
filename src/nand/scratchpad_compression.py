@@ -1,9 +1,9 @@
 from math import ceil, sqrt
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_encoder import DefaultEncoder
-from nand.circuits_library import CircuitBuilder
+from nand.playground_circuit_builder import PlaygroundCircuitBuilder
 
-builder = CircuitBuilder()
+builder = PlaygroundCircuitBuilder()
 builder.build_circuits()
 library = builder.library
 
@@ -217,8 +217,8 @@ def visualize_as_image(
 
 
 # ceil(sqrt(len(bit_packed_encoded.tobytes() * 8))),
-scale = 1
-transparent = False
+scale = 10
+transparent = True
 visualize_as_image(
     bit_packed_encoded.tobytes(),
     mode="bw",
@@ -226,7 +226,7 @@ visualize_as_image(
     scale=scale,
     transparent=transparent,
     background="checker",
-    save_path="bp_def_sq.qoi",
+    save_path="bp_def_sq.png",
 ).show("bp_raw")
 visualize_as_image(
     bp_zip,
@@ -235,7 +235,7 @@ visualize_as_image(
     scale=scale,
     transparent=transparent,
     background="checker",
-    save_path="bp_zip_sq.qoi",
+    save_path="bp_zip_sq.png",
 ).show("bp zip")
 # print(len(bit_packed_encoded.tobytes()))
 # print()

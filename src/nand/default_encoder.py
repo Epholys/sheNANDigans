@@ -5,7 +5,7 @@ from bitarray import bitarray
 
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_builder import CircuitLibrary
 
 
 class DefaultEncoder(CircuitEncoder):

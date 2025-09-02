@@ -7,7 +7,7 @@ from nand.decoded_circuit import (
     DecodedCircuit,
     InputParameters,
 )
-from nand.circuits_library import CircuitLibrary
+from nand.circuit_builder import CircuitLibrary
 
 
 class DefaultDecoder(CircuitDecoder):

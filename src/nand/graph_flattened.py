@@ -9,7 +9,13 @@ from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.graph_node_builder import NodeBuilder
 
-# Define type aliases for better readability
+"""
+Abandon all hope, ye who enter here, for these sigils were partly inscribed by the
+ancient golems ChatGPT and Claude, whose artificial spirit is as murky as the
+digital clay they were built of.
+"""
+
+# Define type aliases for better readability and safety
 type Connection = Tuple[str, str]  # (source, destination)
 type InputConnection = Connection
 type OutputConnection = Connection

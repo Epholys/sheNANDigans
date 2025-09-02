@@ -1,5 +1,3 @@
-from nand.bit_packed_decoder import BitPackedDecoder
-from nand.bit_packed_encoder import BitPackedEncoder
 from nand.schematics import SchematicsBuilder
 
 builder = SchematicsBuilder()

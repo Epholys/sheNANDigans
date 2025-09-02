@@ -16,6 +16,13 @@ from nand.graph_node_builder import NodeBuilder
 from nand.default_encoder import DefaultEncoder
 
 
+"""
+Abandon all hope, ye who enter here, for these sigils were partly inscribed by the
+ancient golems ChatGPT and Claude, whose artificial spirit is as murky as the
+digital clay they were built of.
+"""
+
+
 class GraphOptions:
     """Options for generating the circuit graph."""
 
@@ -394,8 +401,13 @@ def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
 
     counter = _counter()
 
-    # WIP TODO : factorize
-    def uniquify(circuit: Circuit):
+    def make_unique(circuit: Circuit):
+        """Make unique the identifiers of the circuits
+
+        Encoding and decoding has the side-effect of losing the unique identifiers and
+        names. As a consequence, the graphing algorithm become lost and the output
+        graph are nonsense. Uniquifying ids fix this.
+        """
         for k in list(circuit.inputs.keys()):
             new_id = f"{k}_{next(counter)}"
             circuit.inputs[new_id] = circuit.inputs.pop(k)
@@ -407,9 +419,9 @@ def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
         for component in circuit.components.values():
             if component.identifier != 0:
                 component.identifier = f"{component.identifier}_{next(counter)}"
-            uniquify(component)
+            make_unique(component)
 
-    uniquify(circuit)
+    make_unique(circuit)
 
     builder = NestedGraphBuilder(options)
     return builder.build_graph(circuit)

@@ -7,7 +7,7 @@ from bitarray import bitarray
 from nand.bits_utils import bitlength_with_offset, int2bitlist, int2bitlist_with_offset
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
-from nand.schematics import Schematics
+from nand.circuits_library import CircuitLibrary
 
 
 class EncodedCircuitMetadata:
@@ -87,7 +87,7 @@ class BitPackedEncoder(CircuitEncoder):
         self.max_inputs = 0
         self.max_outputs = 0
 
-    def encode(self, library: Schematics) -> bitarray:
+    def encode(self, library: CircuitLibrary) -> bitarray:
         """
         Orchestrates the encoding process.
         """

@@ -1,13 +1,13 @@
 from typing import List, Tuple
 from nand.circuit_encoder import CircuitEncoder
-from nand.schematics import Schematics
+from nand.circuits_library import CircuitLibrary
 
 type Length = int
 type Percentage = float
 type EncodingStats = Tuple[Length, Percentage]
 
 
-def compare_encoders(encoders: List[CircuitEncoder], library: Schematics) -> None:
+def compare_encoders(encoders: List[CircuitEncoder], library: CircuitLibrary) -> None:
     """Compare the encoders and print the encoding stats."""
     encoding_stats = _compute_stats(encoders, library)
 
@@ -22,7 +22,7 @@ def compare_encoders(encoders: List[CircuitEncoder], library: Schematics) -> Non
         )
 
 
-def _compute_stats(encoders: List[CircuitEncoder], library: Schematics):
+def _compute_stats(encoders: List[CircuitEncoder], library: CircuitLibrary):
     length_stats: List[Tuple[CircuitEncoder, Length]] = []
     for encoder in encoders:
         encoding = encoder.encode(library)

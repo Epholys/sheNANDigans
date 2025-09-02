@@ -242,15 +242,15 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 # Example usage
 if __name__ == "__main__":
     import os
-    from nand.schematics import SchematicsBuilder
+    from nand.circuits_library import CircuitBuilder
 
     # Set Graphviz path if needed
     os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin"
 
-    # Create schematics library
-    schematics_builder = SchematicsBuilder()
-    schematics_builder.build_circuits()
-    reference = schematics_builder.schematics
+    # Create circuit library
+    circuit_builder = CircuitBuilder()
+    circuit_builder.build_circuits()
+    reference = circuit_builder.library
 
     default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
     bit_packed_round_trip = BitPackedDecoder().decode(
@@ -258,21 +258,21 @@ if __name__ == "__main__":
     )
 
     # Visualize different circuits
-    for schematics, schematics_type in [
+    for library, construction_method in [
         (reference, "reference"),
         (default_round_trip, "default_round_trip"),
         (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
         for n, a in list(product([True, False], repeat=2)):
             try:
-                circuit = schematics.get_schematic_idx(7)
+                circuit = library.get_circuit_from_idx(7)
                 graph_builder = FlattenedGraphBuilder(
                     circuit,
                     GraphOptions(is_nested=n, is_aligned=a, bold_io=True),
                 )
                 graph = graph_builder.generate_graph()
                 output_file = save_graph(
-                    graph, f"flattened_circuit_{n}_{a}_{schematics_type}", "svg"
+                    graph, f"flattened_circuit_{n}_{a}_{construction_method}", "svg"
                 )
                 print(f"Flattened graph saved to {output_file}")
             except Exception as e:

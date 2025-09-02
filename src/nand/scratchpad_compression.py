@@ -1,19 +1,21 @@
 from math import ceil, sqrt
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_encoder import DefaultEncoder
-from nand.schematics import SchematicsBuilder
+from nand.circuits_library import CircuitBuilder
 
-builder = SchematicsBuilder()
+builder = CircuitBuilder()
 builder.build_circuits()
-schematics = builder.schematics
+library = builder.library
 
-default_encoded = DefaultEncoder().encode(schematics)
-bit_packed_encoded = BitPackedEncoder().encode(schematics)
+default_encoded = DefaultEncoder().encode(library)
+bit_packed_encoded = BitPackedEncoder().encode(library)
 
 import zlib
 
 bp_zip = zlib.compress(bit_packed_encoded.tobytes(), level=9, wbits=-15)
 de_zip = zlib.compress(default_encoded.tobytes(), level=9, wbits=-15)
+print(f"bp sz = {len(bit_packed_encoded.tobytes())}")
+print(f"bp zip sz = {len(bp_zip)}")
 
 # import gzip
 #
@@ -53,6 +55,8 @@ de_lzma = lzma.compress(
     format=lzma.FORMAT_RAW,
     filters=filters,
 )
+
+print(f"bp lzma sz = {len(bp_lzma)}")
 
 from PIL import Image
 import numpy as np

@@ -40,7 +40,7 @@ class Circuit:
 
     Attributes:
         identifier: Identifier of the circuit. Uniqueness is necessary if
-                    several circuits are bundled into a Schematics library.
+                    several circuits are bundled into a CircuitLibrary library.
                     0 is reserved for the base NAND circuit.
 
         name: The name of the circuit. Usually the same as the identifier, but useful

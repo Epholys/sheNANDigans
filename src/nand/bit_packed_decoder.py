@@ -5,7 +5,7 @@ from nand.bits_utils import read_bits, read_bits_with_offset
 from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
 from nand.decoded_circuit import ConnectionParameters, DecodedCircuit, InputParameters
-from nand.schematics import Schematics
+from nand.circuits_library import CircuitLibrary
 
 
 class BitPackedDecoder(CircuitDecoder):
@@ -32,11 +32,11 @@ class BitPackedDecoder(CircuitDecoder):
     """
 
     def __init__(self):
-        self.schematics = Schematics()
-        self.schematics.add_schematic(self._build_nand())
+        self.library = CircuitLibrary()
+        self.library.add_circuit(self._build_nand())
         self.idx = 0
 
-    def decode(self, data: bitarray) -> Schematics:
+    def decode(self, data: bitarray) -> CircuitLibrary:
         """Decode the data into circuits."""
         self.data = list(data.tolist())
 
@@ -49,8 +49,8 @@ class BitPackedDecoder(CircuitDecoder):
             self._decode_circuit()
             self.circuit.apply_inputs()
             self.circuit.apply_connections()
-            self.schematics.add_schematic(self.circuit)
-        return self.schematics
+            self.library.add_circuit(self.circuit)
+        return self.library
 
     def _decode_global_header(self):
         """Decode the global header of the bit stream.
@@ -105,7 +105,7 @@ class BitPackedDecoder(CircuitDecoder):
         """Decode the component_idx-th component of the circuit."""
         circuit_id = read_bits(self.data, self.circuits_bitlength)
         try:
-            component = self.schematics.get_schematic(circuit_id)
+            component = self.library.get_circuit(circuit_id)
         except ValueError as e:
             raise ValueError(
                 f"Trying to use the undefined component {circuit_id}."

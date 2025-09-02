@@ -5,7 +5,7 @@ from bitarray import bitarray
 
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
-from nand.schematics import Schematics
+from nand.circuits_library import CircuitLibrary
 
 
 class DefaultEncoder(CircuitEncoder):
@@ -32,7 +32,7 @@ class DefaultEncoder(CircuitEncoder):
     def __init__(self):
         super().__init__()
 
-    def encode(self, library: Schematics) -> bitarray:
+    def encode(self, library: CircuitLibrary) -> bitarray:
         """
         library = [circuit_1, circuit_2, ...]
 

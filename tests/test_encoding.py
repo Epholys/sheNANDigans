@@ -5,7 +5,7 @@ from nand.circuit_decoder import CircuitDecoder
 from nand.circuit_encoder import CircuitEncoder
 from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
-from nand.schematics import SchematicsBuilder
+from nand.circuits_library import CircuitBuilder
 
 
 def test_default_encoder():
@@ -21,13 +21,13 @@ def _test_roundtrip(encoder: Type[CircuitEncoder], decoder: Type[CircuitDecoder]
 
     It tests the raw values of the encoding and decoding, not the actual circuits.
     """
-    builder = SchematicsBuilder()
+    builder = CircuitBuilder()
     builder.build_circuits()
-    schematics = builder.schematics
+    library = builder.library
 
-    reference_encoding = encoder().encode(schematics)
-    round_trip_schematics = decoder().decode(reference_encoding)
-    round_trip_encoding = encoder().encode(round_trip_schematics)
+    reference_encoding = encoder().encode(library)
+    round_trip_library = decoder().decode(reference_encoding)
+    round_trip_encoding = encoder().encode(round_trip_library)
 
     if reference_encoding != round_trip_encoding:
         if len(reference_encoding) != len(round_trip_encoding):

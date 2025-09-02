@@ -5,7 +5,7 @@ from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.optimization_level import OptimizationLevel
-from nand.schematics import Schematics, SchematicsBuilder
+from nand.circuits_library import CircuitLibrary, CircuitBuilder
 from nand.simulator import Simulator
 from nand.simulator_builder import build_simulator
 from nand.bit_packed_encoder import BitPackedEncoder
@@ -43,7 +43,7 @@ class EncoderType(Enum):
 
 class SimulatorsFactory:
     def __init__(self) -> None:
-        self._circuits: dict[Tuple[BuildProcess, EncoderType], Schematics] = {}
+        self._circuits: dict[Tuple[BuildProcess, EncoderType], CircuitLibrary] = {}
         self._simulators: dict[
             Tuple[BuildProcess, OptimizationLevel, EncoderType], List[Simulator]
         ] = {}
@@ -51,9 +51,9 @@ class SimulatorsFactory:
     def _build_circuits(self, encoder_type: EncoderType) -> None:
         """Build the circuits for the different build processes."""
         if BuildProcess.REFERENCE not in self._circuits:
-            builder = SchematicsBuilder()
+            builder = CircuitBuilder()
             builder.build_circuits()
-            self._circuits[BuildProcess.REFERENCE, encoder_type] = builder.schematics
+            self._circuits[BuildProcess.REFERENCE, encoder_type] = builder.library
 
         if BuildProcess.ROUND_TRIP not in self._circuits:
             encoded = encoder_type.get_encoder().encode(
@@ -74,10 +74,10 @@ class SimulatorsFactory:
         self._build_circuits(encoder_type)
 
         if (build_kind, optimization_level, encoder_type) not in self._simulators:
-            schematics = self._circuits[build_kind, encoder_type]
+            library = self._circuits[build_kind, encoder_type]
             simulators = [
                 build_simulator(circuit, optimization_level)
-                for circuit in schematics.get_all_schematics().values()
+                for circuit in library.get_all_circuits().values()
             ]
             self._simulators[(build_kind, optimization_level, encoder_type)] = (
                 simulators

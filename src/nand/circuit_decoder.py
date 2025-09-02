@@ -2,12 +2,12 @@ from abc import ABC, abstractmethod
 from bitarray import bitarray
 
 from nand.circuit import Circuit, Wire
-from nand.schematics import Schematics
+from nand.circuits_library import CircuitLibrary
 
 
 class CircuitDecoder(ABC):
     @abstractmethod
-    def decode(self, data: bitarray) -> Schematics:
+    def decode(self, data: bitarray) -> CircuitLibrary:
         pass
 
     def _build_nand(self) -> Circuit:

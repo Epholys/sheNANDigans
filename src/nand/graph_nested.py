@@ -11,7 +11,7 @@ from nand.circuit import (
     PortWireDict,
 )
 from nand.default_decoder import DefaultDecoder
-from nand.schematics import SchematicsBuilder
+from nand.circuits_library import CircuitBuilder
 from nand.graph_node_builder import NodeBuilder
 from nand.default_encoder import DefaultEncoder
 
@@ -436,10 +436,10 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 
 # Example usage
 if __name__ == "__main__":
-    # Create schematics library
-    schematics_builder = SchematicsBuilder()
-    schematics_builder.build_circuits()
-    reference = schematics_builder.schematics
+    # Create circuit library
+    circuits_builder = CircuitBuilder()
+    circuits_builder.build_circuits()
+    reference = circuits_builder.library
 
     default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
     bit_packed_round_trip = BitPackedDecoder().decode(
@@ -447,19 +447,19 @@ if __name__ == "__main__":
     )
 
     # Visualize different circuits
-    for schematics, schematics_type in [
+    for library, construction_type in [
         (reference, "reference"),
         (default_round_trip, "default_round_trip"),
         (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        circuit = schematics.get_schematic_idx(7)
+        circuit = library.get_circuit_from_idx(7)
         graph = generate_graph(
             circuit,
             GraphOptions(is_compact=True, is_aligned=True, bold_io=True, max_depth=-1),
         )
         output_file = save_graph(
             graph,
-            f"half_adder_{schematics_type}",
+            f"half_adder_{construction_type}",
             "svg",
         )
         print(f"Nested graph saved to {output_file}")

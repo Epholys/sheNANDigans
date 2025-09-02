@@ -46,7 +46,7 @@ def build_parameters():
     build_parameters(),
     indirect=["simulators"],
 )
-class TestSchematics:
+class TestLibrary:
     """Test the circuits behavior on the different cases.
 
     The goal is to test

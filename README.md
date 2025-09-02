@@ -19,11 +19,11 @@ Well, there's not really (for now!) a single entry point or even some kind of ma
 Defining logical circuits in Python recursively. For example, without any context, here's a half-adder that adds two bits:
 
 ```py
-def build_half_adder(schematics):
+def build_half_adder(library):
     half_adder = Circuit("Half-Adder")
 
-    half_adder.add_component("XOR", schematics.get_schematic_idx(5))  # Previously defined
-    half_adder.add_component("AND", schematics.get_schematic_idx(2))
+    half_adder.add_component("XOR", library.get_circuit("XOR"))  # Previously defined
+    half_adder.add_component("AND", library.get_circuit("AND"))
 
     half_adder.connect_input("A", "XOR", "A")
     half_adder.connect_input("B", "XOR", "B")
@@ -48,18 +48,20 @@ assert result == [False, True]  # 1 + 0 = 01
 And a way to encode and decode:
 
 ```py
-builder = SchematicsBuilder()
+builder = CircuitBuilder()
 builder.build_circuits()
-schematics = builder.schematics
+library = builder.library
 
-reference_encoding: List[int] = CircuitEncoder(schematics).encode()
-round_trip_schematics = CircuitDecoder(reference_encoding).decode()
-round_trip_encoding = CircuitEncoder(round_trip_schematics).encode()
+reference_encoding: bitarray = DefaultEncoder().encode(library)
+round_trip_library = DefaultDecoder().decode(reference_encoding)
+round_trip_encoding = DefaultEncoder().encode(round_trip_library)
 
 assert reference_encoding == round_trip_encoding
 ```
 
-*All basic logic gates, and adders up to 8 bits, can be encoded into __262__ bytes!* And that's before planned bit-packing.
+All basic logic gates, and adders up to 8 bits, can be encoded into *262 bytes* using the default encoder, and **78 bytes** using the bit packed version!
+
+These 78 bytes can't be compressed in a smaller number of bytes using either the zlib or lzma library, so that's pretty good!
 
 And, last but not least, a way to visualize:
 

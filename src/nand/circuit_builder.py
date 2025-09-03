@@ -21,5 +21,6 @@ class CircuitBuilder(ABC):
         self.library.add_circuit(nand_gate)
 
     @abstractmethod
-    def build_circuits(self):
+    def build_circuits(self) -> CircuitLibrary:
+        self.library.library.clear()
         self.add_nand()

@@ -18,6 +18,7 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         self.add_2bits_adder()
         self.add_4bits_adder()
         self.add_8bits_adder()
+        return self.library
 
     def add_not(self):
         not_gate = Circuit("NOT")

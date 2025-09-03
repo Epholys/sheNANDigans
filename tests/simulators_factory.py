@@ -5,7 +5,7 @@ from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.optimization_level import OptimizationLevel
-from nand.circuit_builder import CircuitLibrary, CircuitBuilder
+from nand.circuit_builder import CircuitLibrary
 from nand.simulator import Simulator
 from nand.simulator_builder import build_simulator
 from nand.bit_packed_encoder import BitPackedEncoder

@@ -21,6 +21,9 @@ class HackALUBuilder(CircuitBuilder):
         self.add_or8way()
         self.add_mux4way16()
         self.add_mux8way16()
+        self.add_dmux4way()
+        self.add_dmux8way()
+        return self.library
 
     def add_not(self):
         not_gate = Circuit("NOT")
@@ -254,3 +257,57 @@ class HackALUBuilder(CircuitBuilder):
             mux8way16.connect_output(f"OUT_{i}", "Mux16_OUT", f"OUT_{i}")
 
         self.library.add_circuit(mux8way16)
+
+    def add_dmux4way(self):
+        dmux4way = Circuit("DMux4Way")
+
+        dmux4way.add_component("DMux_SEL", self.library.get_circuit("DMux"))
+        dmux4way.add_component("DMux_AB", self.library.get_circuit("DMux"))
+        dmux4way.add_component("DMux_CD", self.library.get_circuit("DMux"))
+
+        dmux4way.connect_input("IN", "DMux_SEL", "IN")
+        dmux4way.connect_input("SEL_1", "DMux_SEL", "SEL")
+        dmux4way.connect_input("SEL_0", "DMux_AB", "SEL")
+        dmux4way.connect_input("SEL_0", "DMux_CD", "SEL")
+
+        dmux4way.connect("DMux_SEL", "A", "DMux_AB", "IN")
+        dmux4way.connect("DMux_SEL", "A", "DMux_AB", "IN")
+        dmux4way.connect("DMux_SEL", "B", "DMux_CD", "IN")
+        dmux4way.connect("DMux_SEL", "B", "DMux_CD", "IN")
+
+        dmux4way.connect_output("A", "DMux_AB", "A")
+        dmux4way.connect_output("B", "DMux_AB", "B")
+        dmux4way.connect_output("C", "DMux_CD", "A")
+        dmux4way.connect_output("D", "DMux_CD", "B")
+
+        self.library.add_circuit(dmux4way)
+
+    def add_dmux8way(self):
+        dmux8way = Circuit("DMux8Way")
+
+        dmux8way.add_component("DMux_SEL", self.library.get_circuit("DMux"))
+        dmux8way.add_component("DMux_ABCD", self.library.get_circuit("DMux4Way"))
+        dmux8way.add_component("DMux_EFGH", self.library.get_circuit("DMux4Way"))
+
+        dmux8way.connect_input("IN", "DMux_SEL", "IN")
+        dmux8way.connect_input("SEL_2", "DMux_SEL", "SEL")
+        dmux8way.connect_input("SEL_1", "DMux_ABCD", "SEL_1")
+        dmux8way.connect_input("SEL_1", "DMux_EFGH", "SEL_1")
+        dmux8way.connect_input("SEL_0", "DMux_ABCD", "SEL_0")
+        dmux8way.connect_input("SEL_0", "DMux_EFGH", "SEL_0")
+
+        dmux8way.connect("DMux_SEL", "A", "DMux_ABCD", "IN")
+        dmux8way.connect("DMux_SEL", "A", "DMux_ABCD", "IN")
+        dmux8way.connect("DMux_SEL", "B", "DMux_EFGH", "IN")
+        dmux8way.connect("DMux_SEL", "B", "DMux_EFGH", "IN")
+
+        dmux8way.connect_output("A", "DMux_ABCD", "A")
+        dmux8way.connect_output("B", "DMux_ABCD", "B")
+        dmux8way.connect_output("C", "DMux_ABCD", "C")
+        dmux8way.connect_output("D", "DMux_ABCD", "D")
+        dmux8way.connect_output("E", "DMux_EFGH", "A")
+        dmux8way.connect_output("F", "DMux_EFGH", "B")
+        dmux8way.connect_output("G", "DMux_EFGH", "C")
+        dmux8way.connect_output("H", "DMux_EFGH", "D")
+
+        self.library.add_circuit(dmux8way)

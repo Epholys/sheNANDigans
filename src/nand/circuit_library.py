@@ -5,6 +5,7 @@ from nand.circuit import Circuit, CircuitDict, CircuitId
 
 class CircuitLibrary:
     def __init__(self):
+        # TODO remove ? it's a fine wrapper that doesn't do much
         self.library: CircuitDict = OrderedDict()
 
     def has_circuit(self, identifier: CircuitId):

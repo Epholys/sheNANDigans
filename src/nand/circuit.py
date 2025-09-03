@@ -57,6 +57,8 @@ class Circuit:
                       for the graphs.
 
         components: Components of the circuit
+
+        # TODO __copy__ __deepcopy__
     """
 
     def __init__(self, identifier: CircuitId):

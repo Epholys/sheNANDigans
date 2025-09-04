@@ -3,6 +3,8 @@ import pytest
 from nand.optimization_level import OptimizationLevel
 from tests.simulators_factory import BuildProcess, SimulatorsFactory
 
+# TODO : is all of this necessary ?
+
 
 @pytest.fixture(scope="module")
 def simulators_factory():
@@ -12,13 +14,14 @@ def simulators_factory():
 
 @pytest.fixture(scope="module")
 def simulators(request, simulators_factory):
-    """Fixture to provide simulators for different build processes and optimization levels."""
+    """Fixture to provide simulators for different build processes and
+    optimization levels."""
     processing: BuildProcess
     optimization_level: OptimizationLevel
-    processing, optimization_level, encoder_type = request.param
+    processing, optimization_level, encoder_type, project = request.param
 
     simulators = simulators_factory.get_simulators(
-        processing, optimization_level, encoder_type
+        processing, optimization_level, encoder_type, project
     )
 
     return simulators

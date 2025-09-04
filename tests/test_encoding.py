@@ -59,8 +59,8 @@ def test_roundtrip(
     if reference_encoding != round_trip_encoding:
         if len(reference_encoding) != len(round_trip_encoding):
             assert False, (
-                f"Encoding is different after round trip: "
-                f"Length is different: {len(reference_encoding)} != {len(round_trip_encoding)}"
+                f"Encoding is different after round trip: Length is different: "
+                f"{len(reference_encoding)} != {len(round_trip_encoding)}"
             )
         for idx, (a, b) in enumerate(zip(reference_encoding, round_trip_encoding)):
             if a != b:

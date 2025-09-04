@@ -1,9 +1,13 @@
 from enum import Enum
+import itertools
 from typing import List, Tuple
+
+import pytest
 
 from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
 from nand.bit_packed_decoder import BitPackedDecoder
+from nand.nand2tetris_hack_alu import HackALUBuilder
 from nand.optimization_level import OptimizationLevel
 from nand.circuit_builder import CircuitLibrary
 from nand.simulator import Simulator
@@ -20,6 +24,8 @@ class BuildProcess(Enum):
 
 
 class EncoderType(Enum):
+    """Enum defining all D/Encoders available."""
+
     DEFAULT = "default"
     BIT_PACKED = "bit_packed"
 
@@ -33,6 +39,7 @@ class EncoderType(Enum):
                 raise ValueError("Unknown EncoderType.")
 
     def get_decoder(self):
+        # TODO : Type[] because non-stateless decoder, see other TODO
         match self:
             case EncoderType.DEFAULT:
                 return DefaultDecoder
@@ -42,6 +49,49 @@ class EncoderType(Enum):
                 raise ValueError("Unknown EncoderType.")
 
 
+class Project(Enum):
+    """Enum defining all projects, i.e. all circuit libraries."""
+
+    PLAYGROUND = "playground"
+    NAND2TETRIS_HACK = "nand2tetris_hack"
+
+    def get_builder(self):
+        match self:
+            case Project.PLAYGROUND:
+                return PlaygroundCircuitBuilder()
+            case Project.NAND2TETRIS_HACK:
+                return HackALUBuilder()
+            case _:
+                raise ValueError("Unknown Project.")
+
+
+def build_parameters(project: Project):
+    """Build the parameters for the tests.
+
+    The parameters are a combination of:
+    - BuildProcess: REFERENCE, ROUND_TRIP
+    - OptimizationLevel: FAST, DEBUG
+    - EncoderType: DEFAULT, BIT_PACKED
+
+    With 'project' being a parameter to separate each library tested.
+
+    The DEBUG optimization level is marked as 'debug' to be able to run it
+    separately.
+    """
+    params = []
+
+    processes = [BuildProcess.REFERENCE, BuildProcess.ROUND_TRIP]
+    opt_levels = [OptimizationLevel.FAST, OptimizationLevel.DEBUG]
+    encoders = [EncoderType.DEFAULT, EncoderType.BIT_PACKED]
+    for p, o, e in itertools.product(processes, opt_levels, encoders):
+        mark_debug = pytest.mark.debug if o is OptimizationLevel.DEBUG else None
+        if mark_debug:
+            params.append(pytest.param((p, o, e, project), marks=mark_debug))
+        else:
+            params.append(pytest.param((p, o, e, project)))
+    return params
+
+
 class SimulatorsFactory:
     def __init__(self) -> None:
         self._circuits: dict[Tuple[BuildProcess, EncoderType], CircuitLibrary] = {}
@@ -49,10 +99,10 @@ class SimulatorsFactory:
             Tuple[BuildProcess, OptimizationLevel, EncoderType], List[Simulator]
         ] = {}
 
-    def _build_circuits(self, encoder_type: EncoderType) -> None:
+    def _build_circuits(self, encoder_type: EncoderType, project: Project) -> None:
         """Build the circuits for the different build processes."""
         if BuildProcess.REFERENCE not in self._circuits:
-            builder = PlaygroundCircuitBuilder()
+            builder = project.get_builder()
             builder.build_circuits()
             self._circuits[BuildProcess.REFERENCE, encoder_type] = builder.library
 
@@ -69,10 +119,11 @@ class SimulatorsFactory:
         build_kind: BuildProcess,
         optimization_level: OptimizationLevel,
         encoder_type: EncoderType = EncoderType.DEFAULT,
+        project: Project = Project.PLAYGROUND,
     ):
         """Get the simulators for the given build process and optimization level."""
 
-        self._build_circuits(encoder_type)
+        self._build_circuits(encoder_type, project)
 
         if (build_kind, optimization_level, encoder_type) not in self._simulators:
             library = self._circuits[build_kind, encoder_type]

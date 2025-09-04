@@ -1,53 +1,32 @@
 from concurrent.futures import ProcessPoolExecutor
 from itertools import product
-import itertools
 import multiprocessing
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import pytest
+from tests.common_test_assertions import (
+    assert_circuit_signature,
+    assert_logic_gate_simulations,
+)
 from nand.circuit import Circuit
 from nand.simulator import Simulator
-from nand.simulator_builder import OptimizationLevel
 from tests.numeric_operations import (
     NumericOperations,
     bools_to_int,
     int_to_bools,
 )
-from tests.simulators_factory import BuildProcess, EncoderType
+from tests.simulators_factory import Project, build_parameters
 
-
-def build_parameters():
-    """Build the parameters for the tests.
-
-    The parameters are a combination of:
-    - BuildProcess: REFERENCE, ROUND_TRIP
-    - OptimizationLevel: FAST, DEBUG
-    - EncoderType: DEFAULT, BIT_PACKED
-
-    The DEBUG optimization level is marked as 'debug' to be able to run it
-    separately.
-    """
-    params = []
-
-    processes = [BuildProcess.REFERENCE, BuildProcess.ROUND_TRIP]
-    opt_levels = [OptimizationLevel.FAST, OptimizationLevel.DEBUG]
-    encoders = [EncoderType.DEFAULT, EncoderType.BIT_PACKED]
-    for p, o, e in itertools.product(processes, opt_levels, encoders):
-        mark_debug = pytest.mark.debug if o is OptimizationLevel.DEBUG else None
-        if mark_debug:
-            params.append(pytest.param((p, o, e), marks=mark_debug))
-        else:
-            params.append(pytest.param((p, o, e)))
-    return params
+# TODO rename schematics -> circuits / library ?
 
 
 @pytest.mark.parametrize(
     "simulators",
-    build_parameters(),
+    build_parameters(Project.PLAYGROUND),
     indirect=["simulators"],
     # TODO ids=
 )
-class TestLibrary:
+class TestPlaygroundLibrary:
     """Test the circuits behavior on the different cases.
 
     The goal is to test
@@ -55,31 +34,6 @@ class TestLibrary:
     through encoding and decoding).
     - The different simulators with optimization levels (fast vs debug).
     """
-
-    def _assert_circuit_signature(
-        self, circuit: Circuit, n_inputs: int, n_outputs: int
-    ):
-        """Assert the signature of a circuit (number of inputs and outputs)."""
-        assert len(circuit.inputs) == n_inputs
-        assert len(circuit.outputs) == n_outputs
-
-    def _assert_logic_gate_simulations(
-        self, simulator: Simulator, gate_logic: Callable[[bool, bool], bool]
-    ):
-        """Assert the simulation of a logic gate.
-
-        'gate_logic' is the expected behavior of the gate.
-        """
-        self._assert_circuit_signature(simulator._circuit, n_inputs=2, n_outputs=1)
-
-        possible_inputs = list(product([True, False], repeat=2))
-        expected_outputs = [gate_logic(a, b) for a, b in possible_inputs]
-
-        for (a, b), expected_output in zip(possible_inputs, expected_outputs):
-            result = simulator.simulate((a, b))
-            if not result:
-                assert False, "Simulation Failed"
-            assert result == [expected_output]
 
     def _assert_single_numeric_simulation(self, data):
         """Assert the simulation of a numeric operation for a single case."""
@@ -106,7 +60,7 @@ class TestLibrary:
         """Assert the behavior of a circuit implementing a numeric operation for all
         possible inputs.
         """
-        self._assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
+        assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
 
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
@@ -157,7 +111,7 @@ class TestLibrary:
 
     def test_nand(self, simulators):
         nand = simulators[0]
-        self._assert_logic_gate_simulations(nand, lambda a, b: not (a and b))
+        assert_logic_gate_simulations(nand, lambda a, b: not (a and b))
 
     def test_not(self, simulators):
         not_ = simulators[1]
@@ -170,19 +124,19 @@ class TestLibrary:
 
     def test_and(self, simulators):
         and_ = simulators[2]
-        self._assert_logic_gate_simulations(and_, lambda a, b: a and b)
+        assert_logic_gate_simulations(and_, lambda a, b: a and b)
 
     def test_or(self, simulators):
         or_ = simulators[3]
-        self._assert_logic_gate_simulations(or_, lambda a, b: a or b)
+        assert_logic_gate_simulations(or_, lambda a, b: a or b)
 
     def test_nor(self, simulators):
         nor = simulators[4]
-        self._assert_logic_gate_simulations(nor, lambda a, b: not (a or b))
+        assert_logic_gate_simulations(nor, lambda a, b: not (a or b))
 
     def test_xor(self, simulators):
         xor = simulators[5]
-        self._assert_logic_gate_simulations(xor, lambda a, b: a ^ b)
+        assert_logic_gate_simulations(xor, lambda a, b: a ^ b)
 
     def test_half_adder(self, simulators):
         half_adder = simulators[6]

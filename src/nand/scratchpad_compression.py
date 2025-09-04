@@ -1,9 +1,9 @@
 from math import ceil, sqrt
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_encoder import DefaultEncoder
-from nand.playground_circuit_builder import PlaygroundCircuitBuilder
+from nand.nand2tetris_hack_alu import HackALUBuilder
 
-builder = PlaygroundCircuitBuilder()
+builder = HackALUBuilder()
 builder.build_circuits()
 library = builder.library
 
@@ -216,22 +216,22 @@ def visualize_as_image(
     return img
 
 
-# ceil(sqrt(len(bit_packed_encoded.tobytes() * 8))),
+width = ceil(sqrt(len(bit_packed_encoded.tobytes() * 8)))
 scale = 10
 transparent = True
 visualize_as_image(
     bit_packed_encoded.tobytes(),
     mode="bw",
-    width=ceil(sqrt(len(bit_packed_encoded.tobytes() * 8))),
+    width=width,
     scale=scale,
     transparent=transparent,
     background="checker",
     save_path="bp_def_sq.png",
 ).show("bp_raw")
 visualize_as_image(
-    bp_zip,
+    bp_lzma,
     mode="bw",
-    width=ceil(sqrt(len(bp_zip * 8))),
+    width=width,
     scale=scale,
     transparent=transparent,
     background="checker",

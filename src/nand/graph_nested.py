@@ -13,7 +13,7 @@ from nand.circuit import (
 from nand.default_decoder import DefaultDecoder
 from nand.graph_node_builder import NodeBuilder
 from nand.default_encoder import DefaultEncoder
-from nand.playground_circuit_builder import PlaygroundCircuitBuilder
+from nand.nand2tetris_hack_alu import HackALUBuilder
 
 
 """
@@ -437,7 +437,7 @@ def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
 # Example usage
 if __name__ == "__main__":
     # Create circuit library
-    circuits_builder = PlaygroundCircuitBuilder()
+    circuits_builder = HackALUBuilder()
     circuits_builder.build_circuits()
     reference = circuits_builder.library
 
@@ -452,14 +452,16 @@ if __name__ == "__main__":
         (default_round_trip, "default_round_trip"),
         (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        circuit = library.get_circuit_from_idx(7)
-        graph = generate_graph(
-            circuit,
-            GraphOptions(is_compact=True, is_aligned=True, bold_io=True, max_depth=-1),
-        )
-        output_file = save_graph(
-            graph,
-            f"half_adder_{construction_type}",
-            "svg",
-        )
-        print(f"Nested graph saved to {output_file}")
+        for circuit in [library.get_circuit_from_idx(4)]:
+            graph = generate_graph(
+                circuit,
+                GraphOptions(
+                    is_compact=True, is_aligned=True, bold_io=True, max_depth=1
+                ),
+            )
+            output_file = save_graph(
+                graph,
+                f"{circuit.name}_{construction_type}_hack",
+                "svg",
+            )
+            print(f"Nested graph saved to {output_file}")

@@ -1,7 +1,8 @@
+from nand.bit_packed_decoder import BitPackedDecoder
+from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit import Circuit
-from nand.default_decoder import DefaultDecoder
-from nand.default_encoder import DefaultEncoder
 from nand.graph_nested import GraphOptions, generate_graph, save_graph
+from nand.nand2tetris_hack_alu import HackALUBuilder
 from nand.optimization_level import OptimizationLevel
 from nand.playground_circuit_builder import PlaygroundCircuitBuilder
 from nand.simulator_builder import build_simulator
@@ -35,13 +36,13 @@ simulator = build_simulator(
 result = simulator.simulate([True, False])
 assert result == [False, True]  # 1 + 0 = 01
 
-builder = PlaygroundCircuitBuilder()
+builder = HackALUBuilder()
 builder.build_circuits()
 library = builder.library
 
-reference_encoding = DefaultEncoder().encode(library)
-round_trip_library = DefaultDecoder().decode(reference_encoding)
-round_trip_encoding = DefaultEncoder().encode(round_trip_library)
+reference_encoding = BitPackedEncoder().encode(library)
+round_trip_library = BitPackedDecoder().decode(reference_encoding)
+round_trip_encoding = BitPackedEncoder().encode(round_trip_library)
 
 assert reference_encoding == round_trip_encoding
 

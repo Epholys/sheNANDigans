@@ -240,7 +240,7 @@ class Circuit:
         inputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.inputs.items())
 
         # Format output wires
-        outputs_str = ", ".join(f"{k}: : {v.id}" for k, v in self.outputs.items())
+        outputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.outputs.items())
 
         representation = (
             f"({self.identifier}, inputs={{{inputs_str}}}, outputs={{{outputs_str}}}"

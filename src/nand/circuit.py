@@ -137,6 +137,8 @@ class Circuit:
 
         Raises:
             ValueError: If the source or its output doesn't exist
+
+        # TODO move 'output_id' as the last parameter
         """
         if source_id not in self.components:
             raise ValueError(f"The component {source_id} does not exist.")

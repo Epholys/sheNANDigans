@@ -19,11 +19,7 @@ class TestLibrary:
     def test_not(self, simulators):
         not_ = simulators[1]
 
-        for a in [True, False]:
-            result = not_.simulate([a])
-            if not result:
-                assert False, "Simulation Failed"
-            assert result == [not a]
+        tttassert(not_, lambda in_: not in_, 1)
 
     def test_and(self, simulators):
         and_ = simulators[2]
@@ -36,3 +32,7 @@ class TestLibrary:
     def test_xor(self, simulators):
         xor = simulators[4]
         assert_logic_gate_simulations(xor, lambda a, b: a ^ b)
+
+    def test_mux(self, simulators):
+        mux = simulators[5]
+        tttassert(mux, lambda sel, a, b: b if sel else a, 3)

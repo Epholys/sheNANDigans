@@ -1,14 +1,15 @@
 import pytest
 
+from tests.parameters_enums import parameter_ids
 from tests.common_test_assertions import assert_logic_gate_simulations
-from tests.simulators_factory import Project, build_parameters
+from tests.simulators_factory import Project, build_simulators_cases
 
 
 @pytest.mark.parametrize(
     "simulators",
-    build_parameters(Project.NAND2TETRIS_HACK),
+    build_simulators_cases(Project.NAND2TETRIS_HACK),
     indirect=["simulators"],
-    # TODO ids=
+    ids=parameter_ids,
 )
 class TestLibrary:
     def test_nand(self, simulators):

@@ -4,27 +4,25 @@ import multiprocessing
 from typing import List, Tuple
 
 import pytest
+from tests.parameters_enums import parameter_ids
 from tests.common_test_assertions import (
     assert_circuit_signature,
     assert_logic_gate_simulations,
 )
-from nand.circuit import Circuit
 from nand.simulator import Simulator
 from tests.numeric_operations import (
     NumericOperations,
     bools_to_int,
     int_to_bools,
 )
-from tests.simulators_factory import Project, build_parameters
-
-# TODO rename schematics -> circuits / library ?
+from tests.simulators_factory import Project, build_simulators_cases
 
 
 @pytest.mark.parametrize(
     "simulators",
-    build_parameters(Project.PLAYGROUND),
+    build_simulators_cases(Project.PLAYGROUND),
     indirect=["simulators"],
-    # TODO ids=
+    ids=parameter_ids,
 )
 class TestPlaygroundLibrary:
     """Test the circuits behavior on the different cases.

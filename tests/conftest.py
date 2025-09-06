@@ -1,27 +1,34 @@
 import pytest
 
-from nand.optimization_level import OptimizationLevel
-from tests.simulators_factory import BuildProcess, SimulatorsFactory
+from tests.simulators_factory import (
+    CircuitsFactory,
+    SimulatorSpecs,
+    SimulatorsFactory,
+)
 
-# TODO : is all of this necessary ?
 
-
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def simulators_factory():
     """Fixture to create a memoized SimulatorsFactory instance."""
     return SimulatorsFactory()
 
 
-@pytest.fixture(scope="module")
-def simulators(request, simulators_factory):
-    """Fixture to provide simulators for different build processes and
-    optimization levels."""
-    processing: BuildProcess
-    optimization_level: OptimizationLevel
-    processing, optimization_level, encoder_type, project = request.param
+@pytest.fixture(scope="session")
+def circuits_factory():
+    """Fixture to create a memoized CircuitsFactory instance."""
+    return CircuitsFactory()
+
+
+@pytest.fixture(scope="session")
+def simulators(request, simulators_factory, circuits_factory):
+    """Fixture to provide simulators for different cases. Useful because of memoization.
+
+    Cases being build process, optimization level, encode algorithm, ...
+    """
 
     simulators = simulators_factory.get_simulators(
-        processing, optimization_level, encoder_type, project
+        SimulatorSpecs(*request.param),
+        circuits_factory,
     )
 
     return simulators

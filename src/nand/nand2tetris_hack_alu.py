@@ -140,10 +140,10 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             and16.add_component(f"AND_{i}", self.library.get_circuit("AND"))
-
             and16.connect_input(f"A_{i}", f"AND_{i}", "A")
-            and16.connect_input(f"B_{i}", f"AND_{i}", "B")
 
+        for i in range(16):
+            and16.connect_input(f"B_{i}", f"AND_{i}", "B")
             and16.connect_output(f"OUT_{i}", f"AND_{i}", "OUT")
 
         self.library.add_circuit(and16)
@@ -153,10 +153,10 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             or16.add_component(f"OR_{i}", self.library.get_circuit("OR"))
-
             or16.connect_input(f"A_{i}", f"OR_{i}", "A")
-            or16.connect_input(f"B_{i}", f"OR_{i}", "B")
 
+        for i in range(16):
+            or16.connect_input(f"B_{i}", f"OR_{i}", "B")
             or16.connect_output(f"OUT_{i}", f"OR_{i}", "OUT")
 
         self.library.add_circuit(or16)

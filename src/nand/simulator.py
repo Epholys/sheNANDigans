@@ -1,9 +1,9 @@
-from typing import Literal, Sequence
+from typing import List, Literal, Sequence
 from nand.circuit import Circuit
 from abc import ABC, abstractmethod
 
 
-type SimulationResult = Sequence[bool] | Literal[False]
+type SimulationResult = List[bool] | Literal[False]
 
 
 class Simulator(ABC):

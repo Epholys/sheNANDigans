@@ -6,8 +6,8 @@ from typing import List, Tuple
 import pytest
 from tests.parameters_enums import parameter_ids
 from tests.common_test_assertions import (
-    assert_circuit_signature,
-    assert_logic_gate_simulations,
+    _assert_circuit_signature,
+    assert_basic_gate,
 )
 from nand.simulator import Simulator
 from tests.numeric_operations import (
@@ -31,6 +31,9 @@ class TestPlaygroundLibrary:
     - The reference circuits (implemented in python) vs the round-trip circuits (going
     through encoding and decoding).
     - The different simulators with optimization levels (fast vs debug).
+
+    TODO: add better error message for numeric simulations
+    TODO: even maybe merge them in common_test_assertion
     """
 
     def _assert_single_numeric_simulation(self, data):
@@ -58,7 +61,7 @@ class TestPlaygroundLibrary:
         """Assert the behavior of a circuit implementing a numeric operation for all
         possible inputs.
         """
-        assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
+        _assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
 
         all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
@@ -109,7 +112,7 @@ class TestPlaygroundLibrary:
 
     def test_nand(self, simulators):
         nand = simulators[0]
-        assert_logic_gate_simulations(nand, lambda a, b: not (a and b))
+        assert_basic_gate(nand, lambda a, b: not (a and b))
 
     def test_not(self, simulators):
         not_ = simulators[1]
@@ -122,19 +125,19 @@ class TestPlaygroundLibrary:
 
     def test_and(self, simulators):
         and_ = simulators[2]
-        assert_logic_gate_simulations(and_, lambda a, b: a and b)
+        assert_basic_gate(and_, lambda a, b: a and b)
 
     def test_or(self, simulators):
         or_ = simulators[3]
-        assert_logic_gate_simulations(or_, lambda a, b: a or b)
+        assert_basic_gate(or_, lambda a, b: a or b)
 
     def test_nor(self, simulators):
         nor = simulators[4]
-        assert_logic_gate_simulations(nor, lambda a, b: not (a or b))
+        assert_basic_gate(nor, lambda a, b: not (a or b))
 
     def test_xor(self, simulators):
         xor = simulators[5]
-        assert_logic_gate_simulations(xor, lambda a, b: a ^ b)
+        assert_basic_gate(xor, lambda a, b: a ^ b)
 
     def test_half_adder(self, simulators):
         half_adder = simulators[6]

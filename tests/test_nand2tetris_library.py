@@ -1,15 +1,13 @@
-import functools
 import operator
 import pytest
 
 from tests.parameters_enums import parameter_ids
 from tests.common_test_assertions import (
     assert_basic_gate,
-    assert_bitwise_gate,
-    assert_mux16,
-    assert_mux4way16,
-    assert_mux8way16,
-    assert_or8,
+    assert_multibits_gate,
+    assert_dmux_n_way,
+    assert_mux_n_way_m_bits,
+    assert_n_way_gate,
 )
 from tests.simulators_factory import Project, build_simulators_cases
 
@@ -63,44 +61,52 @@ class TestLibrary:
 
     def test_not16(self, simulators):
         not16 = simulators[7]
-        assert_bitwise_gate(
+        assert_multibits_gate(
             simulator=not16,
-            gate_logic=lambda inputs: [not (bit) for bit in inputs[0]],
-            dimension=16,
+            operation=lambda inputs: [not (bit) for bit in inputs[0]],
+            m_bits=16,
             n_ins=1,
         )
 
     def test_and16(self, simulators):
         and16 = simulators[8]
-        assert_bitwise_gate(
+        assert_multibits_gate(
             simulator=and16,
-            gate_logic=lambda inputs: [a and b for a, b in zip(*inputs)],
-            dimension=16,
+            operation=lambda inputs: [a and b for a, b in zip(*inputs)],
+            m_bits=16,
             n_ins=2,
         )
 
     def test_or16(self, simulators):
         or16 = simulators[9]
-        assert_bitwise_gate(
+        assert_multibits_gate(
             simulator=or16,
-            gate_logic=lambda inputs: [a or b for a, b in zip(*inputs)],
-            dimension=16,
+            operation=lambda inputs: [a or b for a, b in zip(*inputs)],
+            m_bits=16,
             n_ins=2,
         )
 
     def test_mux16(self, simulators):
         mux16 = simulators[10]
-        assert_mux16(mux16)
+        assert_mux_n_way_m_bits(mux16, n_way=2, m_bits=16)
 
-    def test_or8(self, simulators):
+    def test_or8way(self, simulators):
         or8 = simulators[11]
-        assert_or8(or8)
+        assert_n_way_gate(or8, operator.or_, n_way=8)
 
     def test_mux4way16(self, simulators):
         mux4way16 = simulators[12]
-        assert_mux4way16(mux4way16)
+        assert_mux_n_way_m_bits(mux4way16, n_way=4, m_bits=16)
 
     @pytest.mark.slow
     def test_mux8way16(self, simulators):
         mux8way16 = simulators[13]
-        assert_mux8way16(mux8way16)
+        assert_mux_n_way_m_bits(mux8way16, n_way=8, m_bits=16)
+
+    def test_dmux4way(self, simulators):  #
+        dmux4way = simulators[14]
+        assert_dmux_n_way(dmux4way, 4)
+
+    def test_dmux8way(self, simulators):  #
+        dmux8way = simulators[15]
+        assert_dmux_n_way(dmux8way, 8)

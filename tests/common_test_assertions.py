@@ -1,8 +1,6 @@
 from functools import reduce
-from itertools import accumulate, product
-import operator
+from itertools import product
 import random
-from re import S
 from typing import Any, Callable, Iterable, List, Sequence, Tuple, Union
 from nand.bit_packed_encoder import int2bitlist
 from nand.bits_utils import bitlength_with_offset
@@ -90,7 +88,7 @@ BoolFunc = Union[
 
 
 def assert_basic_gate(
-    simulator: Simulator, gate_logic: BoolFunc, n_in: int = 2, n_out: int = 1
+    simulator: Simulator, operation: BoolFunc, n_in: int = 2, n_out: int = 1
 ):
     """Assert the simulation of a logic gate.
 
@@ -98,9 +96,14 @@ def assert_basic_gate(
 
     Parameters:
         simulator:  Simulator for the circuit being tested.
-        gate_logic: The logic operation the gate should be doing.
+        operation : The logic operation the gate should be doing.
+                    Should have a few inputs and outputs (see type)
         n_in:       The number of inputs.
         n_out:      The number of outputs.
+
+    Inputs:  A, B, ...         (n_in bool input)
+    Outputs: OUT_A, OUT_B, ... (n_out bool output)
+    Function: operation(A, B, ...) = OUT_A, OUT_B, ...
     """
     _assert_circuit_signature(simulator._circuit, n_inputs=n_in, n_outputs=n_out)
 
@@ -108,7 +111,7 @@ def assert_basic_gate(
     input_cases = list(product([True, False], repeat=n_in))
 
     for case in input_cases:
-        expected = gate_logic(*case)
+        expected = operation(*case)
         result = simulator.simulate(case)
 
         _assert_result(result, case, expected, simulator._circuit.name)
@@ -117,30 +120,36 @@ def assert_basic_gate(
 BitwiseBoolFunc = Callable[[List[List[bool]]], List[bool]]
 
 
-def assert_bitwise_gate(
+def assert_multibits_gate(
     simulator: Simulator,
-    gate_logic: BitwiseBoolFunc,
-    dimension: int,
+    operation: BitwiseBoolFunc,
+    m_bits: int,
     n_ins: int,
     seed: int = 0,
     n_random_ins: int = 3,
 ):
-    """Assert the simulation of a more complex bitwise gate.
+    """Assert the simulation of a gate with multi-bits inputs, with one output.
 
     Only test a selection of value.
 
     Parameters:
         simulator:      Simulator for the circuit being tested.
-        gate_logic:     The logic operation the gate should be doing.
-        dimension:      The dimension of the input.
+        operation:      The logic operation the gate should be doing.
+                        From a list of multi-bits inputs, to a a single multi-bit output
+                        (see type)
+        m_bits:         The dimension of the input.
                         For example: 8 means that the inputs are 8 bits wide.
         n_in:           The number of inputs.
         seed:           The seed for the random number generator,
                         for deterministic behavior
         n_random_ins:   How many random inputs to try
+
+    Inputs:  A[m_bits], B[m_bits], ...  (n_ins inputs of m_bits width)
+    Outputs: OUT[m_bits]                (one out put of m_bits width)
+    Function: operation(A, B, ...) = OUT
     """
     _assert_circuit_signature(
-        simulator._circuit, n_inputs=n_ins * dimension, n_outputs=dimension
+        simulator._circuit, n_inputs=n_ins * m_bits, n_outputs=m_bits
     )
 
     input_lists: List[List[bool]] = []
@@ -150,156 +159,171 @@ def assert_bitwise_gate(
     # - All False
     # - Interleaved True / False.
     # - Interleaved True / False in a 2-1 pattern.
-    input_lists.append([True for _ in range(dimension)])
-    input_lists.append([False for _ in range(dimension)])
-    input_lists.append([True if i % 2 else False for i in range(dimension)])
-    input_lists.append([False if i % 2 else True for i in range(dimension)])
-    input_lists.append([False if i % 2 else True for i in range(dimension)])
-    input_lists.append([True if i % 3 else False for i in range(dimension)])
+    input_lists.append([True for _ in range(m_bits)])
+    input_lists.append([False for _ in range(m_bits)])
+    input_lists.append([True if i % 2 else False for i in range(m_bits)])
+    input_lists.append([False if i % 2 else True for i in range(m_bits)])
+    input_lists.append([False if i % 2 else True for i in range(m_bits)])
+    input_lists.append([True if i % 3 else False for i in range(m_bits)])
 
     # Random inputs value. Deterministic using a seed.
     random.seed(seed)
     for _ in range(n_random_ins):
-        input_lists.append([bool(random.randint(0, 1)) for _ in range(dimension)])
+        input_lists.append([bool(random.randint(0, 1)) for _ in range(m_bits)])
 
     input_cases = list(product(input_lists, repeat=n_ins))
 
     for case in input_cases:
-        expected = gate_logic(list(case))
+        expected = operation(list(case))
         result = simulator.simulate(_flatten(case))
 
         _assert_result(result, case, expected, simulator._circuit.name)
 
 
-# TODO : WIP function to see if I can find a more generic one, if necessary
-def assert_mux16(simulator: Simulator):
-    dimension = 16
-    n_ins = 2
-    seed = 0
-    n_random_ins = 3
+def assert_n_way_gate(
+    simulator: Simulator,
+    operation: Callable[[bool, bool], bool],
+    n_way: int,
+    seed: int = 0,
+    n_random_ins: int = 3,
+):
+    """Assert the simulation of a n_way gate.
 
-    # + 1 for sel
-    _assert_circuit_signature(
-        simulator._circuit, n_inputs=dimension * n_ins + 1, n_outputs=dimension
-    )
+    Only test a selection of value.
 
-    # For the two n_bits-bits wide inputs.
-    input_lists: List[List[bool]] = []
+    Parameters:
+        simulator:      Simulator for the circuit being tested.
+        operation:      The logic operation the gate should be doing.
+                        Should be from a pair of bool to a single bool.
+                        It will be applied with 'reduce' to each bit.
+        n_way:          The number of bits in the input
+        seed:           The seed for the random number generator,
+                        for deterministic behavior
+        n_random_ins:   How many random inputs to try
+
+    Inputs:  A, B, C, ...  (n_way boolean inputs)
+    Outputs: OUT           (one bool output)
+    Function: reduce(operation) (= operation(...(operation(operation(A, B), C)...) )
+                                (for example : A | B | C | ... or A & B & C & ... )
+    """
+    _assert_circuit_signature(simulator._circuit, n_inputs=n_way, n_outputs=1)
+
+    input_cases: List[List[bool]] = []
+
+    # Hard-coded inputs, more appropriate for these gates.
+    input_cases.append([True for _ in range(n_way)])
+    input_cases.append([False for _ in range(n_way)])
+    input_cases.append([True if i == 0 else False for i in range(n_way)])
+    input_cases.append([False if i == 0 else True for i in range(n_way)])
+    input_cases.append([True if i == n_way - 1 else False for i in range(n_way)])
+    input_cases.append([False if i == n_way - 1 else True for i in range(n_way)])
 
     # Random inputs value. Deterministic using a seed.
     random.seed(seed)
     for _ in range(n_random_ins):
-        input_lists.append([bool(random.randint(0, 1)) for _ in range(dimension)])
-
-    input_cases = list(product(input_lists, repeat=n_ins))
-
-    for case in input_cases:
-        expected_not_sel = case[0]
-        expected_sel = case[1]
-
-        result_not_sel = simulator.simulate(_flatten(case) + [False])
-        result_sel = simulator.simulate(_flatten(case) + [True])
-
-        _assert_result(result_not_sel, case, expected_not_sel, simulator._circuit.name)
-        _assert_result(result_sel, case, expected_sel, simulator._circuit.name)
-
-
-# TODO : WIP function to see if I can find a more generic one, if necessary
-def assert_or8(simulator: Simulator):
-    dimension = 8
-
-    _assert_circuit_signature(simulator._circuit, n_inputs=dimension, n_outputs=1)
-
-    input_cases: List[List[bool]] = []
-
-    input_cases.append([True for _ in range(dimension)])
-    input_cases.append([False for _ in range(dimension)])
-    input_cases.append([True if i == 0 else False for i in range(dimension)])
-    input_cases.append([False if i == 0 else True for i in range(dimension)])
-    input_cases.append(
-        [True if i == dimension - 1 else False for i in range(dimension)]
-    )
-    input_cases.append(
-        [False if i == dimension - 1 else True for i in range(dimension)]
-    )
-
-    # Random inputs value. Deterministic using a seed.
-    random.seed(0)
-    for _ in range(3):
         input_cases.append([bool(random.randint(0, 1)) for _ in range(16)])
 
     for case in input_cases:
-        expected: bool = reduce(operator.or_, case)
+        expected: bool = reduce(operation, case)
         result = simulator.simulate(case)
 
         _assert_result(result, case, expected, simulator._circuit.name)
 
 
-# TODO : WIP function, will maybe be replaced by a more generic one, if necessary
-def assert_mux4way16(simulator: Simulator):
-    ins_dimension = 16
-    n_ins = 4
-    sel_size = bitlength_with_offset(n_ins)
-    seed = 0
-    n_random_ins = 3
+def assert_mux_n_way_m_bits(
+    simulator: Simulator,
+    n_way: int,
+    m_bits: int,
+    seed: int = 0,
+    n_random_ins: int = 2,
+):
+    """Assert the simulation of the n_way dmux.
 
-    # 2 for sel
+    Tests all possible values.
+
+    Parameters:
+        simulator:  Simulator for the circuit being tested.
+        n_way:      The number of inputs numbers.
+
+    N-way M-bits wide MUX:
+    Input:    A, B, C, ..., SEL[N] (n_way inputs of m_bits width
+                                    + selection of log2(n_way) bits)
+    Output:   OUT                  (m_bits width output)
+    Function: A if SEL == 0
+              B if SEL == 1
+              C if SEL == 2
+              ...
+    """
+    selection_size = bitlength_with_offset(n_way)
+
     _assert_circuit_signature(
         simulator._circuit,
-        n_inputs=ins_dimension * n_ins + sel_size,
-        n_outputs=ins_dimension,
+        n_inputs=m_bits * n_way + selection_size,
+        n_outputs=m_bits,
     )
 
-    # For the n_ins n_bits-bits wide inputs.
+    # For the n_way inputs of n_bits bits.
     input_lists: List[List[bool]] = []
 
     # Random inputs value. Deterministic using a seed.
+    # Hand-picked makes less sense: we just want one of the inputs.
     random.seed(seed)
     for _ in range(n_random_ins):
-        a = [bool(random.randint(0, 1)) for _ in range(ins_dimension)]
+        a = [bool(random.randint(0, 1)) for _ in range(m_bits)]
         input_lists.append(a)
 
-    input_cases = list(product(input_lists, repeat=n_ins))
+    input_cases = list(product(input_lists, repeat=n_way))
 
     for case in input_cases:
-        for i in range(n_ins):
-            sel = [bool(n) for n in int2bitlist(i, sel_size)]
+        # For all inputs possible, test if its selection works.
+        for i in range(n_way):
+            sel = [bool(n) for n in int2bitlist(i, selection_size)]
+            # SELect the i-th input
             expected = case[i]
             result = simulator.simulate(_flatten(case) + sel)
 
             _assert_result(result, case, expected, simulator._circuit.name)
 
 
-# TODO : WIP function, will maybe be replaced by a more generic one, if necessary
-def assert_mux8way16(simulator: Simulator):
-    ins_dimension = 16
-    n_ins = 8
-    sel_size = bitlength_with_offset(n_ins)
-    seed = 0
-    n_random_ins = 2
+def assert_dmux_n_way(simulator: Simulator, n_way: int):
+    """Assert the simulation of the n_way dmux.
 
-    # 2 for sel
+    Tests all possible values.
+
+    Parameters:
+        simulator:  Simulator for the circuit being tested.
+        n_way:      The number of outputs requested
+
+    N-way DMUX:
+    Input:    IN, SEL[N]
+    Output:   A, B, ... (n_way outputs)
+    Function: [IN, 0,  0,  ..., 0  ] if SEL == 0
+              [0,  IN, 0,  ..., 0  ] if SEL == 1
+              [0,  0,  IN, ..., 0  ] if SEL == 2
+              [... ... ... ..., ...] if SEL == ...
+              [0,  0,  0,  ..., IN ] if SEL == N-1
+    """
+    selection_len = bitlength_with_offset(n_way)
+
+    # '1 +' for the IN input.
     _assert_circuit_signature(
         simulator._circuit,
-        n_inputs=ins_dimension * n_ins + sel_size,
-        n_outputs=ins_dimension,
+        n_inputs=1 + selection_len,
+        n_outputs=n_way,
     )
 
-    # For the n_ins n_bits-bits wide inputs.
-    input_lists: List[List[bool]] = []
+    # For both 'IN' possibility:
+    for in_ in [True, False]:
+        # For all selection possibles, try if its output are correct.
+        for sel in range(n_way):
+            sel_boollist = [bool(i) for i in int2bitlist(sel, selection_len)]
 
-    # Random inputs value. Deterministic using a seed.
-    random.seed(seed)
-    for _ in range(n_random_ins):
-        a = [bool(random.randint(0, 1)) for _ in range(ins_dimension)]
-        input_lists.append(a)
+            # The full input list: [IN, SEL_N-1, ..., SEL_0]
+            input_list = [in_] + sel_boollist
 
-    input_cases = list(product(input_lists, repeat=n_ins))
+            # Set the 'sel'-th output to 'in_', all others to 'False'
+            expected = [in_ if i == sel else False for i in range(n_way)]
 
-    for case in input_cases:
-        for i in range(n_ins):
-            sel = [bool(n) for n in int2bitlist(i, sel_size)]
-            expected = case[i]
-            result = simulator.simulate(_flatten(case) + sel)
+            result = simulator.simulate(input_list)
 
-            _assert_result(result, case, expected, simulator._circuit.name)
+            _assert_result(result, input_list, expected, simulator._circuit.name)

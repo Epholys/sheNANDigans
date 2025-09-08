@@ -43,7 +43,7 @@ def _assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
         f"\nExpected input length = {n_inputs}"
     )
     assert len(circuit.outputs) == n_outputs, (
-        f"\nnCircuit {circuit_name}: Signature mismatch:"
+        f"\nCircuit {circuit_name}: Signature mismatch:"
         f"\nActual output length = {len(circuit.outputs)}"
         f"\nExpected output length = {n_outputs}"
     )
@@ -51,7 +51,7 @@ def _assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
 
 def _assert_result(
     result: SimulationResult,
-    case: tuple[bool, ...] | tuple[list[bool], ...],
+    case: Sequence[bool] | Sequence[list[bool]],
     expected: bool | Sequence[bool],
     circuit_name: str,
 ):
@@ -119,7 +119,7 @@ def assert_bitwise_gate(
     dimension: int,
     n_ins: int,
     seed: int = 0,
-    random_range: int = 3,
+    n_random_ins: int = 3,
 ):
     """Assert the simulation of a more complex bitwise gate.
 
@@ -129,11 +129,11 @@ def assert_bitwise_gate(
         simulator:      Simulator for the circuit being tested.
         gate_logic:     The logic operation the gate should be doing.
         dimension:      The dimension of the input.
-                        For example: 8 means that the inputs are 8 bits long.
+                        For example: 8 means that the inputs are 8 bits wide.
         n_in:           The number of inputs.
         seed:           The seed for the random number generator,
                         for deterministic behavior
-        random_range:   How many random inputs to try
+        n_random_ins:   How many random inputs to try
     """
     _assert_circuit_signature(
         simulator._circuit, n_inputs=n_ins * dimension, n_outputs=dimension
@@ -155,7 +155,7 @@ def assert_bitwise_gate(
 
     # Random inputs value. Deterministic using a seed.
     random.seed(seed)
-    for _ in range(random_range):
+    for _ in range(n_random_ins):
         input_lists.append([bool(random.randint(0, 1)) for _ in range(dimension)])
 
     input_cases = list(product(input_lists, repeat=n_ins))

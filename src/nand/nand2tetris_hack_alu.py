@@ -98,10 +98,10 @@ class HackALUBuilder(CircuitBuilder):
         mux.add_component("OR_B", self.library.get_circuit("OR"))
         mux.add_component("AND", self.library.get_circuit("AND"))
 
-        mux.connect_input("SEL", "SEL_NOT", "IN")
         mux.connect_input("A", "OR_A", "A")
-        mux.connect_input("SEL", "OR_A", "B")
         mux.connect_input("B", "OR_B", "A")
+        mux.connect_input("SEL", "SEL_NOT", "IN")
+        mux.connect_input("SEL", "OR_A", "B")
 
         mux.connect("SEL_NOT", "OUT", "OR_B", "B")
         mux.connect("OR_A", "OUT", "AND", "A")

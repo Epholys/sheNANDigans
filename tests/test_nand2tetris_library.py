@@ -46,7 +46,7 @@ class TestLibrary:
         # Input:    a, b, sel
         # Output:   out
         # Function: if (sel == 0) then out = a, else out = b
-        assert_basic_gate(mux, lambda sel, a, b: a if not sel else b, n_in=3)
+        assert_basic_gate(mux, lambda a, b, sel: a if not sel else b, n_in=3)
 
     def test_dmux(self, simulators):
         mux = simulators[6]

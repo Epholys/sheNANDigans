@@ -166,11 +166,13 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             mux16.add_component(f"Mux_{i}", self.library.get_circuit("Mux"))
-
             mux16.connect_input(f"A_{i}", f"Mux_{i}", "A")
-            mux16.connect_input(f"B_{i}", f"Mux_{i}", "B")
-            mux16.connect_input("SEL", f"Mux_{i}", "SEL")
 
+        for i in range(16):
+            mux16.connect_input(f"B_{i}", f"Mux_{i}", "B")
+
+        for i in range(16):
+            mux16.connect_input("SEL", f"Mux_{i}", "SEL")
             mux16.connect_output(f"OUT_{i}", f"Mux_{i}", "OUT")
 
         self.library.add_circuit(mux16)
@@ -209,13 +211,16 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             mux4way16.connect_input(f"A_{i}", "Mux16_AB", f"A_{i}")
+        for i in range(16):
             mux4way16.connect_input(f"B_{i}", "Mux16_AB", f"B_{i}")
+        for i in range(16):
             mux4way16.connect_input(f"C_{i}", "Mux16_CD", f"A_{i}")
+        for i in range(16):
             mux4way16.connect_input(f"D_{i}", "Mux16_CD", f"B_{i}")
 
+        mux4way16.connect_input("SEL_1", "Mux16_OUT", "SEL")
         mux4way16.connect_input("SEL_0", "Mux16_AB", "SEL")
         mux4way16.connect_input("SEL_0", "Mux16_CD", "SEL")
-        mux4way16.connect_input("SEL_1", "Mux16_OUT", "SEL")
 
         for i in range(16):
             mux4way16.connect("Mux16_AB", f"OUT_{i}", "Mux16_OUT", f"A_{i}")
@@ -235,19 +240,26 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             mux8way16.connect_input(f"A_{i}", "Mux4Way16_ABCD", f"A_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"B_{i}", "Mux4Way16_ABCD", f"B_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"C_{i}", "Mux4Way16_ABCD", f"C_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"D_{i}", "Mux4Way16_ABCD", f"D_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"E_{i}", "Mux4Way16_EFGH", f"A_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"F_{i}", "Mux4Way16_EFGH", f"B_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"G_{i}", "Mux4Way16_EFGH", f"C_{i}")
+        for i in range(16):
             mux8way16.connect_input(f"H_{i}", "Mux4Way16_EFGH", f"D_{i}")
 
-        mux8way16.connect_input("SEL_0", "Mux4Way16_ABCD", "SEL_0")
-        mux8way16.connect_input("SEL_1", "Mux4Way16_ABCD", "SEL_1")
-        mux8way16.connect_input("SEL_0", "Mux4Way16_EFGH", "SEL_0")
-        mux8way16.connect_input("SEL_1", "Mux4Way16_EFGH", "SEL_1")
         mux8way16.connect_input("SEL_2", "Mux16_OUT", "SEL")
+        mux8way16.connect_input("SEL_1", "Mux4Way16_ABCD", "SEL_1")
+        mux8way16.connect_input("SEL_0", "Mux4Way16_ABCD", "SEL_0")
+        mux8way16.connect_input("SEL_1", "Mux4Way16_EFGH", "SEL_1")
+        mux8way16.connect_input("SEL_0", "Mux4Way16_EFGH", "SEL_0")
 
         for i in range(16):
             mux8way16.connect("Mux4Way16_ABCD", f"OUT_{i}", "Mux16_OUT", f"A_{i}")

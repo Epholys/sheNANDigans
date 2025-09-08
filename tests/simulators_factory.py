@@ -33,6 +33,7 @@ def build_simulators_cases(project: Project):
     separately.
     """
     params = []
+    # TODO Add more marks
     for process, algo, opt in itertools.product(
         BuildProcess, EncoderAlgorithm, OptimizationLevel
     ):

@@ -65,6 +65,7 @@ def _assert_result(
             f"{' '.join(str(int(i)) for i in _to_list(case))}"
         )
 
+    # TODO: take into account bit width
     assert result == _to_list(expected), (
         f"\nCircuit {circuit_name} failed:"
         f"\n  Inputs:   {' '.join(str(int(i)) for i in _flatten(case))}"

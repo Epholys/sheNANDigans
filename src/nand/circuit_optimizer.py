@@ -86,9 +86,11 @@ def optimize(circuit: Circuit):
         The optimization is performed in-place, modifying the original circuit.
 
     TODO optimize optimize():
-        Very inefficient: the circuits are built on top of the others, smaller ones.
+        - Very inefficient: the circuits are built on top of the others, smaller ones.
         So the recursive optimization do the same work again and again for each
         identical circuit. Memoization would be a no-brainer.
+        - It's *so* inefficient that 'SimulatorFast' is often *slower*
+        than 'SimulatorDebug'! It becomes better for bigger circuit.
     """
     # Base case: empty circuit requires no optimization
     if not circuit.components or circuit.identifier == 0:

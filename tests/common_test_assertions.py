@@ -1,7 +1,11 @@
-from itertools import product
+from functools import reduce
+from itertools import accumulate, product
+import operator
 import random
 from re import S
 from typing import Any, Callable, Iterable, List, Sequence, Tuple, Union
+from nand.bit_packed_encoder import int2bitlist
+from nand.bits_utils import bitlength_with_offset
 from nand.circuit import Circuit
 from nand.simulator import SimulationResult, Simulator
 
@@ -165,3 +169,137 @@ def assert_bitwise_gate(
         result = simulator.simulate(_flatten(case))
 
         _assert_result(result, case, expected, simulator._circuit.name)
+
+
+# TODO : WIP function to see if I can find a more generic one, if necessary
+def assert_mux16(simulator: Simulator):
+    dimension = 16
+    n_ins = 2
+    seed = 0
+    n_random_ins = 3
+
+    # + 1 for sel
+    _assert_circuit_signature(
+        simulator._circuit, n_inputs=dimension * n_ins + 1, n_outputs=dimension
+    )
+
+    # For the two n_bits-bits wide inputs.
+    input_lists: List[List[bool]] = []
+
+    # Random inputs value. Deterministic using a seed.
+    random.seed(seed)
+    for _ in range(n_random_ins):
+        input_lists.append([bool(random.randint(0, 1)) for _ in range(dimension)])
+
+    input_cases = list(product(input_lists, repeat=n_ins))
+
+    for case in input_cases:
+        expected_not_sel = case[0]
+        expected_sel = case[1]
+
+        result_not_sel = simulator.simulate(_flatten(case) + [False])
+        result_sel = simulator.simulate(_flatten(case) + [True])
+
+        _assert_result(result_not_sel, case, expected_not_sel, simulator._circuit.name)
+        _assert_result(result_sel, case, expected_sel, simulator._circuit.name)
+
+
+# TODO : WIP function to see if I can find a more generic one, if necessary
+def assert_or8(simulator: Simulator):
+    dimension = 8
+
+    _assert_circuit_signature(simulator._circuit, n_inputs=dimension, n_outputs=1)
+
+    input_cases: List[List[bool]] = []
+
+    input_cases.append([True for _ in range(dimension)])
+    input_cases.append([False for _ in range(dimension)])
+    input_cases.append([True if i == 0 else False for i in range(dimension)])
+    input_cases.append([False if i == 0 else True for i in range(dimension)])
+    input_cases.append(
+        [True if i == dimension - 1 else False for i in range(dimension)]
+    )
+    input_cases.append(
+        [False if i == dimension - 1 else True for i in range(dimension)]
+    )
+
+    # Random inputs value. Deterministic using a seed.
+    random.seed(0)
+    for _ in range(3):
+        input_cases.append([bool(random.randint(0, 1)) for _ in range(16)])
+
+    for case in input_cases:
+        expected: bool = reduce(operator.or_, case)
+        result = simulator.simulate(case)
+
+        _assert_result(result, case, expected, simulator._circuit.name)
+
+
+# TODO : WIP function, will maybe be replaced by a more generic one, if necessary
+def assert_mux4way16(simulator: Simulator):
+    ins_dimension = 16
+    n_ins = 4
+    sel_size = bitlength_with_offset(n_ins)
+    seed = 0
+    n_random_ins = 3
+
+    # 2 for sel
+    _assert_circuit_signature(
+        simulator._circuit,
+        n_inputs=ins_dimension * n_ins + sel_size,
+        n_outputs=ins_dimension,
+    )
+
+    # For the n_ins n_bits-bits wide inputs.
+    input_lists: List[List[bool]] = []
+
+    # Random inputs value. Deterministic using a seed.
+    random.seed(seed)
+    for _ in range(n_random_ins):
+        a = [bool(random.randint(0, 1)) for _ in range(ins_dimension)]
+        input_lists.append(a)
+
+    input_cases = list(product(input_lists, repeat=n_ins))
+
+    for case in input_cases:
+        for i in range(n_ins):
+            sel = [bool(n) for n in int2bitlist(i, sel_size)]
+            expected = case[i]
+            result = simulator.simulate(_flatten(case) + sel)
+
+            _assert_result(result, case, expected, simulator._circuit.name)
+
+
+# TODO : WIP function, will maybe be replaced by a more generic one, if necessary
+def assert_mux8way16(simulator: Simulator):
+    ins_dimension = 16
+    n_ins = 8
+    sel_size = bitlength_with_offset(n_ins)
+    seed = 0
+    n_random_ins = 2
+
+    # 2 for sel
+    _assert_circuit_signature(
+        simulator._circuit,
+        n_inputs=ins_dimension * n_ins + sel_size,
+        n_outputs=ins_dimension,
+    )
+
+    # For the n_ins n_bits-bits wide inputs.
+    input_lists: List[List[bool]] = []
+
+    # Random inputs value. Deterministic using a seed.
+    random.seed(seed)
+    for _ in range(n_random_ins):
+        a = [bool(random.randint(0, 1)) for _ in range(ins_dimension)]
+        input_lists.append(a)
+
+    input_cases = list(product(input_lists, repeat=n_ins))
+
+    for case in input_cases:
+        for i in range(n_ins):
+            sel = [bool(n) for n in int2bitlist(i, sel_size)]
+            expected = case[i]
+            result = simulator.simulate(_flatten(case) + sel)
+
+            _assert_result(result, case, expected, simulator._circuit.name)

@@ -3,7 +3,14 @@ import operator
 import pytest
 
 from tests.parameters_enums import parameter_ids
-from tests.common_test_assertions import assert_basic_gate, assert_bitwise_gate
+from tests.common_test_assertions import (
+    assert_basic_gate,
+    assert_bitwise_gate,
+    assert_mux16,
+    assert_mux4way16,
+    assert_mux8way16,
+    assert_or8,
+)
 from tests.simulators_factory import Project, build_simulators_cases
 
 
@@ -80,3 +87,20 @@ class TestLibrary:
             dimension=16,
             n_ins=2,
         )
+
+    def test_mux16(self, simulators):
+        mux16 = simulators[10]
+        assert_mux16(mux16)
+
+    def test_or8(self, simulators):
+        or8 = simulators[11]
+        assert_or8(or8)
+
+    def test_mux4way16(self, simulators):
+        mux4way16 = simulators[12]
+        assert_mux4way16(mux4way16)
+
+    @pytest.mark.slow
+    def test_mux8way16(self, simulators):
+        mux8way16 = simulators[13]
+        assert_mux8way16(mux8way16)

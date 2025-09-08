@@ -16,7 +16,7 @@ def read_bits_with_offset(data: List[int], n: int) -> int:
     """Convert the first n bits from a list (integer of value 0 or 1) to an integer,
     with an offset of +1.
 
-    This offset make a '0' become 1, '1' become 2, '10' become 3, etc.
+    This offset make a '00' become 1, '01' become 2, '10' become 3, etc.
     See 'BitPackedEncoder' for rational.
     """
     return read_bits(data, n) + 1

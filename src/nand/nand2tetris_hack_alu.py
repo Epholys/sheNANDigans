@@ -7,6 +7,8 @@ class HackALUBuilder(CircuitBuilder):
         super().__init__()
 
     def build_circuits(self):
+        # TODO : add truth-table/explanation for each circuit.
+
         super().build_circuits()
         self.add_not()
         self.add_and()
@@ -14,6 +16,9 @@ class HackALUBuilder(CircuitBuilder):
         self.add_xor()
         self.add_mux()
         self.add_dmux()
+        # TODO: find a way to clarify multi-bit/multi-way circuit construction:
+        # - Create generic functions in this scope?
+        # - Add methods for Circuit?
         self.add_not16()
         self.add_and16()
         self.add_or16()

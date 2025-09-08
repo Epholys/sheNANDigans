@@ -214,14 +214,16 @@ class HackALUBuilder(CircuitBuilder):
         mux4way16.add_component("Mux16_CD", self.library.get_circuit("Mux16"))
         mux4way16.add_component("Mux16_OUT", self.library.get_circuit("Mux16"))
 
-        for i in range(16):
-            mux4way16.connect_input(f"A_{i}", "Mux16_AB", f"A_{i}")
-        for i in range(16):
-            mux4way16.connect_input(f"B_{i}", "Mux16_AB", f"B_{i}")
-        for i in range(16):
-            mux4way16.connect_input(f"C_{i}", "Mux16_CD", f"A_{i}")
-        for i in range(16):
-            mux4way16.connect_input(f"D_{i}", "Mux16_CD", f"B_{i}")
+        # Connect :
+        # - A_i circuit input to component Mux16_AB's A_i inputs
+        # - B_i circuit input to component Mux16_AB's B_i inputs
+        # - C_i circuit input to component Mux16_CD's A_i inputs
+        # - D_i circuit input to component Mux16_CD's B_i inputs
+        groups = [("AB", "Mux16_AB", "AB"), ("CD", "Mux16_CD", "AB")]
+        for srcs, mux, dests in groups:
+            for src, dest in zip(srcs, dests):
+                for i in range(16):
+                    mux4way16.connect_input(f"{src}_{i}", mux, f"{dest}_{i}")
 
         mux4way16.connect_input("SEL_1", "Mux16_OUT", "SEL")
         mux4way16.connect_input("SEL_0", "Mux16_AB", "SEL")
@@ -243,22 +245,20 @@ class HackALUBuilder(CircuitBuilder):
         mux8way16.add_component("Mux4Way16_EFGH", self.library.get_circuit("Mux4Way16"))
         mux8way16.add_component("Mux16_OUT", self.library.get_circuit("Mux16"))
 
-        for i in range(16):
-            mux8way16.connect_input(f"A_{i}", "Mux4Way16_ABCD", f"A_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"B_{i}", "Mux4Way16_ABCD", f"B_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"C_{i}", "Mux4Way16_ABCD", f"C_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"D_{i}", "Mux4Way16_ABCD", f"D_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"E_{i}", "Mux4Way16_EFGH", f"A_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"F_{i}", "Mux4Way16_EFGH", f"B_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"G_{i}", "Mux4Way16_EFGH", f"C_{i}")
-        for i in range(16):
-            mux8way16.connect_input(f"H_{i}", "Mux4Way16_EFGH", f"D_{i}")
+        # Connect :
+        # - A_i, B_i, C_i, and D_i circuit input
+        # to component Mux4Way16_ABCD's inputs A_i, B_i, C_i, and D_i
+        #
+        # - E_i, F_i, G_i, and H_i circuit input
+        # to component Mux4Way16_EFGH's inputs A_i, B_i, C_i, and D_i
+        groups = [
+            ("ABCD", "Mux4Way16_ABCD", "ABCD"),
+            ("EFGH", "Mux4Way16_EFGH", "ABCD"),
+        ]
+        for srcs, mux, dests in groups:
+            for src, dest in zip(srcs, dests):
+                for i in range(16):
+                    mux8way16.connect_input(f"{src}_{i}", mux, f"{dest}_{i}")
 
         mux8way16.connect_input("SEL_2", "Mux16_OUT", "SEL")
         mux8way16.connect_input("SEL_1", "Mux4Way16_ABCD", "SEL_1")

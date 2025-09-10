@@ -256,7 +256,6 @@ def assert_mux_n_way_m_bits(
     n_way: int,
     m_bits: int,
     seed: int = 0,
-    n_random_ins: int = 2,
 ):
     """Assert the simulation of the n_way dmux.
 
@@ -284,26 +283,25 @@ def assert_mux_n_way_m_bits(
     )
 
     # For the n_way inputs of n_bits bits.
-    input_lists: List[List[bool]] = []
+    inputs: List[List[bool]] = []
 
     # Random inputs value. Deterministic using a seed.
     # Hand-picked makes less sense: we just want one of the inputs.
     random.seed(seed)
-    for _ in range(n_random_ins):
-        a = [bool(random.randint(0, 1)) for _ in range(m_bits)]
-        input_lists.append(a)
+    for _ in range(n_way):
+        inputs.append([bool(random.randint(0, 1)) for _ in range(m_bits)])
 
-    input_cases = list(product(input_lists, repeat=n_way))
+    # For all possible selections, test if the correct input is chosen.
+    for i in range(n_way):
+        selection = [bool(n) for n in int2bitlist(i, selection_size)]
+        full_case: list[bool] = _flatten(inputs) + selection
+        # SELect the i-th input
+        expected = inputs[i]
+        result = simulator.simulate(full_case)
 
-    for case in input_cases:
-        # For all inputs possible, test if its selection works.
-        for i in range(n_way):
-            sel = [bool(n) for n in int2bitlist(i, selection_size)]
-            # SELect the i-th input
-            expected = case[i]
-            result = simulator.simulate(_flatten(case) + sel)
-
-            _assert_result(result, case, expected, simulator._circuit.name)
+        _assert_result(
+            result, full_case, expected, simulator._circuit.name, chunk_size=m_bits
+        )
 
 
 def assert_dmux_n_way(simulator: Simulator, n_way: int):

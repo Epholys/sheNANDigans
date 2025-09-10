@@ -98,7 +98,6 @@ class TestLibrary:
         mux4way16 = simulators[12]
         assert_mux_n_way_m_bits(mux4way16, n_way=4, m_bits=16)
 
-    @pytest.mark.slow
     def test_mux8way16(self, simulators):
         mux8way16 = simulators[13]
         assert_mux_n_way_m_bits(mux8way16, n_way=8, m_bits=16)

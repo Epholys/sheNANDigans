@@ -334,14 +334,14 @@ def assert_dmux_n_way(simulator: Simulator, n_way: int):
     # For both 'IN' possibility:
     for in_ in [True, False]:
         # For all selection possibles, try if its output are correct.
-        for sel in range(n_way):
-            sel_boollist = [bool(i) for i in int2bitlist(sel, selection_len)]
+        for sel_int in range(n_way):
+            sel_boollist = [bool(i) for i in int2bitlist(sel_int, selection_len)]
 
             # The full input list: [IN, SEL_N-1, ..., SEL_0]
             input_list = [in_] + sel_boollist
 
             # Set the 'sel'-th output to 'in_', all others to 'False'
-            expected = [in_ if i == sel else False for i in range(n_way)]
+            expected = [in_ if i == sel_int else False for i in range(n_way)]
 
             result = simulator.simulate(input_list)
 

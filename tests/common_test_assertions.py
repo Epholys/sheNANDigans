@@ -1,5 +1,5 @@
 from functools import reduce
-from itertools import product
+from itertools import batched, product
 import random
 from typing import Any, Callable, Iterable, List, Sequence, Tuple, Union
 from nand.bit_packed_encoder import int2bitlist
@@ -53,24 +53,43 @@ def _assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
 
 def _assert_result(
     result: SimulationResult,
-    case: Sequence[bool] | Sequence[list[bool]],
+    inputs: Sequence[bool] | Sequence[list[bool]],
     expected: bool | Sequence[bool],
     circuit_name: str,
+    chunk_size: int = 0,
 ):
-    """Assert the simulation result.
+    """Assert the simulation result and pretty-display if failure
 
-    Support both basic gates and multi-bits gates.
+    Support both basic gates and multi-bits/multi-way gates.
+
+    Parameters:
+        result:         The result of the simulation (False or the output)
+        inputs:         The inputs of the circuit, for pretty-displaying.
+        expected:       The expected result.
+        circuit_name:   The name of the circuit, for pretty-displaying.
+        chunk_size:     Used to chunk the inputs, for easy multi-line displaying
+                        of multi-bits inputs.
     """
     if not result:
         assert False, (
             f"\nCircuit {circuit_name}: Simulation failed for inputs: "
-            f"{' '.join(str(int(i)) for i in _to_list(case))}"
+            f"{' '.join(str(int(i)) for i in _to_list(inputs))}"
         )
 
-    # TODO: make multi-bit / multi-way viz better
+    inputs_prefix = "  Inputs:   "
+    inputs_01 = [str(int(i)) for i in _flatten(inputs)]
+
+    if chunk_size > 0:
+        chunks = [" ".join(chunk) for chunk in batched(inputs_01, chunk_size)]
+    else:
+        chunks = [" ".join(inputs_01)]
+
+    padding = "\n" + " " * len(inputs_prefix)
+    inputs_str = f"{inputs_prefix}{padding.join(chunks)}"
+
     assert result == _to_list(expected), (
         f"\nCircuit {circuit_name} failed:"
-        f"\n  Inputs:   {' '.join(str(int(i)) for i in _flatten(case))}"
+        f"\n{inputs_str}"
         f"\n  Expected: {' '.join(str(int(i)) for i in _to_list(expected))}"
         f"\n  Actual:   {' '.join(str(int(i)) for i in result)}"
     )
@@ -177,7 +196,9 @@ def assert_multibits_gate(
         expected = operation(list(case))
         result = simulator.simulate(_flatten(case))
 
-        _assert_result(result, case, expected, simulator._circuit.name)
+        _assert_result(
+            result, case, expected, simulator._circuit.name, chunk_size=m_bits
+        )
 
 
 def assert_n_way_gate(

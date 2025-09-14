@@ -22,5 +22,5 @@ class CircuitBuilder(ABC):
 
     @abstractmethod
     def build_circuits(self) -> CircuitLibrary:
-        self.library.library.clear()
+        self.library.clear()
         self.add_nand()

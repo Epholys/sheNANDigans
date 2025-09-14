@@ -1,4 +1,3 @@
-from copy import deepcopy
 from enum import Enum, auto
 from typing import List, Tuple
 
@@ -91,7 +90,7 @@ class BitPackedEncoder(CircuitEncoder):
         """
         Orchestrates the encoding process.
         """
-        self.library = deepcopy(library.library)
+        self.library = library.get_all_circuits()
         # See comment for 'max_*_bitlength' variables for explanation.
         self.circuits_bitlength: int = bitlength_with_offset(len(self.library))
 

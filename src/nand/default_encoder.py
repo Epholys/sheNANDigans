@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import List
 
 from bitarray import bitarray
@@ -39,7 +38,7 @@ class DefaultEncoder(CircuitEncoder):
         Note : circuit_0 is the nand gate, and not encoded as this is the core
         component and expected to be here by default.
         """
-        self.library: CircuitDict = deepcopy(library.library)
+        self.library: CircuitDict = library.get_all_circuits()
         self.encoding: List[int] = []
         for circuit in self.library.values():
             if circuit.identifier == 0:

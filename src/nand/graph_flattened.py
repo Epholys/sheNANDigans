@@ -1,14 +1,9 @@
-from itertools import product
 import pydot
-from nand.bit_packed_decoder import BitPackedDecoder
-from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit import Circuit
 from typing import List, Tuple, Literal
 
-from nand.default_decoder import DefaultDecoder
-from nand.default_encoder import DefaultEncoder
 from nand.graph_node_builder import NodeBuilder
-from nand.playground_circuit_builder import PlaygroundCircuitBuilder
+from nand.nand2tetris_hack_alu import HackALUBuilder
 
 """
 Abandon all hope, ye who enter here, for these sigils were partly inscribed by the
@@ -27,11 +22,35 @@ type AllConnections = Tuple[
 type NandCollection = List[Tuple[str, Circuit]]
 
 
+def _try_hard(graph: pydot.Graph):
+    """Try hard to make a readable graph."""
+    # --- Global spacing ---
+    graph.set_nodesep("1.0")  # default ~0.25 → spread siblings apart
+    graph.set_ranksep("1.0 equally")  # spread ranks evenly
+    graph.set_margin("0.5")  # margin around the graph
+    graph.set_sep("+10")  # extra padding between clusters/graph
+
+    # --- Edge routing ---
+    graph.set_splines("true")  # use curved splines instead of straight lines
+    graph.set_overlap("false")  # prevent node overlaps
+    graph.set_mode("ipsep")  # iterative post-separation (neato/sfdp)
+    graph.set_outputorder("edgesfirst")  # helps layering
+    graph.set_splines("polyline")  # (try "ortho" or "curved" too)
+
+    # --- Try harder on crossings ---
+    graph.set_concentrate("false")  # don't merge parallel edges
+    graph.set_compound("true")  # better cluster routing
+    graph.set_truecolor("true")
+
+
 class GraphOptions:
-    def __init__(self, is_nested: bool, is_aligned: bool, bold_io: bool):
+    def __init__(
+        self, is_nested: bool, is_aligned: bool, bold_io: bool, try_hard: bool = False
+    ):
         self.is_nested = is_nested
         self.is_aligned = is_aligned
         self.bold_io = bold_io
+        self.try_hard = try_hard
 
 
 def _explore_circuit_recursive(
@@ -53,6 +72,8 @@ def _explore_circuit_recursive(
             fillcolor="#f0f0f0",
             color="#000000",
         )
+        if options.try_hard:
+            _try_hard(current_graph)
         parent_graph.add_subgraph(current_graph)
 
     all_nands: NandCollection = []
@@ -85,6 +106,8 @@ class FlattenedGraphBuilder:
             rankdir="LR",
             label=circuit.identifier,
         )
+        if options.try_hard:
+            _try_hard(self.graph)
 
     def generate_graph(self) -> pydot.Dot:
         """Generate a simplified graph showing only the connections between circuit
@@ -233,10 +256,10 @@ class FlattenedGraphBuilder:
             self.graph.add_edge(pydot.Edge(source, destination))
 
 
-def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
+def save_graph(graph: pydot.Dot, filename: str, format: str, prog: str = "dot") -> str:
     """Save the graph to a file."""
     output_file = f"{filename}.{format}"
-    graph.write(output_file, format=format)
+    graph.write(output_file, format=format, prog=prog)
     return output_file
 
 
@@ -248,31 +271,33 @@ if __name__ == "__main__":
     os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin"
 
     # Create circuit library
-    circuit_builder = PlaygroundCircuitBuilder()
+    circuit_builder = HackALUBuilder()
     circuit_builder.build_circuits()
     reference = circuit_builder.library
 
-    default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
-    bit_packed_round_trip = BitPackedDecoder().decode(
-        BitPackedEncoder().encode(reference)
-    )
+    # default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
+    # bit_packed_round_trip = BitPackedDecoder().decode(
+    #     BitPackedEncoder().encode(reference)
+    # )
 
     # Visualize different circuits
     for library, construction_method in [
         (reference, "reference"),
-        (default_round_trip, "default_round_trip"),
-        (bit_packed_round_trip, "bit_packed_round_trip"),
+        # (default_round_trip, "default_round_trip"),
+        # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        for n, a in list(product([True, False], repeat=2)):
+        for idx in range(len(library)):
+            if idx == 13:
+                continue
             try:
-                circuit = library.get_circuit_from_idx(7)
+                circuit = library.get_circuit_from_idx(idx)
                 graph_builder = FlattenedGraphBuilder(
                     circuit,
-                    GraphOptions(is_nested=n, is_aligned=a, bold_io=True),
+                    GraphOptions(is_nested=False, is_aligned=True, bold_io=True),
                 )
                 graph = graph_builder.generate_graph()
                 output_file = save_graph(
-                    graph, f"flattened_circuit_{n}_{a}_{construction_method}", "svg"
+                    graph, f"{circuit.name}_flattened_circuit", "svg"
                 )
                 print(f"Flattened graph saved to {output_file}")
             except Exception as e:

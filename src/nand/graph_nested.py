@@ -1,7 +1,5 @@
 import pydot
 from typing import Dict, Optional, Tuple
-from nand.bit_packed_decoder import BitPackedDecoder
-from nand.bit_packed_encoder import BitPackedEncoder
 from nand.circuit import (
     Circuit,
     CircuitId,
@@ -10,9 +8,7 @@ from nand.circuit import (
     PortNameDict,
     PortWireDict,
 )
-from nand.default_decoder import DefaultDecoder
 from nand.graph_node_builder import NodeBuilder
-from nand.default_encoder import DefaultEncoder
 from nand.nand2tetris_hack_alu import HackALUBuilder
 
 
@@ -23,11 +19,37 @@ digital clay they were built of.
 """
 
 
+def _try_hard(graph: pydot.Graph):
+    """Try hard to make a readable graph."""
+    # --- Global spacing ---
+    graph.set_nodesep("1.0")  # default ~0.25 → spread siblings apart
+    graph.set_ranksep("1.0 equally")  # spread ranks evenly
+    graph.set_margin("0.5")  # margin around the graph
+    graph.set_sep("+10")  # extra padding between clusters/graph
+
+    # --- Edge routing ---
+    graph.set_splines("true")  # use curved splines instead of straight lines
+    graph.set_overlap("false")  # prevent node overlaps
+    graph.set_mode("ipsep")  # iterative post-separation (neato/sfdp)
+    graph.set_outputorder("edgesfirst")  # helps layering
+    graph.set_splines("polyline")  # (try "ortho" or "curved" too)
+
+    # --- Try harder on crossings ---
+    graph.set_concentrate("false")  # don't merge parallel edges
+    graph.set_compound("true")  # better cluster routing
+    graph.set_truecolor("true")
+
+
 class GraphOptions:
     """Options for generating the circuit graph."""
 
     def __init__(
-        self, is_compact: bool, is_aligned: bool, bold_io: bool, max_depth: int = -1
+        self,
+        is_compact: bool,
+        is_aligned: bool,
+        bold_io: bool,
+        max_depth: int = -1,
+        try_hard: bool = False,
     ):
         # 'compact' means that the NAND gates are not expanded,
         # but just represented as a box.
@@ -42,6 +64,9 @@ class GraphOptions:
 
         # 'max_depth' means that the circuit is expanded only to a certain depth.
         self.max_depth = max_depth
+
+        # 'try_hard' means to try to make a readable graph.
+        self.try_hard = try_hard
 
 
 # A mapping between a circuit's ports and its graph node ID + name
@@ -129,6 +154,8 @@ class NestedGraphBuilder:
             rankdir="LR",
             label=circuit.identifier,
         )
+        if self.options.try_hard:
+            _try_hard(graph)
 
         # Create the root context
         context = CircuitBuildContext(
@@ -427,10 +454,10 @@ def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
     return builder.build_graph(circuit)
 
 
-def save_graph(graph: pydot.Dot, filename: str, format: str) -> str:
+def save_graph(graph: pydot.Dot, filename: str, format: str, prog: str = "dot") -> str:
     """Save the graph to a file"""
     output_file = f"{filename}.{format}"
-    graph.write(output_file, format=format)
+    graph.write(output_file, format=format, prog=prog)
     return output_file
 
 
@@ -441,27 +468,33 @@ if __name__ == "__main__":
     circuits_builder.build_circuits()
     reference = circuits_builder.library
 
-    default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
-    bit_packed_round_trip = BitPackedDecoder().decode(
-        BitPackedEncoder().encode(reference)
-    )
+    # default_round_trip = DefaultDecoder().decode(DefaultEncoder().encode(reference))
+    # bit_packed_round_trip = BitPackedDecoder().decode(
+    #     BitPackedEncoder().encode(reference)
+    # )
 
     # Visualize different circuits
     for library, construction_type in [
         (reference, "reference"),
-        (default_round_trip, "default_round_trip"),
-        (bit_packed_round_trip, "bit_packed_round_trip"),
+        # (default_round_trip, "default_round_trip"),
+        # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        for circuit in [library.get_circuit_from_idx(4)]:
-            graph = generate_graph(
-                circuit,
-                GraphOptions(
-                    is_compact=True, is_aligned=True, bold_io=True, max_depth=1
-                ),
-            )
-            output_file = save_graph(
-                graph,
-                f"{circuit.name}_{construction_type}_hack",
-                "svg",
-            )
-            print(f"Nested graph saved to {output_file}")
+        for idx in range(len(reference)):
+            circuit = reference.get_circuit_from_idx(idx)
+            try:
+                graph = generate_graph(
+                    circuit,
+                    GraphOptions(
+                        is_compact=True,
+                        is_aligned=True,
+                        bold_io=True,
+                        max_depth=-1,
+                        try_hard=True,
+                    ),
+                )
+                output_file = save_graph(
+                    graph, f"{circuit.name}_{construction_type}_hack", "svg"
+                )
+                print(f"Nested graph saved to {output_file}")
+            except Exception as e:
+                print(f"Error building viz of circuit: {circuit.name}\n{e}")

@@ -181,7 +181,7 @@ class BitPackedDecoder(CircuitDecoder):
                     f"output an output from a component that does not exists."
                 ) from e
 
-            self.circuit.connect_output(output_idx, source_idx, source_output_idx)
+            self.circuit.connect_output(source_idx, source_output_idx, output_idx)
 
     def _decode_component_wiring(self):
         """Decode the wiring between components: the source component index

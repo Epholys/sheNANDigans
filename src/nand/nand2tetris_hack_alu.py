@@ -35,7 +35,7 @@ class HackALUBuilder(CircuitBuilder):
         not_gate.add_component("NAND", self.library.get_circuit(0))
         not_gate.connect_input("IN", "NAND", "A")
         not_gate.connect_input("IN", "NAND", "B")
-        not_gate.connect_output("OUT", "NAND", "OUT")
+        not_gate.connect_output("NAND", "OUT", "OUT")
         self.library.add_circuit(not_gate)
 
     def add_and(self):
@@ -45,7 +45,7 @@ class HackALUBuilder(CircuitBuilder):
         and_gate.connect_input("A", "NAND", "A")
         and_gate.connect_input("B", "NAND", "B")
         and_gate.connect("NAND", "OUT", "NOT", "IN")
-        and_gate.connect_output("OUT", "NOT", "OUT")
+        and_gate.connect_output("NOT", "OUT", "OUT")
         self.library.add_circuit(and_gate)
 
     def add_or(self):
@@ -63,7 +63,7 @@ class HackALUBuilder(CircuitBuilder):
         or_gate.connect("NOT_B", "OUT", "AND", "B")
         or_gate.connect("AND", "OUT", "NOT_OUT", "IN")
 
-        or_gate.connect_output("OUT", "NOT_OUT", "OUT")
+        or_gate.connect_output("NOT_OUT", "OUT", "OUT")
 
         self.library.add_circuit(or_gate)
 
@@ -86,7 +86,7 @@ class HackALUBuilder(CircuitBuilder):
         xor_gate.connect("AND_A", "OUT", "OR", "A")
         xor_gate.connect("AND_B", "OUT", "OR", "B")
 
-        xor_gate.connect_output("OUT", "OR", "OUT")
+        xor_gate.connect_output("OR", "OUT", "OUT")
 
         self.library.add_circuit(xor_gate)
 
@@ -107,7 +107,7 @@ class HackALUBuilder(CircuitBuilder):
         mux.connect("OR_A", "OUT", "AND", "A")
         mux.connect("OR_B", "OUT", "AND", "B")
 
-        mux.connect_output("OUT", "AND", "OUT")
+        mux.connect_output("AND", "OUT", "OUT")
 
         self.library.add_circuit(mux)
 
@@ -125,8 +125,8 @@ class HackALUBuilder(CircuitBuilder):
 
         dmux.connect("NOT", "OUT", "AND_A", "B")
 
-        dmux.connect_output("A", "AND_A", "OUT")
-        dmux.connect_output("B", "AND_B", "OUT")
+        dmux.connect_output("AND_A", "OUT", "A")
+        dmux.connect_output("AND_B", "OUT", "B")
 
         self.library.add_circuit(dmux)
 
@@ -136,7 +136,7 @@ class HackALUBuilder(CircuitBuilder):
         for i in range(16):
             not16.add_component(f"NOT_{i}", self.library.get_circuit("NOT"))
             not16.connect_input(f"IN_{i}", f"NOT_{i}", "IN")
-            not16.connect_output(f"OUT_{i}", f"NOT_{i}", "OUT")
+            not16.connect_output(f"NOT_{i}", "OUT", f"OUT_{i}")
 
         self.library.add_circuit(not16)
 
@@ -149,7 +149,7 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             and16.connect_input(f"B_{i}", f"AND_{i}", "B")
-            and16.connect_output(f"OUT_{i}", f"AND_{i}", "OUT")
+            and16.connect_output(f"AND_{i}", "OUT", f"OUT_{i}")
 
         self.library.add_circuit(and16)
 
@@ -162,7 +162,7 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             or16.connect_input(f"B_{i}", f"OR_{i}", "B")
-            or16.connect_output(f"OUT_{i}", f"OR_{i}", "OUT")
+            or16.connect_output(f"OR_{i}", "OUT", f"OUT_{i}")
 
         self.library.add_circuit(or16)
 
@@ -178,7 +178,7 @@ class HackALUBuilder(CircuitBuilder):
 
         for i in range(16):
             mux16.connect_input("SEL", f"Mux_{i}", "SEL")
-            mux16.connect_output(f"OUT_{i}", f"Mux_{i}", "OUT")
+            mux16.connect_output(f"Mux_{i}", "OUT", f"OUT_{i}")
 
         self.library.add_circuit(mux16)
 
@@ -203,7 +203,7 @@ class HackALUBuilder(CircuitBuilder):
             or_input = "A" if i % 2 == 0 else "B"
             or8way.connect(f"OR_{i}", "OUT", f"OR_{or_level_2}", or_input)
 
-        or8way.connect_output("OUT", "OR_6", "OUT")
+        or8way.connect_output("OR_6", "OUT", "OUT")
 
         self.library.add_circuit(or8way)
 
@@ -234,7 +234,7 @@ class HackALUBuilder(CircuitBuilder):
             mux4way16.connect("Mux16_CD", f"OUT_{i}", "Mux16_OUT", f"B_{i}")
 
         for i in range(16):
-            mux4way16.connect_output(f"OUT_{i}", "Mux16_OUT", f"OUT_{i}")
+            mux4way16.connect_output("Mux16_OUT", f"OUT_{i}", f"OUT_{i}")
 
         self.library.add_circuit(mux4way16)
 
@@ -271,7 +271,7 @@ class HackALUBuilder(CircuitBuilder):
             mux8way16.connect("Mux4Way16_EFGH", f"OUT_{i}", "Mux16_OUT", f"B_{i}")
 
         for i in range(16):
-            mux8way16.connect_output(f"OUT_{i}", "Mux16_OUT", f"OUT_{i}")
+            mux8way16.connect_output("Mux16_OUT", f"OUT_{i}", f"OUT_{i}")
 
         self.library.add_circuit(mux8way16)
 
@@ -292,10 +292,10 @@ class HackALUBuilder(CircuitBuilder):
         dmux4way.connect("DMux_SEL", "B", "DMux_CD", "IN")
         dmux4way.connect("DMux_SEL", "B", "DMux_CD", "IN")
 
-        dmux4way.connect_output("A", "DMux_AB", "A")
-        dmux4way.connect_output("B", "DMux_AB", "B")
-        dmux4way.connect_output("C", "DMux_CD", "A")
-        dmux4way.connect_output("D", "DMux_CD", "B")
+        dmux4way.connect_output("DMux_AB", "A", "A")
+        dmux4way.connect_output("DMux_AB", "B", "B")
+        dmux4way.connect_output("DMux_CD", "A", "C")
+        dmux4way.connect_output("DMux_CD", "B", "D")
 
         self.library.add_circuit(dmux4way)
 
@@ -318,13 +318,13 @@ class HackALUBuilder(CircuitBuilder):
         dmux8way.connect("DMux_SEL", "B", "DMux_EFGH", "IN")
         dmux8way.connect("DMux_SEL", "B", "DMux_EFGH", "IN")
 
-        dmux8way.connect_output("A", "DMux_ABCD", "A")
-        dmux8way.connect_output("B", "DMux_ABCD", "B")
-        dmux8way.connect_output("C", "DMux_ABCD", "C")
-        dmux8way.connect_output("D", "DMux_ABCD", "D")
-        dmux8way.connect_output("E", "DMux_EFGH", "A")
-        dmux8way.connect_output("F", "DMux_EFGH", "B")
-        dmux8way.connect_output("G", "DMux_EFGH", "C")
-        dmux8way.connect_output("H", "DMux_EFGH", "D")
+        dmux8way.connect_output("DMux_ABCD", "A", "A")
+        dmux8way.connect_output("DMux_ABCD", "B", "B")
+        dmux8way.connect_output("DMux_ABCD", "C", "C")
+        dmux8way.connect_output("DMux_ABCD", "D", "D")
+        dmux8way.connect_output("DMux_EFGH", "A", "E")
+        dmux8way.connect_output("DMux_EFGH", "B", "F")
+        dmux8way.connect_output("DMux_EFGH", "C", "G")
+        dmux8way.connect_output("DMux_EFGH", "D", "H")
 
         self.library.add_circuit(dmux8way)

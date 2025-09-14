@@ -25,7 +25,7 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         not_gate.add_component("NAND", self.library.get_circuit(0))
         not_gate.connect_input("IN", "NAND", "A")
         not_gate.connect_input("IN", "NAND", "B")
-        not_gate.connect_output("OUT", "NAND", "OUT")
+        not_gate.connect_output("NAND", "OUT", "OUT")
         self.library.add_circuit(not_gate)
 
     def add_and(self):
@@ -34,7 +34,7 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         and_gate.add_component("NOT", self.library.get_circuit("NOT"))
         and_gate.connect_input("A", "NAND", "A")
         and_gate.connect_input("B", "NAND", "B")
-        and_gate.connect_output("OUT", "NOT", "OUT")
+        and_gate.connect_output("NOT", "OUT", "OUT")
         and_gate.connect("NAND", "OUT", "NOT", "IN")
         self.library.add_circuit(and_gate)
 
@@ -49,7 +49,7 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         or_gate.connect_input("B", "NAND_B", "A")
         or_gate.connect_input("B", "NAND_B", "B")
 
-        or_gate.connect_output("OUT", "NAND_OUT", "OUT")
+        or_gate.connect_output("NAND_OUT", "OUT", "OUT")
 
         or_gate.connect("NAND_A", "OUT", "NAND_OUT", "A")
         or_gate.connect("NAND_B", "OUT", "NAND_OUT", "B")
@@ -64,7 +64,7 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         nor_gate.connect_input("A", "OR", "A")
         nor_gate.connect_input("B", "OR", "B")
 
-        nor_gate.connect_output("OUT", "NOT", "OUT")
+        nor_gate.connect_output("NOT", "OUT", "OUT")
 
         nor_gate.connect("OR", "OUT", "NOT", "IN")
 
@@ -83,7 +83,7 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         xor_gate.connect_input("A", "NAND_B1", "A")
         xor_gate.connect_input("B", "NAND_B2", "B")
 
-        xor_gate.connect_output("OUT", "NAND_OUT", "OUT")
+        xor_gate.connect_output("NAND_OUT", "OUT", "OUT")
 
         xor_gate.connect("NAND_A", "OUT", "NAND_B1", "B")
         xor_gate.connect("NAND_A", "OUT", "NAND_B2", "A")
@@ -102,8 +102,8 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         half_adder.connect_input("A", "AND", "A")
         half_adder.connect_input("B", "AND", "B")
 
-        half_adder.connect_output("SUM", "XOR", "OUT")
-        half_adder.connect_output("CARRY", "AND", "OUT")
+        half_adder.connect_output("XOR", "OUT", "SUM")
+        half_adder.connect_output("AND", "OUT", "CARRY")
 
         self.library.add_circuit(half_adder)
 
@@ -124,8 +124,8 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         full_adder.connect_input("Cin", "XOR_TWO", "B")
         full_adder.connect_input("Cin", "AND_TWO", "B")
 
-        full_adder.connect_output("SUM", "XOR_TWO", "OUT")
-        full_adder.connect_output("Cout", "OR", "OUT")
+        full_adder.connect_output("XOR_TWO", "OUT", "SUM")
+        full_adder.connect_output("OR", "OUT", "Cout")
 
         full_adder.connect("XOR_ONE", "OUT", "XOR_TWO", "A")
         full_adder.connect("XOR_ONE", "OUT", "AND_TWO", "A")
@@ -148,9 +148,9 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
 
         two_bits_adder.connect("ADDER_0", "Cout", "ADDER_1", "Cin")
 
-        two_bits_adder.connect_output("S0", "ADDER_0", "SUM")
-        two_bits_adder.connect_output("S1", "ADDER_1", "SUM")
-        two_bits_adder.connect_output("Cout", "ADDER_1", "Cout")
+        two_bits_adder.connect_output("ADDER_0", "SUM", "S0")
+        two_bits_adder.connect_output("ADDER_1", "SUM", "S1")
+        two_bits_adder.connect_output("ADDER_1", "Cout", "Cout")
 
         self.library.add_circuit(two_bits_adder)
 
@@ -174,11 +174,11 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
         four_bits_adder.connect_input("A3", "2BITS_ADDER_1", "A1")
         four_bits_adder.connect_input("B3", "2BITS_ADDER_1", "B1")
 
-        four_bits_adder.connect_output("S0", "2BITS_ADDER_0", "S0")
-        four_bits_adder.connect_output("S1", "2BITS_ADDER_0", "S1")
-        four_bits_adder.connect_output("S2", "2BITS_ADDER_1", "S0")
-        four_bits_adder.connect_output("S3", "2BITS_ADDER_1", "S1")
-        four_bits_adder.connect_output("Cout", "2BITS_ADDER_1", "Cout")
+        four_bits_adder.connect_output("2BITS_ADDER_0", "S0", "S0")
+        four_bits_adder.connect_output("2BITS_ADDER_0", "S1", "S1")
+        four_bits_adder.connect_output("2BITS_ADDER_1", "S0", "S2")
+        four_bits_adder.connect_output("2BITS_ADDER_1", "S1", "S3")
+        four_bits_adder.connect_output("2BITS_ADDER_1", "Cout", "Cout")
 
         four_bits_adder.connect("2BITS_ADDER_0", "Cout", "2BITS_ADDER_1", "C0")
 
@@ -215,16 +215,16 @@ class PlaygroundCircuitBuilder(CircuitBuilder):
 
         eight_bits_adder.connect("4BITS_ADDER_0", "Cout", "4BITS_ADDER_1", "C0")
 
-        eight_bits_adder.connect_output("S0", "4BITS_ADDER_0", "S0")
-        eight_bits_adder.connect_output("S1", "4BITS_ADDER_0", "S1")
-        eight_bits_adder.connect_output("S2", "4BITS_ADDER_0", "S2")
-        eight_bits_adder.connect_output("S3", "4BITS_ADDER_0", "S3")
+        eight_bits_adder.connect_output("4BITS_ADDER_0", "S0", "S0")
+        eight_bits_adder.connect_output("4BITS_ADDER_0", "S1", "S1")
+        eight_bits_adder.connect_output("4BITS_ADDER_0", "S2", "S2")
+        eight_bits_adder.connect_output("4BITS_ADDER_0", "S3", "S3")
 
-        eight_bits_adder.connect_output("S4", "4BITS_ADDER_1", "S0")
-        eight_bits_adder.connect_output("S5", "4BITS_ADDER_1", "S1")
-        eight_bits_adder.connect_output("S6", "4BITS_ADDER_1", "S2")
-        eight_bits_adder.connect_output("S7", "4BITS_ADDER_1", "S3")
+        eight_bits_adder.connect_output("4BITS_ADDER_1", "S0", "S4")
+        eight_bits_adder.connect_output("4BITS_ADDER_1", "S1", "S5")
+        eight_bits_adder.connect_output("4BITS_ADDER_1", "S2", "S6")
+        eight_bits_adder.connect_output("4BITS_ADDER_1", "S3", "S7")
 
-        eight_bits_adder.connect_output("Cout", "4BITS_ADDER_1", "Cout")
+        eight_bits_adder.connect_output("4BITS_ADDER_1", "Cout", "Cout")
 
         self.library.add_circuit(eight_bits_adder)

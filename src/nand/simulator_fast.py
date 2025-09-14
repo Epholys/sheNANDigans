@@ -10,6 +10,8 @@ class SimulatorFast(Simulator):
 
     To do so, it assumes the circuit is correctly defined. If this is not the case,
     the simulation will produce wrong results.
+
+    # TODO optimize() : mark circuit as optimized to avoid repetition?
     """
 
     def __init__(self, circuit: Circuit):

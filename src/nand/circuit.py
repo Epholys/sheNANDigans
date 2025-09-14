@@ -58,7 +58,7 @@ class Circuit:
 
         components: Components of the circuit
 
-        # TODO __copy__ __deepcopy__
+        # TODO __copy__ __deepcopy__ : for D/Encoder ? Or default okay?
     """
 
     def __init__(self, identifier: CircuitId):

@@ -88,9 +88,9 @@ class Circuit:
         component's input port. The connection is propagated through the circuit.
 
         Args:
-            input: Identifier of the input wire to create/connect
-            target_name: Identifier of the component to connect to
-            target_input: Identifier of the input port on the target component
+            input_id: Identifier of the input wire to create/connect
+            target_id: Identifier of the component to connect to
+            target_input_id: Identifier of the input port on the target component
 
         Raises:
             ValueError: If the target or its input doesn't exists
@@ -131,9 +131,9 @@ class Circuit:
         component's output port.
 
         Args:
-            output: Identifier of the output wire to create/connect.
-            source_name: Identifier of the component to connect to
-            source_output: Identifier of the output port on the source component
+            source_id: Identifier of the component to connect to
+            source_output_id: Identifier of the output port on the source component
+            output_id: Identifier of the output wire to create/connect.
 
         Raises:
             ValueError: If the source or its output doesn't exist
@@ -168,9 +168,9 @@ class Circuit:
 
         Args:
             source_id: Identifier of the component providing the output.
-            source_output: Identifier of the output port on the source component.
+            source_output_id: Identifier of the output port on the source component.
             target_id: Identifier of the component receiving the input.
-            target_input: Identifier of the input port on the target component.
+            target_input_id: Identifier of the input port on the target component.
 
         Raises:
             ValueError: If either component doesn't exist in the circuit or if the

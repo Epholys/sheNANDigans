@@ -28,6 +28,7 @@ class HackALUBuilder(CircuitBuilder):
         self.add_mux8way16()
         self.add_dmux4way()
         self.add_dmux8way()
+        self.add_half_adder()
         return self.library
 
     def add_not(self):
@@ -328,3 +329,19 @@ class HackALUBuilder(CircuitBuilder):
         dmux8way.connect_output("DMux_EFGH", "D", "H")
 
         self.library.add_circuit(dmux8way)
+
+    def add_half_adder(self):
+        half_adder = Circuit("HalfAdder")
+
+        half_adder.add_component("XOR", self.library.get_circuit("XOR"))
+        half_adder.add_component("AND", self.library.get_circuit("AND"))
+
+        half_adder.connect_input("A", "XOR", "A")
+        half_adder.connect_input("B", "XOR", "B")
+        half_adder.connect_input("A", "AND", "A")
+        half_adder.connect_input("B", "AND", "B")
+
+        half_adder.connect_output("XOR", "OUT", "Sum")
+        half_adder.connect_output("AND", "OUT", "Carry")
+
+        self.library.add_circuit(half_adder)

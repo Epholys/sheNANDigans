@@ -1,6 +1,8 @@
 import operator
 import pytest
 
+from tests.common_numeric_assertions import assert_all_numeric_simulations
+from tests.numeric_operations import NumericOperations, int_to_bools
 from tests.parameters_enums import parameter_ids
 from tests.common_gate_assertions import (
     assert_basic_gate,
@@ -109,3 +111,19 @@ class TestLibrary:
     def test_dmux8way(self, simulators):  #
         dmux8way = simulators[15]
         assert_dmux_n_way(dmux8way, 8)
+
+    def test_half_adder(self, simulators):
+        half_adder = simulators[16]
+
+        n_inputs = 2
+        n_outputs = 2
+        assert_all_numeric_simulations(
+            half_adder,
+            n_inputs,
+            n_outputs,
+            NumericOperations(
+                inputs_to_numbers=lambda bools: [+(b) for b in bools],
+                number_to_outputs=int_to_bools(n_inputs),
+                operation=sum,
+            ),
+        )

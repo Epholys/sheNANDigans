@@ -127,3 +127,19 @@ class TestLibrary:
                 operation=sum,
             ),
         )
+
+    def test_full_adder(self, simulators):
+        full_adder = simulators[17]
+
+        n_inputs = 3
+        n_outputs = 2
+        assert_all_numeric_simulations(
+            full_adder,
+            n_inputs,
+            n_outputs,
+            NumericOperations(
+                inputs_to_numbers=lambda bools: [+(b) for b in bools],
+                number_to_outputs=int_to_bools(n_inputs),
+                operation=sum,
+            ),
+        )

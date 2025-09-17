@@ -2,7 +2,7 @@ import operator
 import pytest
 
 from tests.parameters_enums import parameter_ids
-from tests.common_test_assertions import (
+from tests.common_gate_assertions import (
     assert_basic_gate,
     assert_multibits_gate,
     assert_dmux_n_way,

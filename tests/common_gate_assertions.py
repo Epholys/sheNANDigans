@@ -35,7 +35,7 @@ def _flatten(list: Sequence[Any]) -> List[Any]:
     return [item for sublist in list for item in _to_list(sublist)]
 
 
-def _assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
+def assert_circuit_signature(circuit: Circuit, n_inputs: int, n_outputs: int):
     """Assert the signature of a circuit (number of inputs and outputs)."""
     circuit_name: str = circuit.name
 
@@ -124,7 +124,7 @@ def assert_basic_gate(
     Outputs: OUT_A, OUT_B, ... (n_out bool output)
     Function: operation(A, B, ...) = OUT_A, OUT_B, ...
     """
-    _assert_circuit_signature(simulator._circuit, n_inputs=n_in, n_outputs=n_out)
+    assert_circuit_signature(simulator._circuit, n_inputs=n_in, n_outputs=n_out)
 
     # Generate all possible values.
     input_cases = list(product([True, False], repeat=n_in))
@@ -167,7 +167,7 @@ def assert_multibits_gate(
     Outputs: OUT[m_bits]                (one out put of m_bits width)
     Function: operation(A, B, ...) = OUT
     """
-    _assert_circuit_signature(
+    assert_circuit_signature(
         simulator._circuit, n_inputs=n_ins * m_bits, n_outputs=m_bits
     )
 
@@ -227,7 +227,7 @@ def assert_n_way_gate(
     Function: reduce(operation) (= operation(...(operation(operation(A, B), C)...) )
                                 (for example : A | B | C | ... or A & B & C & ... )
     """
-    _assert_circuit_signature(simulator._circuit, n_inputs=n_way, n_outputs=1)
+    assert_circuit_signature(simulator._circuit, n_inputs=n_way, n_outputs=1)
 
     input_cases: List[List[bool]] = []
 
@@ -276,7 +276,7 @@ def assert_mux_n_way_m_bits(
     """
     selection_size = bitlength_with_offset(n_way)
 
-    _assert_circuit_signature(
+    assert_circuit_signature(
         simulator._circuit,
         n_inputs=m_bits * n_way + selection_size,
         n_outputs=m_bits,
@@ -325,7 +325,7 @@ def assert_dmux_n_way(simulator: Simulator, n_way: int):
     selection_len = bitlength_with_offset(n_way)
 
     # '1 +' for the IN input.
-    _assert_circuit_signature(
+    assert_circuit_signature(
         simulator._circuit,
         n_inputs=1 + selection_len,
         n_outputs=n_way,

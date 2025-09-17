@@ -1,21 +1,17 @@
-from concurrent.futures import ProcessPoolExecutor
-from itertools import product
-import multiprocessing
-from typing import List, Tuple
+from typing import List
 
 import pytest
 from tests.parameters_enums import parameter_ids
-from tests.common_test_assertions import (
-    _assert_circuit_signature,
+from tests.common_gate_assertions import (
     assert_basic_gate,
 )
-from nand.simulator import Simulator
 from tests.numeric_operations import (
     NumericOperations,
     bools_to_int,
     int_to_bools,
 )
 from tests.simulators_factory import Project, build_simulators_cases
+from tests.common_numeric_assertions import assert_all_numeric_simulations
 
 
 @pytest.mark.parametrize(
@@ -35,80 +31,6 @@ class TestPlaygroundLibrary:
     TODO: add better error message for numeric simulations
     TODO: even maybe merge them in common_test_assertion
     """
-
-    def _assert_single_numeric_simulation(self, data):
-        """Assert the simulation of a numeric operation for a single case."""
-        simulator: Simulator
-        operations: NumericOperations
-        circuit_inputs: Tuple[bool, ...]
-        simulator, operations, circuit_inputs = data
-
-        expected_outputs = operations.apply(circuit_inputs)
-
-        simulation_result = simulator.simulate(circuit_inputs)
-        if not simulation_result:
-            assert False, "Simulation Failed"
-
-        assert simulation_result == expected_outputs
-
-    def _assert_all_numeric_simulations(
-        self,
-        simulator: Simulator,
-        n_inputs: int,
-        n_outputs: int,
-        operations: NumericOperations,
-    ):
-        """Assert the behavior of a circuit implementing a numeric operation for all
-        possible inputs.
-        """
-        _assert_circuit_signature(simulator._circuit, n_inputs, n_outputs)
-
-        all_possible_inputs = list(product([True, False], repeat=n_inputs))
-
-        cases = [(simulator, operations, inputs) for inputs in all_possible_inputs]
-
-        if n_inputs >= 16:
-            n_tasks = len(cases)
-
-            # This is based on almost nothing (well with hyperfine on a ~5s task).
-            # There's a big difference between Windows (5.5s) and WSL (3.6s).
-            # I know it's because of how the threads/processes are managed between different OSes.
-            # I try quickly asking LLMs (2025-03-14 : GPT-4o and Claude 3.7), but they have different opinions.
-            # When I profile with 'python -m cProfile', on both OSes it seems that the hyper-parameters of workers and chunks are not optimized:
-            # the process management takes the biggest amount of time (Windows's '_winapi.WaitForMultipleObjects' and WSL's 'select.poll').
-            # I'll come back later, when I have more tests and more motivation to go deeper on this subject.
-            # Things I know (now) that I can try:
-            # - Keeping this approach:
-            #   - Automated hyper-parameters tuning
-            #   - psutil library
-            #   - 'multiprocessing.Pool'
-            #   - loky's 'joblib.Parallel'
-            #   - Persistent worker pool 'multiprocessing.Pool'
-            #   - Persistent workers (probably a good idea when I'll have more parallelizable tests)
-            #   - Different chunking approach: not in 'executor.map(chunksize=)' but pre-chunking: 'chunks=[cases[i+chunk_size] for i in range(len(cases), chunk_size)]'
-            #   - Pre-compute NumericOperations (or at least the inputs)
-            #   - Analyze pickling
-            # - Other approaches: changing the simulation philosophy:
-            #   - Parallel simulation using topological order
-            #   - Parallel simulation using circuit partitioning
-            #   - Using lower-level libraries (Cython, Numba, NumPy, CuPy, etc.)
-            cpu_count = multiprocessing.cpu_count()
-            n_processes = cpu_count - 1
-            chunk_size = max(1, n_tasks // (n_processes * 4))
-
-            with ProcessPoolExecutor(max_workers=n_processes) as executor:
-                results = list(
-                    executor.map(
-                        self._assert_single_numeric_simulation,
-                        cases,
-                        chunksize=chunk_size,
-                    )
-                )
-            assert len(results) == n_tasks
-
-        else:
-            for case in cases:
-                self._assert_single_numeric_simulation(case)
 
     def test_nand(self, simulators):
         nand = simulators[0]
@@ -156,7 +78,7 @@ class TestPlaygroundLibrary:
             carry = (number >> 1) & 1
             return [bool(x) for x in [sum, carry]]
 
-        self._assert_all_numeric_simulations(
+        assert_all_numeric_simulations(
             half_adder,
             2,
             2,
@@ -178,7 +100,7 @@ class TestPlaygroundLibrary:
             assert len(inputs) == n_inputs
             return [+(b) for b in inputs]
 
-        self._assert_all_numeric_simulations(
+        assert_all_numeric_simulations(
             full_adder,
             n_inputs,
             n_outputs,
@@ -223,7 +145,7 @@ class TestPlaygroundLibrary:
 
             return [a, b, c0]
 
-        self._assert_all_numeric_simulations(
+        assert_all_numeric_simulations(
             two_bits_adder,
             n_inputs,
             n_outputs,
@@ -268,7 +190,7 @@ class TestPlaygroundLibrary:
 
             return [a, b, c0]
 
-        self._assert_all_numeric_simulations(
+        assert_all_numeric_simulations(
             four_bits_adder,
             n_inputs,
             n_outputs,
@@ -307,7 +229,7 @@ class TestPlaygroundLibrary:
         n_inputs = 17
         n_outputs = 9
 
-        self._assert_all_numeric_simulations(
+        assert_all_numeric_simulations(
             eight_bits_adder,
             n_inputs,
             n_outputs,

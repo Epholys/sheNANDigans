@@ -48,6 +48,8 @@ class NumericOperations:
 def bools_to_int(bools: List[bool]):
     """Convert a list of booleans to an integer, expecting the list to be in low to
     high order.
+
+    # TODO explicit parameters
     """
     return sum(b * (2**n) for n, b in enumerate(bools))
 
@@ -56,10 +58,15 @@ def _int_to_bools(x: int, n: int) -> List[bool]:
     """Convert an integer to a list of booleans, the list will be from low to high order
 
     This a parameterized function, to avoid the need to compute the length of the list.
+
+    # TODO explicit parameters
     """
     return [(x >> shift) & 1 > 0 for shift in range(n)]
 
 
 def int_to_bools(n: int) -> Callable[[int], List[bool]]:
-    """Convert an integer to a list of booleans, the list will be from low to high order."""
+    """Convert an integer to a list of booleans, the list will be from low to high order.
+
+    # TODO explicit parameters
+    """
     return partial(_int_to_bools, n=n)

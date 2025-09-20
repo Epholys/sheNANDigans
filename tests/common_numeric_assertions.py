@@ -1,26 +1,33 @@
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from itertools import product
 import multiprocessing
 from nand.simulator import Simulator
 from tests.numeric_operations import NumericOperations
-from tests.common_gate_assertions import assert_circuit_signature
+from tests.common_gate_assertions import (
+    assert_circuit_signature,
+    assert_simulation_result,
+)
 
 
-def _assert_single_numeric_simulation(data):
-    """Assert the simulation of a numeric operation for a single case."""
+@dataclass(frozen=True)
+class NumericCircuitCase:
     simulator: Simulator
     operations: NumericOperations
-    circuit_inputs: tuple[bool, ...]
-    simulator, operations, circuit_inputs = data
+    inputs: tuple[bool, ...]
 
-    expected_outputs = operations.apply(circuit_inputs)
 
-    simulation_result = simulator.simulate(circuit_inputs)
-    if not simulation_result:
-        assert False, "Simulation Failed"
+def _assert_single_numeric_simulation(
+    case: NumericCircuitCase, chunk_size: int | None = None
+):
+    """Assert the simulation of a numeric operation for a single case."""
 
-    # TODO : add error message
-    assert simulation_result == expected_outputs
+    expected = case.operations.apply(case.inputs)
+    result = case.simulator.simulate(case.inputs)
+
+    assert_simulation_result(
+        result, case.inputs, expected, case.simulator._circuit.name, chunk_size
+    )
 
 
 def assert_all_numeric_simulations(
@@ -28,6 +35,7 @@ def assert_all_numeric_simulations(
     n_inputs: int,
     n_outputs: int,
     operations: NumericOperations,
+    bit_width: int | None = None,
 ):
     """Assert the behavior of a circuit implementing a numeric operation for all
     possible inputs.
@@ -36,7 +44,10 @@ def assert_all_numeric_simulations(
 
     all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
-    cases = [(simulator, operations, inputs) for inputs in all_possible_inputs]
+    cases = [
+        NumericCircuitCase(simulator, operations, inputs)
+        for inputs in all_possible_inputs
+    ]
 
     if n_inputs >= 16:
         n_tasks = len(cases)
@@ -79,4 +90,4 @@ def assert_all_numeric_simulations(
 
     else:
         for case in cases:
-            _assert_single_numeric_simulation(case)
+            _assert_single_numeric_simulation(case, chunk_size=bit_width)

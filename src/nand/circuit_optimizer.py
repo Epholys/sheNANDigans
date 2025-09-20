@@ -40,7 +40,7 @@ class _Node:
         return f"{self.kind.value} {id_}"
 
 
-def _draw_sorted_graph(graph: nx.Graph, name: str):
+def _draw_sorted_graph(graph: nx.DiGraph, name: str):
     """Debug visualization."""
     for layer, nodes in enumerate(nx.topological_generations(graph)):
         # `multipartite_layout` expects the layer as a node attribute, so add the
@@ -170,7 +170,7 @@ def _add_components_edges(circuit: Circuit, graph: nx.DiGraph):
                         )
 
 
-def reorder_components(circuit: Circuit, graph: nx.Graph):
+def reorder_components(circuit: Circuit, graph: nx.DiGraph):
     """Reorder the components of the circuit to respect a topological order.
 
     Doing so, a simple iteration over the components is enough to simulate it: no wire

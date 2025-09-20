@@ -33,15 +33,16 @@ def build_simulators_cases(project: Project):
     separately.
     """
     params = []
-    # TODO Add more marks
     for process, algo, opt in itertools.product(
         BuildProcess, EncoderAlgorithm, OptimizationLevel
     ):
         mark_debug = pytest.mark.debug if opt is OptimizationLevel.DEBUG else None
-        if mark_debug:
-            params.append(pytest.param((process, algo, project, opt), marks=mark_debug))
-        else:
-            params.append(pytest.param((process, algo, project, opt)))
+        mark_reference = (
+            pytest.mark.reference if process is BuildProcess.REFERENCE else None
+        )
+        marks = [mark_debug, mark_reference]
+        marks = [mark for mark in marks if mark is not None]
+        params.append(pytest.param((process, algo, project, opt), marks=marks))
     return params
 
 

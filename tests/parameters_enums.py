@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Tuple
+from typing import Any
 
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bit_packed_encoder import BitPackedEncoder
@@ -59,11 +59,12 @@ class Project(Enum):
                 raise ValueError("Unknown Project.")
 
 
-# TODO global TODO : replace Tuple[] by tuple[] ?
-def parameter_ids(parameter: Enum | Tuple):
+def parameter_ids(parameters: Any):
     """Function to pretty-print cases for parametrized tests"""
-    match parameter:
+    match parameters:
         case tuple():
-            return "-".join(str(elem) for elem in parameter)
+            return " - ".join([parameter_ids(params) for params in parameters])
         case Enum():
-            return parameter.value
+            return parameters.name
+        case _:
+            return str(parameters)

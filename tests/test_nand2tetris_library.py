@@ -123,7 +123,7 @@ class TestLibrary:
             n_outputs,
             NumericOperations(
                 inputs_to_numbers=lambda bools: [+(b) for b in bools],
-                number_to_outputs=int_to_bools(n_inputs),
+                number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
             ),
         )
@@ -139,7 +139,7 @@ class TestLibrary:
             n_outputs,
             NumericOperations(
                 inputs_to_numbers=lambda bools: [+(b) for b in bools],
-                number_to_outputs=int_to_bools(n_inputs),
+                number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
             ),
         )

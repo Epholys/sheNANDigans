@@ -1,8 +1,15 @@
+from functools import partial
+from itertools import batched
 import operator
+from typing import Sequence
 import pytest
 
-from tests.common_numeric_assertions import assert_all_numeric_simulations
-from tests.numeric_operations import NumericOperations, int_to_bools
+from nand.bits_utils import bits2int
+from tests.common_numeric_assertions import (
+    assert_all_numeric_simulations,
+    assert_partial_numeric_simulation,
+)
+from tests.numeric_operations import NumericOperations, bools_to_int, int_to_bools
 from tests.parameters_enums import parameter_ids
 from tests.common_gate_assertions import (
     assert_basic_gate,
@@ -141,5 +148,48 @@ class TestLibrary:
                 inputs_to_numbers=lambda bools: [+(b) for b in bools],
                 number_to_outputs=int_to_bools(n_outputs),
                 operation=sum,
+            ),
+        )
+
+    def test_add16_adder(self, simulators):
+        add16 = simulators[18]
+
+        n_inputs = 2
+        n_outputs = 1
+        n_bits = 16
+
+        # 2 ** 32 is too much for this hilariously not optimized python simulation.
+        # So no 'assert_all_numeric_simulations()'
+
+        def two_complements(bits: Sequence[bool]) -> int:
+            print(bits)
+            is_negative = bits[0]
+            print(is_negative)
+            if not is_negative:
+                print(bools_to_int(bits[1:]))
+                return bools_to_int(bits[1:])
+            flipped = list(map(operator.not_, bits[1:]))
+            print(flipped)
+            print(-(bools_to_int(flipped) + 1))
+            return -(bools_to_int(flipped) + 1)
+
+        def truncated_sum(numbers: list[int], n_bits: int):
+            sum_ = sum(numbers)
+            print(sum_)
+            lower_bound = -(2 ** (n_bits - 1))
+            upper_bound = (2**n_bits - 1) - 1
+            return min(upper_bound, max(lower_bound, sum_))
+
+        assert_partial_numeric_simulation(
+            add16,
+            n_inputs,
+            n_outputs,
+            n_bits,
+            NumericOperations(
+                inputs_to_numbers=lambda bools: [
+                    two_complements(number) for number in batched(bools, n_bits)
+                ],
+                number_to_outputs=int_to_bools(n_bits),
+                operation=partial(truncated_sum, n_bits=n_bits),
             ),
         )

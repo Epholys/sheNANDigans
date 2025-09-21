@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, List, Tuple
+from typing import Callable, List, Sequence, Tuple
 
 
 class NumericOperations:
@@ -19,7 +19,7 @@ class NumericOperations:
         self.number_to_outputs = number_to_outputs
         self.operation = operation
 
-    def apply(self, tested_inputs: Tuple[bool, ...]) -> List[bool]:
+    def apply(self, tested_inputs: list[bool]) -> List[bool]:
         """Apply the operation to the tested inputs and return the expected outputs for
         a circuit implementing a numeric operation.
 
@@ -40,12 +40,14 @@ class NumericOperations:
         versa for the outputs.
         """
         input_numbers = self.inputs_to_numbers(list(tested_inputs))
+        print(input_numbers)
         operation_result = self.operation(input_numbers)
+        print(operation_result)
         expected_outputs = self.number_to_outputs(operation_result)
         return expected_outputs
 
 
-def bools_to_int(bools: List[bool]):
+def bools_to_int(bools: Sequence[bool]):
     """Convert a list of booleans to an integer, expecting the list to be in low to
     high order.
     """
@@ -60,8 +62,10 @@ def _int_to_bools(x: int, n: int) -> List[bool]:
     Parameters:
     x:  The integer to convert.
     n:  The number of bits to convert x to.
+
+    # TODO vs int2bitlist ? slow-big endian ?
     """
-    return [(x >> shift) & 1 > 0 for shift in range(n)]
+    return [bool((x >> shift) & 1) for shift in range(n)]
 
 
 def int_to_bools(n: int) -> Callable[[int], List[bool]]:

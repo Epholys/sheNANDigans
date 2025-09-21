@@ -2,7 +2,9 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from itertools import product
 import multiprocessing
+import random
 from nand.simulator import Simulator
+from tests.sequence_utils import _flatten, _to_list
 from tests.numeric_operations import NumericOperations
 from tests.common_gate_assertions import (
     assert_circuit_signature,
@@ -16,7 +18,7 @@ class NumericCircuitCase:
 
     simulator: Simulator
     operations: NumericOperations
-    inputs: tuple[bool, ...]
+    inputs: list[bool]
 
 
 def _assert_single_numeric_simulation(
@@ -68,7 +70,7 @@ def assert_all_numeric_simulations(
     all_possible_inputs = list(product([True, False], repeat=n_inputs))
 
     cases = [
-        NumericCircuitCase(simulator, operations, inputs)
+        NumericCircuitCase(simulator, operations, _to_list(inputs))
         for inputs in all_possible_inputs
     ]
 
@@ -126,3 +128,36 @@ def assert_all_numeric_simulations(
     else:
         for case in cases:
             _assert_single_numeric_simulation(case, bit_width=bit_width)
+
+
+def assert_partial_numeric_simulation(
+    simulator: Simulator,
+    n_inputs: int,
+    n_outputs: int,
+    n_bits: int,
+    operations: NumericOperations,
+    seed: int = 0,
+    n_random_ins: int = 3,
+):
+    assert_circuit_signature(simulator._circuit, n_inputs * n_bits, n_outputs * n_bits)
+
+    # Test some common edge cases.
+    inputs_lists: list[list[bool]] = []
+    inputs_lists.append([True for _ in range(n_bits)])
+    inputs_lists.append([False for _ in range(n_bits)])
+    inputs_lists.append([True if i == 0 else False for i in range(n_bits)])
+    inputs_lists.append([False if i == 0 else True for i in range(n_bits)])
+    inputs_lists.append([True if i == n_bits - 1 else False for i in range(n_bits)])
+    inputs_lists.append([False if i == n_bits - 1 else True for i in range(n_bits)])
+
+    # Random inputs value. Deterministic using a seed.
+    random.seed(seed)
+    for _ in range(n_random_ins):
+        inputs_lists.append([bool(random.randint(0, 1)) for _ in range(n_bits)])
+
+    cases = list(product(inputs_lists, repeat=n_inputs))
+
+    for case in cases:
+        _assert_single_numeric_simulation(
+            NumericCircuitCase(simulator, operations, _flatten(case)), bit_width=n_bits
+        )

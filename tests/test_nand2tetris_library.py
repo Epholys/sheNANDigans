@@ -160,24 +160,13 @@ class TestLibrary:
         # 2 ** 32 is too much for this hilariously not optimized python simulation.
         # So no 'assert_all_numeric_simulations()'
 
-        def two_complements(bits: Sequence[bool]) -> int:
-            print(bits)
-            is_negative = bits[0]
-            print(is_negative)
-            if not is_negative:
-                print(bools_to_int(bits[1:]))
-                return bools_to_int(bits[1:])
-            flipped = list(map(operator.not_, bits[1:]))
-            print(flipped)
-            print(-(bools_to_int(flipped) + 1))
-            return -(bools_to_int(flipped) + 1)
+        def bools_to_n_ints(bits: Sequence[bool], n: int) -> list[int]:
+            bools_numbers = list(batched(bits, n))
+            return [bools_to_int(b) for b in bools_numbers]
 
         def truncated_sum(numbers: list[int], n_bits: int):
             sum_ = sum(numbers)
-            print(sum_)
-            lower_bound = -(2 ** (n_bits - 1))
-            upper_bound = (2**n_bits - 1) - 1
-            return min(upper_bound, max(lower_bound, sum_))
+            return sum_ % (1 << n_bits)
 
         assert_partial_numeric_simulation(
             add16,
@@ -185,9 +174,7 @@ class TestLibrary:
             n_outputs,
             n_bits,
             NumericOperations(
-                inputs_to_numbers=lambda bools: [
-                    two_complements(number) for number in batched(bools, n_bits)
-                ],
+                inputs_to_numbers=partial(bools_to_n_ints, n=n_bits),
                 number_to_outputs=int_to_bools(n_bits),
                 operation=partial(truncated_sum, n_bits=n_bits),
             ),

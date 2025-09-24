@@ -40,9 +40,7 @@ class NumericOperations:
         versa for the outputs.
         """
         input_numbers = self.inputs_to_numbers(list(tested_inputs))
-        print(input_numbers)
         operation_result = self.operation(input_numbers)
-        print(operation_result)
         expected_outputs = self.number_to_outputs(operation_result)
         return expected_outputs
 

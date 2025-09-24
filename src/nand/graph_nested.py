@@ -479,22 +479,21 @@ if __name__ == "__main__":
         # (default_round_trip, "default_round_trip"),
         # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        for idx in range(len(reference)):
-            circuit = reference.get_circuit_from_idx(idx)
-            try:
-                graph = generate_graph(
-                    circuit,
-                    GraphOptions(
-                        is_compact=True,
-                        is_aligned=True,
-                        bold_io=True,
-                        max_depth=-1,
-                        try_hard=True,
-                    ),
-                )
-                output_file = save_graph(
-                    graph, f"{circuit.name}_{construction_type}_hack", "svg"
-                )
-                print(f"Nested graph saved to {output_file}")
-            except Exception as e:
-                print(f"Error building viz of circuit: {circuit.name}\n{e}")
+        circuit = reference.get_circuit("Add16")
+        try:
+            graph = generate_graph(
+                circuit,
+                GraphOptions(
+                    is_compact=True,
+                    is_aligned=True,
+                    bold_io=True,
+                    max_depth=1,
+                    try_hard=True,
+                ),
+            )
+            output_file = save_graph(
+                graph, f"{circuit.name}_{construction_type}_hack", "svg"
+            )
+            print(f"Nested graph saved to {output_file}")
+        except Exception as e:
+            print(f"Error building viz of circuit: {circuit.name}\n{e}")

@@ -228,9 +228,9 @@ class HackALUBuilder(CircuitBuilder):
                 for i in range(16):
                     mux4way16.connect_input(f"{src}_{i}", mux, f"{dest}_{i}")
 
-        mux4way16.connect_input("SEL_1", "Mux16_OUT", "SEL")
         mux4way16.connect_input("SEL_0", "Mux16_AB", "SEL")
         mux4way16.connect_input("SEL_0", "Mux16_CD", "SEL")
+        mux4way16.connect_input("SEL_1", "Mux16_OUT", "SEL")
 
         for i in range(16):
             mux4way16.connect("Mux16_AB", f"OUT_{i}", "Mux16_OUT", f"A_{i}")
@@ -263,11 +263,11 @@ class HackALUBuilder(CircuitBuilder):
                 for i in range(16):
                     mux8way16.connect_input(f"{src}_{i}", mux, f"{dest}_{i}")
 
-        mux8way16.connect_input("SEL_2", "Mux16_OUT", "SEL")
-        mux8way16.connect_input("SEL_1", "Mux4Way16_ABCD", "SEL_1")
         mux8way16.connect_input("SEL_0", "Mux4Way16_ABCD", "SEL_0")
-        mux8way16.connect_input("SEL_1", "Mux4Way16_EFGH", "SEL_1")
+        mux8way16.connect_input("SEL_1", "Mux4Way16_ABCD", "SEL_1")
         mux8way16.connect_input("SEL_0", "Mux4Way16_EFGH", "SEL_0")
+        mux8way16.connect_input("SEL_1", "Mux4Way16_EFGH", "SEL_1")
+        mux8way16.connect_input("SEL_2", "Mux16_OUT", "SEL")
 
         for i in range(16):
             mux8way16.connect("Mux4Way16_ABCD", f"OUT_{i}", "Mux16_OUT", f"A_{i}")
@@ -286,9 +286,9 @@ class HackALUBuilder(CircuitBuilder):
         dmux4way.add_component("DMux_CD", self.library.get_circuit("DMux"))
 
         dmux4way.connect_input("IN", "DMux_SEL", "IN")
-        dmux4way.connect_input("SEL_1", "DMux_SEL", "SEL")
         dmux4way.connect_input("SEL_0", "DMux_AB", "SEL")
         dmux4way.connect_input("SEL_0", "DMux_CD", "SEL")
+        dmux4way.connect_input("SEL_1", "DMux_SEL", "SEL")
 
         dmux4way.connect("DMux_SEL", "A", "DMux_AB", "IN")
         dmux4way.connect("DMux_SEL", "A", "DMux_AB", "IN")
@@ -310,11 +310,11 @@ class HackALUBuilder(CircuitBuilder):
         dmux8way.add_component("DMux_EFGH", self.library.get_circuit("DMux4Way"))
 
         dmux8way.connect_input("IN", "DMux_SEL", "IN")
-        dmux8way.connect_input("SEL_2", "DMux_SEL", "SEL")
-        dmux8way.connect_input("SEL_1", "DMux_ABCD", "SEL_1")
-        dmux8way.connect_input("SEL_1", "DMux_EFGH", "SEL_1")
         dmux8way.connect_input("SEL_0", "DMux_ABCD", "SEL_0")
         dmux8way.connect_input("SEL_0", "DMux_EFGH", "SEL_0")
+        dmux8way.connect_input("SEL_1", "DMux_ABCD", "SEL_1")
+        dmux8way.connect_input("SEL_1", "DMux_EFGH", "SEL_1")
+        dmux8way.connect_input("SEL_2", "DMux_SEL", "SEL")
 
         dmux8way.connect("DMux_SEL", "A", "DMux_ABCD", "IN")
         dmux8way.connect("DMux_SEL", "A", "DMux_ABCD", "IN")

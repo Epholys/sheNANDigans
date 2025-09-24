@@ -4,7 +4,6 @@ import operator
 from typing import Sequence
 import pytest
 
-from nand.bits_utils import bits2int
 from tests.common_numeric_assertions import (
     assert_all_numeric_simulations,
     assert_partial_numeric_simulation,

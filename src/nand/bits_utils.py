@@ -9,7 +9,7 @@ def read_bits(data: List[int], n: int) -> int:
             f"to form an integer with {n} requested bits."
         )
     bits = [data.pop(0) for _ in range(n)]
-    return sum(bit << i for i, bit in enumerate(reversed(bits)))
+    return sum(bit << i for i, bit in enumerate(bits))
 
 
 def read_bits_with_offset(data: List[int], n: int) -> int:
@@ -44,7 +44,7 @@ def int2bitlist(n: int, bit_size: int):
     if n >= (1 << bit_size):
         raise ValueError(f"Integer {n} requires more than {bit_size} bits to represent")
 
-    return [(n >> i) & 1 for i in range(bit_size - 1, -1, -1)]
+    return [(n >> i) & 1 for i in range(bit_size)]
 
 
 def int2bitlist_with_offset(n: int, bit_size: int):

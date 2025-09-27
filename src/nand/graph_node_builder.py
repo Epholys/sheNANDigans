@@ -85,6 +85,8 @@ class NodeBuilder:
             )
         )
 
+    # TODO ZERO AND ONE gates
+
     def create_circuit_node(
         self, graph: pydot.Graph, circuit: Circuit, key: str
     ) -> None:

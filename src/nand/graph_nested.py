@@ -264,7 +264,9 @@ class NestedGraphBuilder:
         components = context.circuit.components
 
         # Case 1: We're at a NAND gate leaf node and not using compact representation
-        if len(components) == 0 and not self.options.is_compact:
+        if (
+            len(components) == 0 and not self.options.is_compact
+        ):  # TODO ZERO AND ONE gates
             self._build_nand_circuit(context)
             return
 
@@ -312,6 +314,7 @@ class NestedGraphBuilder:
         # Create appropriate node based on circuit type
         if circuit.identifier == 0:  # NAND gate
             self.node_builder.create_nand_node(context.graph, key)
+        # TODO ZERO AND ONE gates
         else:  # Other circuit types
             self.node_builder.create_circuit_node(context.graph, circuit, key)
 

@@ -283,8 +283,8 @@ class BitPackedEncoder(CircuitEncoder):
 
         'provenance' is an optimization trick. It allows for a specific input source
         (circuit input or component output) to be referred in only one bit. It works
-        empirically if we consider that usually the number of inputs is greater than the
-        number of input of any of its component.
+        empirically if we consider that usually the number of inputs for a circuit is
+        greater than the number of input of any of its component.
 
         Note that there's a dual of provenance for the output, where we would encode the
         wiring "in reverse", starting from the outputs. This method will save bits only
@@ -293,6 +293,7 @@ class BitPackedEncoder(CircuitEncoder):
         """
         circuit_input = [wire.id for wire in circuit.inputs.values()]
 
+        # TODO "input" -> "wire"
         for input in component.inputs.values():
             if input.id in circuit_input:
                 self.int_encoding.append((0, 1))

@@ -81,7 +81,7 @@ def _explore_circuit_recursive(
     # Process all components in this circuit
     for component_name, component in circuit.components.items():
         node_id = f"{prefix}_{component_name}"
-        if component.identifier == 0:  # NAND gate
+        if component.identifier == 0:  # NAND gate TODO ZERO AND ONE gates
             all_nands.append((node_id, component))
             node_builder.create_nand_node(current_graph, node_id)
         else:

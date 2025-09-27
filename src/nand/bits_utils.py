@@ -1,5 +1,7 @@
 from typing import List
 
+# TODO merge with numeric_operations
+
 
 def read_bits(data: List[int], n: int) -> int:
     """Convert the first n bits from a list (integer of value 0 or 1) to an integer."""

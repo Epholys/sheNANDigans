@@ -31,9 +31,9 @@ class SimulatorFast(Simulator):
         Returns:
             bool: systematically True: there's no check of simulation failure.
         """
-        # Base case: the circuit is a NAND gate.
-        if circuit.identifier == 0:
-            self._simulate_nand(circuit)
+        # Base case: the circuit is a core gate.
+        if self._is_core_gate(circuit):
+            self._simulate_core_gate(circuit)
             return True
 
         # The components are supposed to be in topological order, so a simple

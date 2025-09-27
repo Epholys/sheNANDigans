@@ -41,9 +41,13 @@ class DefaultEncoder(CircuitEncoder):
         self.library: CircuitDict = library.get_all_circuits()
         self.encoding: List[int] = []
         for circuit in self.library.values():
-            if circuit.identifier == 0:
-                continue
+            # Core circuits are not encoded.
+            match circuit.identifier:
+                case 0 | 1 | 2:
+                    continue
+
             self._encode_circuit(circuit)
+
         bit_encoding = bitarray()
         for i in self.encoding:
             bit_encoding.frombytes(i.to_bytes(1))

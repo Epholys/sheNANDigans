@@ -33,8 +33,8 @@ class BitPackedDecoder(CircuitDecoder):
 
     def __init__(self):
         self.library = CircuitLibrary()
-        self.library.add_circuit(self._build_nand())
-        self.idx = 0
+        self._build_core_gates(self.library)
+        self.idx = 3  # Start after core gates
 
     def decode(self, data: bitarray) -> CircuitLibrary:
         """Decode the data into circuits."""
@@ -43,13 +43,13 @@ class BitPackedDecoder(CircuitDecoder):
         self._decode_global_header()
         while len(self.data) > 0:
             # The index is used as the identifier of the circuit
-            self.idx += 1
             # The current circuit being decoded
             self.circuit = DecodedCircuit(self.idx)
             self._decode_circuit()
             self.circuit.apply_inputs()
             self.circuit.apply_connections()
             self.library.add_circuit(self.circuit)
+            self.idx += 1
         return self.library
 
     def _decode_global_header(self):

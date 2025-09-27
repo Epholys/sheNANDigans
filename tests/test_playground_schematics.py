@@ -14,6 +14,23 @@ from tests.simulators_factory import Project, build_simulators_cases
 from tests.common_numeric_assertions import assert_all_numeric_simulations
 
 
+_mapping = {
+    "NAND": 0,
+    "ZERO": 1,
+    "ONE": 2,
+    "NOT": 3,
+    "AND": 4,
+    "OR": 5,
+    "NOR": 6,
+    "XOR": 7,
+    "HALF_ADDER": 8,
+    "FULL_ADDER": 9,
+    "2BITS_ADDER": 10,
+    "4BITS_ADDER": 11,
+    "8BITS_ADDER": 12,
+}
+
+
 @pytest.mark.parametrize(
     "simulators",
     build_simulators_cases(Project.PLAYGROUND),
@@ -33,11 +50,27 @@ class TestPlaygroundLibrary:
     """
 
     def test_nand(self, simulators):
-        nand = simulators[0]
+        nand = simulators[_mapping["NAND"]]
         assert_basic_gate(nand, lambda a, b: not (a and b))
 
+    def test_zero(self, simulators):
+        zero = simulators[_mapping["ZERO"]]
+
+        result = zero.simulate([])
+        if not result:
+            assert False, "Simulation Failed"
+        assert result == [False]
+
+    def test_one(self, simulators):
+        one = simulators[_mapping["ONE"]]
+
+        result = one.simulate([])
+        if not result:
+            assert False, "Simulation Failed"
+        assert result == [True]
+
     def test_not(self, simulators):
-        not_ = simulators[1]
+        not_ = simulators[_mapping["NOT"]]
 
         for a in [True, False]:
             result = not_.simulate([a])
@@ -46,23 +79,23 @@ class TestPlaygroundLibrary:
             assert result == [not a]
 
     def test_and(self, simulators):
-        and_ = simulators[2]
+        and_ = simulators[_mapping["AND"]]
         assert_basic_gate(and_, lambda a, b: a and b)
 
     def test_or(self, simulators):
-        or_ = simulators[3]
+        or_ = simulators[_mapping["OR"]]
         assert_basic_gate(or_, lambda a, b: a or b)
 
     def test_nor(self, simulators):
-        nor = simulators[4]
+        nor = simulators[_mapping["NOR"]]
         assert_basic_gate(nor, lambda a, b: not (a or b))
 
     def test_xor(self, simulators):
-        xor = simulators[5]
+        xor = simulators[_mapping["XOR"]]
         assert_basic_gate(xor, lambda a, b: a ^ b)
 
     def test_half_adder(self, simulators):
-        half_adder = simulators[6]
+        half_adder = simulators[_mapping["HALF_ADDER"]]
 
         # Inputs : a, b
         # Operation : a + b
@@ -86,7 +119,7 @@ class TestPlaygroundLibrary:
         )
 
     def test_full_adder(self, simulators):
-        full_adder = simulators[7]
+        full_adder = simulators[_mapping["FULL_ADDER"]]
 
         # Inputs : a, b, cin
         # Operation : a + b + cin
@@ -112,7 +145,7 @@ class TestPlaygroundLibrary:
         )
 
     def test_2bits_adder(self, simulators):
-        two_bits_adder = simulators[8]
+        two_bits_adder = simulators[_mapping["2BITS_ADDER"]]
 
         # Inputs : a0, b0, c0, a1, b1
         # Outputs: s0, s1, cout
@@ -157,7 +190,7 @@ class TestPlaygroundLibrary:
         )
 
     def test_4bits_adder(self, simulators):
-        four_bits_adder = simulators[9]
+        four_bits_adder = simulators[_mapping["4BITS_ADDER"]]
 
         # Inputs : a0, b0, c0, a1, b1, a2, b2, a3, b3
         # Outputs: s0, s1, s2, s3, cout
@@ -222,7 +255,7 @@ class TestPlaygroundLibrary:
 
     @pytest.mark.slow
     def test_8bits_adder(self, simulators):
-        eight_bits_adder = simulators[10]
+        eight_bits_adder = simulators[_mapping["8BITS_ADDER"]]
 
         # See other adders
 

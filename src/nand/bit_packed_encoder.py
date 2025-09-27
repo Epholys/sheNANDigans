@@ -96,8 +96,11 @@ class BitPackedEncoder(CircuitEncoder):
 
         # Core encoding
         for circuit in self.library.values():
-            if circuit.identifier == 0:
-                continue
+            # Core circuits are not encoded.
+            match circuit.identifier:
+                case 0 | 1 | 2:
+                    continue
+
             self._encode_circuit(circuit)
 
         # Compute the number of bits necessary to encode the number of circuits,

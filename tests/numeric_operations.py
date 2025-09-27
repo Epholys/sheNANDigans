@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, List, Sequence, Tuple
+from typing import Callable, List, Sequence
 
 
 class NumericOperations:

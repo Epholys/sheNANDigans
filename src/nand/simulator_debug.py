@@ -34,9 +34,10 @@ class SimulatorDebug(Simulator):
         if not self._can_simulate(circuit):
             return False
 
-        # Base case: the circuit is a NAND gate.
-        if circuit.identifier == 0:
-            return self._simulate_nand(circuit)
+        # Base case: the circuit is a core gate.
+        if self._is_core_gate(circuit):
+            self._simulate_core_gate(circuit)
+            return True
 
         # Simulate all components.
         # We use a "light" brute-force approach by repeatedly trying to simulate

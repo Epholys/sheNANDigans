@@ -31,6 +31,7 @@ class HackALUBuilder(CircuitBuilder):
         self.add_half_adder()
         self.add_full_adder()
         self.add_add16()
+        self.add_inc16()
         return self.library
 
     def add_not(self):
@@ -388,3 +389,22 @@ class HackALUBuilder(CircuitBuilder):
             add16.connect_output(f"Adder_{i}", "Sum", f"Sum_{i}")
 
         self.library.add_circuit(add16)
+
+    def add_inc16(self):
+        inc16 = Circuit("Inc16")
+
+        inc16.add_component("Add16", self.library.get_circuit("Add16"))
+        inc16.add_component("ZERO", self.library.get_circuit_from_idx(1))
+        inc16.add_component("ONE", self.library.get_circuit_from_idx(2))
+
+        for i in range(16):
+            inc16.connect_input(f"IN_{i}", "Add16", f"A_{i}")
+
+        inc16.connect("ONE", "OUT", "Add16", "B_0")
+        for i in range(1, 16):
+            inc16.connect("ZERO", "OUT", "Add16", f"B_{i}")
+
+        for i in range(16):
+            inc16.connect_output("Add16", f"Sum_{i}", f"OUT_{i}")
+
+        self.library.add_circuit(inc16)

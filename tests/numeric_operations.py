@@ -11,7 +11,7 @@ class NumericOperations:
 
     def __init__(
         self,
-        inputs_to_numbers: Callable[[List[bool]], List[int]],
+        inputs_to_numbers: Callable[[Sequence[bool]], List[int]],
         number_to_outputs: Callable[[int], List[bool]],
         operation: Callable[[List[int]], int],
     ):

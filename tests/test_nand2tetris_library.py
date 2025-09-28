@@ -41,6 +41,7 @@ _mapping = {
     "HALF_ADDER": 18,
     "FULL_ADDER": 19,
     "ADD16": 20,
+    "INC16": 21,
 }
 
 
@@ -218,5 +219,28 @@ class TestLibrary:
                 inputs_to_numbers=partial(bools_to_n_ints, n=n_bits),
                 number_to_outputs=int_to_bools(n_bits),
                 operation=partial(truncated_sum, n_bits=n_bits),
+            ),
+        )
+
+    def test_inc16(self, simulators):
+        inc16 = simulators[_mapping["INC16"]]
+
+        n_inputs = 1
+        n_outputs = 1
+        n_bits = 16
+
+        def truncated_increment(numbers: list[int], n_bits: int):
+            incremented = numbers[0] + 1
+            return incremented % (1 << n_bits)
+
+        assert_partial_numeric_simulation(
+            inc16,
+            n_inputs,
+            n_outputs,
+            n_bits,
+            NumericOperations(
+                inputs_to_numbers=lambda bools: [bools_to_int(bools)],
+                number_to_outputs=int_to_bools(n_bits),
+                operation=partial(truncated_increment, n_bits=n_bits),
             ),
         )

@@ -38,6 +38,9 @@ class CircuitLibrary:
             raise ValueError(f"Circuit of index {idx} does not exist") from e
         return deepcopy(circuit)
 
+    # TODO : core circuit getter?
+    # In general, how to avoid using raw identifiers for core circuits?
+
     def clear(self):
         self._circuits.clear()
 

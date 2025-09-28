@@ -58,3 +58,6 @@ def int2bitlist_with_offset(n: int, bit_size: int):
     See 'BitPackedEncoder' for rational.
     """
     return int2bitlist(n - 1, bit_size)
+
+
+# TODO : int bits ←→ bool ints ←→ 01 strs

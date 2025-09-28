@@ -18,6 +18,9 @@ ancient golems ChatGPT and Claude, whose artificial spirit is as murky as the
 digital clay they were built of.
 """
 
+# TODO: rewrite using networkx?
+# TODO: merge n-bits number inputs/outputs into single nodes
+
 
 def _try_hard(graph: pydot.Graph):
     """Try hard to make a readable graph."""

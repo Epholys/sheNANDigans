@@ -42,6 +42,8 @@ _mapping = {
     "FULL_ADDER": 19,
     "ADD16": 20,
     "INC16": 21,
+    "ZERO16": 22,
+    "ONE16": 23,
 }
 
 
@@ -244,3 +246,23 @@ class TestLibrary:
                 operation=partial(truncated_increment, n_bits=n_bits),
             ),
         )
+
+    def test_zero16(self, simulators):
+        zero16 = simulators[_mapping["ZERO16"]]
+
+        result = zero16.simulate([])
+
+        if not result:
+            assert False, "Simulation Failed"
+
+        assert result == [False] * 16
+
+    def test_one16(self, simulators):
+        zero16 = simulators[_mapping["ONE16"]]
+
+        result = zero16.simulate([])
+
+        if not result:
+            assert False, "Simulation Failed"
+
+        assert result == [True] * 16

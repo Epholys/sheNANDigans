@@ -57,6 +57,7 @@ def int2bitlist_with_offset(n: int, bit_size: int):
 
     See 'BitPackedEncoder' for rational.
     """
+    n = max(1, n)
     return int2bitlist(n - 1, bit_size)
 
 

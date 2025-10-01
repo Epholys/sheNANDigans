@@ -187,13 +187,13 @@ class Circuit:
 
         if source_output_id not in source.outputs:
             raise ValueError(
-                f"The source component {source_id}"
+                f"The source component {source_id} "
                 f"does not have output wire {source_output_id}."
             )
 
         if target_input_id not in target.inputs:
             raise ValueError(
-                f"The source component {target_id}"
+                f"The source component {target_id} "
                 f"does not have input wire {target_input_id}."
             )
 

@@ -34,6 +34,7 @@ class HackALUBuilder(CircuitBuilder):
         self.add_inc16()
         self.add_zero16()
         self.add_one16()
+        self.add_alu()
         return self.library
 
     def add_not(self):
@@ -430,3 +431,64 @@ class HackALUBuilder(CircuitBuilder):
             one16.connect_output("ONE", "OUT", f"OUT_{i}")
 
         self.library.add_circuit(one16)
+
+    def add_alu(self):
+        alu = Circuit("ALU")
+
+        # TODO x-y & y-x inversé ?
+
+        alu.add_component("Zero16", self.library.get_circuit("Zero16"))
+        alu.add_component("One16", self.library.get_circuit("One16"))
+        alu.add_component("Not16X", self.library.get_circuit("NOT16"))
+        alu.add_component("Not16Y", self.library.get_circuit("NOT16"))
+        alu.add_component("MuxX", self.library.get_circuit("Mux4Way16"))
+        alu.add_component("MuxY", self.library.get_circuit("Mux4Way16"))
+        alu.add_component("Add16", self.library.get_circuit("Add16"))
+        alu.add_component("And16", self.library.get_circuit("AND16"))
+        alu.add_component("MuxF", self.library.get_circuit("Mux16"))
+        alu.add_component("NotOut", self.library.get_circuit("NOT16"))
+        alu.add_component("MuxOut", self.library.get_circuit("Mux16"))
+
+
+        for i in range(16):
+            alu.connect_input(f"X_{i}", "Not16X", f"IN_{i}")
+            alu.connect_input(f"X_{i}", "MuxX", f"A_{i}")
+        for i in range(16):
+            alu.connect_input(f"Y_{i}", "Not16Y", f"IN_{i}")
+            alu.connect_input(f"Y_{i}", "MuxY", f"A_{i}")
+        alu.connect_input("ZX", "MuxX", "SEL_1")
+        alu.connect_input("NX", "MuxX", "SEL_0")
+        alu.connect_input("ZY", "MuxY", "SEL_1")
+        alu.connect_input("NY", "MuxY", "SEL_0")
+        alu.connect_input("F", "MuxF", "SEL")
+        alu.connect_input("NO", "MuxOut", "SEL")
+
+        for i in range(16):
+            alu.connect("Not16X", f"OUT_{i}", "MuxX", f"B_{i}")
+            alu.connect("Zero16", f"OUT_{i}", "MuxX", f"C_{i}")
+            alu.connect("One16", f"OUT_{i}", "MuxX", f"D_{i}")
+
+            alu.connect("Not16Y", f"OUT_{i}", "MuxY", f"B_{i}")
+            alu.connect("Zero16", f"OUT_{i}", "MuxY", f"C_{i}")
+            alu.connect("One16", f"OUT_{i}", "MuxY", f"D_{i}")
+
+            alu.connect("MuxX", f"OUT_{i}", "Add16", f"A_{i}")
+            alu.connect("MuxY", f"OUT_{i}", "Add16", f"B_{i}")
+
+            alu.connect("MuxX", f"OUT_{i}", "And16", f"A_{i}")
+            alu.connect("MuxY", f"OUT_{i}", "And16", f"B_{i}")
+
+            alu.connect("And16", f"OUT_{i}", "MuxF", f"A_{i}")
+            alu.connect("Add16", f"Sum_{i}", "MuxF", f"B_{i}")
+
+            alu.connect("MuxF", f"OUT_{i}", "MuxOut", f"A_{i}")
+
+            alu.connect("MuxF", f"OUT_{i}", "NotOut", f"IN_{i}")
+            alu.connect("NotOut", f"OUT_{i}", "MuxOut", f"B_{i}")
+
+        for i in range(16):
+            alu.connect_output("MuxOut", f"OUT_{i}", f"OUT_{i}")
+
+
+
+        self.library.add_circuit(alu)

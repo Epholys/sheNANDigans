@@ -7,6 +7,7 @@ from tests.simulators_factory import (
 )
 
 
+# TODO double check, I don't really understand fixtures.
 @pytest.fixture(scope="session")
 def simulators_factory():
     """Fixture to create a memoized SimulatorsFactory instance."""

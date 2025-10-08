@@ -20,7 +20,6 @@ class SimulatorSpecs:
     project: Project
     optimization_level: OptimizationLevel
 
-
 def build_simulators_cases(project: Project):
     """Build the parameters for the tests.
 
@@ -37,6 +36,7 @@ def build_simulators_cases(project: Project):
         BuildProcess, EncoderAlgorithm, OptimizationLevel
     ):
         mark_debug = pytest.mark.debug if opt is OptimizationLevel.DEBUG else None
+            # TODO : reference : REFERENCE ENCODING + NOT ANY ENCODING + broken ?
         mark_reference = (
             pytest.mark.reference if process is BuildProcess.REFERENCE else None
         )

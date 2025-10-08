@@ -6,6 +6,9 @@
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
+# PyCharm
+.idea/
+
 # Personal Documents
 scratchpad*.*md
 

@@ -34,16 +34,18 @@ _mapping = {
     "OR16": 11,
     "MUX16": 12,
     "OR8WAY": 13,
-    "MUX4WAY16": 14,
-    "MUX8WAY16": 15,
-    "DMUX4WAY": 16,
-    "DMUX8WAY": 17,
-    "HALF_ADDER": 18,
-    "FULL_ADDER": 19,
-    "ADD16": 20,
-    "INC16": 21,
-    "ZERO16": 22,
-    "ONE16": 23,
+    "OR16WAY": 14,
+    "MUX4WAY16": 15,
+    "MUX8WAY16": 16,
+    "DMUX4WAY": 17,
+    "DMUX8WAY": 18,
+    "HALF_ADDER": 19,
+    "FULL_ADDER": 20,
+    "ADD16": 21,
+    "INC16": 22,
+    "ZERO16": 23,
+    "ONE16": 24,
+    "ALU": 25,
 }
 
 
@@ -53,7 +55,7 @@ _mapping = {
     indirect=["simulators"],
     ids=parameter_ids,
 )
-class TestLibrary:
+class TestNand2TetrisLibrary:
     # TODO: extract core gates tests in a common test file
     def test_nand(self, simulators):
         nand = simulators[_mapping["NAND"]]
@@ -145,6 +147,10 @@ class TestLibrary:
     def test_or8way(self, simulators):
         or8 = simulators[_mapping["OR8WAY"]]
         assert_n_way_gate(or8, operator.or_, n_way=8)
+
+    def test_or16way(self, simulators):
+        or16 = simulators[_mapping["OR16WAY"]]
+        assert_n_way_gate(or16, operator.or_, n_way=16)
 
     def test_mux4way16(self, simulators):
         mux4way16 = simulators[_mapping["MUX4WAY16"]]

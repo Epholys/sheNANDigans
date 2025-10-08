@@ -24,6 +24,7 @@ class HackALUBuilder(CircuitBuilder):
         self.add_or16()
         self.add_mux16()
         self.add_or8way()
+        self.add_or16way()
         self.add_mux4way16()
         self.add_mux8way16()
         self.add_dmux4way()
@@ -213,6 +214,25 @@ class HackALUBuilder(CircuitBuilder):
         or8way.connect_output("OR_6", "OUT", "OUT")
 
         self.library.add_circuit(or8way)
+
+    def add_or16way(self):
+        or16way = Circuit("OR16Way")
+
+        or16way.add_component("OR8_0", self.library.get_circuit("OR8Way"))
+        or16way.add_component("OR8_1", self.library.get_circuit("OR8Way"))
+        or16way.add_component("OR", self.library.get_circuit("OR"))
+
+        for i in range(8):
+            or16way.connect_input(f"IN_{i}", "OR8_0", f"IN_{i}")
+        for i in range(8, 16):
+            or16way.connect_input(f"IN_{i}", "OR8_1", f"IN_{i - 8}")
+
+        or16way.connect("OR8_0", "OUT", "OR", "A")
+        or16way.connect("OR8_1", "OUT", "OR", "B")
+
+        or16way.connect_output("OR", "OUT", "OUT")
+
+        self.library.add_circuit(or16way)
 
     def add_mux4way16(self):
         mux4way16 = Circuit("Mux4Way16")
@@ -435,8 +455,6 @@ class HackALUBuilder(CircuitBuilder):
     def add_alu(self):
         alu = Circuit("ALU")
 
-        # TODO x-y & y-x inversé ?
-
         alu.add_component("Zero16", self.library.get_circuit("Zero16"))
         alu.add_component("One16", self.library.get_circuit("One16"))
         alu.add_component("Not16X", self.library.get_circuit("NOT16"))
@@ -448,7 +466,8 @@ class HackALUBuilder(CircuitBuilder):
         alu.add_component("MuxF", self.library.get_circuit("Mux16"))
         alu.add_component("NotOut", self.library.get_circuit("NOT16"))
         alu.add_component("MuxOut", self.library.get_circuit("Mux16"))
-
+        alu.add_component("OR16Way", self.library.get_circuit("OR16Way"))
+        alu.add_component("NOT", self.library.get_circuit("NOT"))
 
         for i in range(16):
             alu.connect_input(f"X_{i}", "Not16X", f"IN_{i}")
@@ -486,9 +505,13 @@ class HackALUBuilder(CircuitBuilder):
             alu.connect("MuxF", f"OUT_{i}", "NotOut", f"IN_{i}")
             alu.connect("NotOut", f"OUT_{i}", "MuxOut", f"B_{i}")
 
+            alu.connect("MuxOut", f"OUT_{i}", "OR16Way", f"IN_{i}")
+            alu.connect("OR16Way", "OUT", "NOT", "IN")
+
         for i in range(16):
             alu.connect_output("MuxOut", f"OUT_{i}", f"OUT_{i}")
-
+        alu.connect_output("NOT", "OUT", "ZR")
+        alu.connect_output("MuxOut", "OUT_15", "NG")
 
 
         self.library.add_circuit(alu)

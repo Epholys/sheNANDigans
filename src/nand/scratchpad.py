@@ -23,8 +23,8 @@ def build_half_adder(library):
     half_adder.connect_input("A", "AND", "A")
     half_adder.connect_input("B", "AND", "B")
 
-    half_adder.connect_output("CARRY", "AND", "OUT")
-    half_adder.connect_output("SUM", "XOR", "OUT")
+    half_adder.connect_output("AND", "OUT", "CARRY")
+    half_adder.connect_output("XOR", "OUT", "SUM")
 
     return half_adder
 

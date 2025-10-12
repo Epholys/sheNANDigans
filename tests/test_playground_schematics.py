@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Sequence
 
 import pytest
 from tests.parameters_enums import parameter_ids
@@ -102,7 +102,7 @@ class TestPlaygroundLibrary:
         # Output : sum, carry
         # Ex: a=1, b=0 / 1 + 0 = 2 = 0b01 / sum:1, carry:0
 
-        def inputs_to_numbers(inputs: List[bool]):
+        def inputs_to_numbers(inputs: Sequence[bool]):
             assert len(inputs) == 2
             return [+(b) for b in inputs]
 
@@ -129,7 +129,7 @@ class TestPlaygroundLibrary:
         n_inputs = 3
         n_outputs = 2
 
-        def inputs_to_numbers(inputs: List[bool]):
+        def inputs_to_numbers(inputs: Sequence[bool]):
             assert len(inputs) == n_inputs
             return [+(b) for b in inputs]
 
@@ -162,7 +162,7 @@ class TestPlaygroundLibrary:
         n_inputs = 5
         n_outputs = 3
 
-        def inputs_to_numbers(inputs: List[bool]):
+        def inputs_to_numbers(inputs: Sequence[bool]):
             assert len(inputs) == n_inputs
 
             # a0 a1
@@ -207,7 +207,7 @@ class TestPlaygroundLibrary:
         n_inputs = 9
         n_outputs = 5
 
-        def inputs_to_numbers(inputs: List[bool]):
+        def inputs_to_numbers(inputs: Sequence[bool]):
             assert len(inputs) == n_inputs
 
             # a0 a1 a2 a3
@@ -235,7 +235,7 @@ class TestPlaygroundLibrary:
         )
 
     @staticmethod
-    def eight_bits_inputs_to_numbers(inputs: List[bool]):
+    def eight_bits_inputs_to_numbers(inputs: Sequence[bool]):
         # interleaved and c0 : a0 b0 c0 a1 b1 ... a7 b7
 
         # a0 ... a7

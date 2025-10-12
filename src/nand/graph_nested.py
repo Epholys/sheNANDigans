@@ -1,3 +1,5 @@
+import typing
+
 import pydot
 from typing import Dict, Optional, Tuple
 from nand.circuit import (
@@ -14,14 +16,14 @@ from nand.nand2tetris_hack_alu import HackALUBuilder
 
 """
 Abandon all hope, ye who enter here, for these sigils were partly inscribed by the
-ancient golems ChatGPT and Claude, whose artificial spirit is as murky as the
+golems ChatGPT and Claude, whose artificial spirit is as murky as the
 digital clay they were built of.
 """
 
 # TODO: rewrite using networkx?
 # TODO: merge n-bits number inputs/outputs into single nodes
 
-
+@typing.no_type_check
 def _try_hard(graph: pydot.Graph):
     """Try hard to make a readable graph."""
     # --- Global spacing ---
@@ -138,7 +140,7 @@ class CircuitBuildContext:
     def add_subgraph_to_parent(self) -> None:
         """Add this context's graph to its parent graph."""
         if self.parent_context and self.graph != self.parent_context.graph:
-            self.parent_context.graph.add_subgraph(self.graph)
+            self.parent_context.graph.add_subgraph(self.graph) # type: ignore
 
 
 class NestedGraphBuilder:
@@ -295,7 +297,7 @@ class NestedGraphBuilder:
     def _build_nand_circuit(self, context: CircuitBuildContext) -> None:
         """Build a NAND gate circuit with connections between ports."""
         key = f"{context.prefix}_nand"
-        self.node_builder.create_nand_node(context.graph, key)
+        self.node_builder.create_nand_node(context.graph, key)  #
 
         # Connect the NAND gate to its ports
         ports = list(context.port_nodes.values())
@@ -485,13 +487,13 @@ if __name__ == "__main__":
         # (default_round_trip, "default_round_trip"),
         # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        circuit = reference.get_circuit("Add16")
+        circuit = reference.get_circuit("ALU")
         try:
             graph = generate_graph(
                 circuit,
                 GraphOptions(
                     is_compact=True,
-                    is_aligned=True,
+                    is_aligned=False,
                     bold_io=True,
                     max_depth=1,
                     try_hard=True,

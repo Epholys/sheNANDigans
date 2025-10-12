@@ -1,3 +1,5 @@
+import typing
+
 import pydot
 from nand.circuit import Circuit
 from typing import List, Tuple, Literal
@@ -7,7 +9,7 @@ from nand.nand2tetris_hack_alu import HackALUBuilder
 
 """
 Abandon all hope, ye who enter here, for these sigils were partly inscribed by the
-ancient golems ChatGPT and Claude, whose artificial spirit is as murky as the
+golems ChatGPT and Claude, whose artificial spirit is as murky as the
 digital clay they were built of.
 """
 
@@ -22,7 +24,8 @@ type AllConnections = Tuple[
 type NandCollection = List[Tuple[str, Circuit]]
 
 
-def _try_hard(graph: pydot.Graph):
+@typing.no_type_check
+def _try_hard(graph: pydot.Graph): 
     """Try hard to make a readable graph."""
     # --- Global spacing ---
     graph.set_nodesep("1.0")  # default ~0.25 → spread siblings apart
@@ -74,7 +77,7 @@ def _explore_circuit_recursive(
         )
         if options.try_hard:
             _try_hard(current_graph)
-        parent_graph.add_subgraph(current_graph)
+        parent_graph.add_subgraph(current_graph) # type: ignore
 
     all_nands: NandCollection = []
 
@@ -286,19 +289,14 @@ if __name__ == "__main__":
         # (default_round_trip, "default_round_trip"),
         # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        for idx in range(len(library)):
-            if idx == 13:
-                continue
-            try:
-                circuit = library.get_circuit_from_idx(idx)
-                graph_builder = FlattenedGraphBuilder(
-                    circuit,
-                    GraphOptions(is_nested=False, is_aligned=True, bold_io=True),
-                )
-                graph = graph_builder.generate_graph()
-                output_file = save_graph(
-                    graph, f"{circuit.name}_flattened_circuit", "svg"
-                )
-                print(f"Flattened graph saved to {output_file}")
-            except Exception as e:
-                print(f"Error visualizing circuit: {e}")
+        try:
+            circuit = library.get_circuit("ALU")
+            graph_builder = FlattenedGraphBuilder(
+                circuit,
+                GraphOptions(is_nested=False, is_aligned=False, bold_io=True),
+            )
+            graph = graph_builder.generate_graph()
+            output_file = save_graph(graph, f"{circuit.name}_flattened_circuit", "svg")
+            print(f"Flattened graph saved to {output_file}")
+        except Exception as e:
+            print(f"Error visualizing circuit: {e}")

@@ -9,9 +9,6 @@
 # PyCharm
 .idea/
 
-# Personal Documents
-scratchpad*.*md
-
 # Python
 *__pycache__*
 .pytest_cache

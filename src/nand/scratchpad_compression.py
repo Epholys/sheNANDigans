@@ -1,7 +1,14 @@
 from math import ceil, sqrt
+
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_encoder import DefaultEncoder
 from nand.nand2tetris_hack_alu import HackALUBuilder
+
+import zlib
+import lzma
+from PIL import Image
+import numpy as np
+
 
 builder = HackALUBuilder()
 builder.build_circuits()
@@ -10,7 +17,6 @@ library = builder.library
 default_encoded = DefaultEncoder().encode(library)
 bit_packed_encoded = BitPackedEncoder().encode(library)
 
-import zlib
 
 bp_zip = zlib.compress(bit_packed_encoded.tobytes(), level=9, wbits=-15)
 de_zip = zlib.compress(default_encoded.tobytes(), level=9, wbits=-15)
@@ -27,7 +33,6 @@ print(f"bp zip sz = {len(bp_zip)}")
 # bp_bzip2 = bz2.compress(bit_packed_encoded.tobytes(), compresslevel=9)
 # de_bzip2 = bz2.compress(default_encoded.tobytes(), compresslevel=9)
 
-import lzma
 
 
 filters = [
@@ -57,9 +62,6 @@ de_lzma = lzma.compress(
 )
 
 print(f"bp lzma sz = {len(bp_lzma)}")
-
-from PIL import Image
-import numpy as np
 
 # Using a more standard gray checkerboard, but you can change the colors
 CHECKER_COLOR_1 = (128, 128, 128, 255)  # Medium gray
@@ -236,7 +238,7 @@ visualize_as_image(
     transparent=transparent,
     background="checker",
     save_path="bp_zip_sq.png",
-).show("bp zip")
+).show("bp lzma")
 # print(len(bit_packed_encoded.tobytes()))
 # print()
 # print(len(bp_zip))

@@ -17,7 +17,7 @@ def extract_names_from_file(file_path):
         matches = re.findall(r"<<<(.*?)>>>", content)
         if len(matches) > 0:
             return matches
-    return None
+    return []
 
 
 def create_temp_file_with_main(original_file, name):

@@ -11,14 +11,19 @@ def compare_encoders(encoders: List[CircuitEncoder], library: CircuitLibrary) ->
     """Compare the encoders and print the encoding stats."""
     encoding_stats = _compute_stats(encoders, library)
 
-    max_width = max(len(encoder.__class__.__name__) for encoder in encoders)
+    # Compute column widths
+    name_width = max(len(encoder.__class__.__name__) for encoder in encoders) + 2
+    bit_width = max(len(str(s[1][0])) for s in encoding_stats)  # width for bit count
+    max_len = max(s[1][0] for s in encoding_stats)
+    max_len_width = 100
+    ratio = max_len_width / max_len
 
-    # Add some padding (e.g., 2 spaces) to make it look nicer
-    name_width = max_width + 2
-
-    for encoder, length in encoding_stats:
+    for encoder, (bit_count, percent) in encoding_stats:
         print(
-            f"{encoder.__class__.__name__:<{name_width}} {length[0]:>4} bits  ({length[1]:>6.2f}%) {'.' * int(length[0] // 32)}"
+            f"{encoder.__class__.__name__:<{name_width}} "
+            f"{bit_count:>{bit_width}} bits  "
+            f"({percent:>6.2f}%) "
+            f"{'.' * int(bit_count * ratio)}"
         )
 
 

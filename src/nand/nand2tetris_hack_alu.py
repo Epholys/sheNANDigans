@@ -513,5 +513,4 @@ class HackALUBuilder(CircuitBuilder):
         alu.connect_output("NOT", "OUT", "ZR")
         alu.connect_output("MuxOut", "OUT_15", "NG")
 
-
         self.library.add_circuit(alu)

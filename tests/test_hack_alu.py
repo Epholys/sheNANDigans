@@ -395,4 +395,46 @@ class TestHackALU:
             assert zr if res == 0 else not zr
             assert ng if res < 0 else not ng
 
-        simulate_operation(simulators, cases, zx + nx + zy + ny + f + no, assert_y_minus_x)
+        simulate_operation(
+            simulators, cases, zx + nx + zy + ny + f + no, assert_y_minus_x
+        )
+
+    def test_x_and_y(self, simulators, cases):
+        # out(x, y) = x & y
+        zx = [False]
+        nx = [False]
+        zy = [False]
+        ny = [False]
+        f = [False]
+        no = [False]
+
+        def assert_x_and_y(out: list[bool], zr: bool, ng: bool, case: list[bool]):
+            x = case[0:16]
+            y = case[16:32]
+            res = [x & y for x, y in zip(x, y)]
+            res_int = bools2sint(res)
+            assert out == res
+            assert zr if res_int == 0 else not zr
+            assert ng if res_int < 0 else not ng
+
+        simulate_operation(simulators, cases, zx + nx + zy + ny + f + no, assert_x_and_y)
+
+    def test_x_or_y(self, simulators, cases):
+        # out(x, y) = x | y
+        zx = [False]
+        nx = [True]
+        zy = [False]
+        ny = [True]
+        f = [False]
+        no = [True]
+
+        def assert_x_or_y(out: list[bool], zr: bool, ng: bool, case: list[bool]):
+            x = case[0:16]
+            y = case[16:32]
+            res = [x | y for x, y in zip(x, y)]
+            res_int = bools2sint(res)
+            assert out == res
+            assert zr if res_int == 0 else not zr
+            assert ng if res_int < 0 else not ng
+
+        simulate_operation(simulators, cases, zx + nx + zy + ny + f + no, assert_x_or_y)

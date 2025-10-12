@@ -73,7 +73,8 @@ class NodeBuilder:
         )
         return node_id
 
-    def create_nand_node(self, graph: pydot.Graph, key: str) -> None:
+    @staticmethod
+    def create_nand_node(graph: pydot.Graph, key: str) -> None:
         """Create a node for a NAND gate."""
         graph.add_node(
             pydot.Node(
@@ -85,7 +86,31 @@ class NodeBuilder:
             )
         )
 
-    # TODO ZERO AND ONE gates
+    @staticmethod
+    def create_zero_node(graph: pydot.Graph, key: str) -> None:
+        """Create a node for a ZERO gate."""
+        graph.add_node(
+            pydot.Node(
+                key,
+                label="ZERO",
+                shape="box",
+                style="filled",
+                fillcolor="#ffcccc",
+            )
+        )
+
+    @staticmethod
+    def create_one_node(graph: pydot.Graph, key: str) -> None:
+        """Create a node for a ONE gate."""
+        graph.add_node(
+            pydot.Node(
+                key,
+                label="ONE",
+                shape="box",
+                style="filled",
+                fillcolor="#ccffcc",
+            )
+        )
 
     def create_circuit_node(
         self, graph: pydot.Graph, circuit: Circuit, key: str

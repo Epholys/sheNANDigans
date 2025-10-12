@@ -21,7 +21,7 @@ type InternalConnection = Connection
 type AllConnections = Tuple[
     List[InputConnection], List[OutputConnection], List[InternalConnection]
 ]
-type NandCollection = List[Tuple[str, Circuit]]
+type CoreCollection = List[Tuple[str, Circuit]]
 
 
 @typing.no_type_check
@@ -63,8 +63,8 @@ def _explore_circuit_recursive(
     node_builder: NodeBuilder,
     is_top_level: bool = True,
     prefix: str = "",
-) -> NandCollection:
-    """Recursively explore the circuit to extract all NAND gates."""
+) -> CoreCollection:
+    """Recursively explore the circuit to extract all core gates."""
     current_graph = parent_graph
     # Create subgraph for nested circuits if needed
     if not is_top_level and options.is_nested:
@@ -79,23 +79,30 @@ def _explore_circuit_recursive(
             _try_hard(current_graph)
         parent_graph.add_subgraph(current_graph) # type: ignore
 
-    all_nands: NandCollection = []
+    all_cores: CoreCollection = []
 
     # Process all components in this circuit
     for component_name, component in circuit.components.items():
         node_id = f"{prefix}_{component_name}"
-        if component.identifier == 0:  # NAND gate TODO ZERO AND ONE gates
-            all_nands.append((node_id, component))
-            node_builder.create_nand_node(current_graph, node_id)
-        else:
-            # Recursively process nested circuit
-            all_nands.extend(
-                _explore_circuit_recursive(
-                    component, current_graph, options, node_builder, False, node_id
+        match component.identifier:
+            case 0:  # NAND gate
+                all_cores.append((node_id, component))
+                node_builder.create_nand_node(current_graph, node_id)
+            case 1:  # ZERO gate
+                all_cores.append((node_id, component))
+                node_builder.create_zero_node(current_graph, node_id)
+            case 2:  # ONE gate
+                all_cores.append((node_id, component))
+                node_builder.create_one_node(current_graph, node_id)
+            case _:
+                # Recursively process nested circuit
+                all_cores.extend(
+                    _explore_circuit_recursive(
+                        component, current_graph, options, node_builder, False, node_id
+                    )
                 )
-            )
 
-    return all_nands
+    return all_cores
 
 
 class FlattenedGraphBuilder:
@@ -107,6 +114,7 @@ class FlattenedGraphBuilder:
             f"Raw_Circuit_{circuit.identifier}",
             graph_type="digraph",
             rankdir="LR",
+            ordering="in",
             label=circuit.identifier,
         )
         if options.try_hard:
@@ -114,17 +122,17 @@ class FlattenedGraphBuilder:
 
     def generate_graph(self) -> pydot.Dot:
         """Generate a simplified graph showing only the connections between circuit
-        inputs/outputs and NAND gates, without hierarchical representation.
+        inputs/outputs and core gates, without hierarchical representation.
         """
         # Create the main graph
 
-        # Step 1: Collect all NAND gates
-        all_nands = _explore_circuit_recursive(
+        # Step 1: Collect all core gates
+        all_cores = _explore_circuit_recursive(
             self.circuit, self.graph, self.options, self.node_builder
         )
 
         # Step 2: Extract all connections
-        all_connections = self._extract_all_connections(all_nands)
+        all_connections = self._extract_all_connections(all_cores)
 
         # Step 3: Add nodes and connections to the graph
         self._add_circuit_io_nodes()
@@ -132,55 +140,55 @@ class FlattenedGraphBuilder:
 
         return self.graph
 
-    def _extract_all_connections(self, all_nands: NandCollection) -> AllConnections:
+    def _extract_all_connections(self, all_cores: CoreCollection) -> AllConnections:
         """Extract all connections from and to circuit inputs/outputs and components'
-        NAND gates.
+        core gates.
         """
-        input_connections = self._extract_input_connections(all_nands)
-        output_connections = self._extract_output_connections(all_nands)
-        internal_connections = self._extract_internal_connections(all_nands)
+        input_connections = self._extract_input_connections(all_cores)
+        output_connections = self._extract_output_connections(all_cores)
+        internal_connections = self._extract_internal_connections(all_cores)
 
         return input_connections, output_connections, internal_connections
 
     def _extract_input_connections(
-        self, all_nands: NandCollection
+        self, all_cores: CoreCollection
     ) -> List[InputConnection]:
-        """Extract connections from nand.circuit inputs to NAND gates."""
+        """Extract connections from circuit inputs to NAND gates."""
         connections = []
 
         for input_name, input_wire in self.circuit.inputs.items():
-            for nand_id, nand in all_nands:
-                for nand_input_wire in nand.inputs.values():
+            for core_id, core in all_cores:
+                for nand_input_wire in core.inputs.values(): # only nand have inputs
                     if nand_input_wire.id == input_wire.id:
-                        connections.append((f"in_{input_name}", nand_id))
+                        connections.append((f"in_{input_name}", core_id))
 
         return connections
 
     def _extract_output_connections(
-        self, all_nands: NandCollection
+        self, all_cores: CoreCollection
     ) -> List[OutputConnection]:
-        """Extract connections from NAND gates to circuit outputs."""
+        """Extract connections from core gates to circuit outputs."""
         connections = []
 
         for output_name, output_wire in circuit.outputs.items():
-            for nand_id, nand in all_nands:
-                for nand_output_wire in nand.outputs.values():
-                    if nand_output_wire.id == output_wire.id:
-                        connections.append((nand_id, f"out_{output_name}"))
+            for core_id, core in all_cores:
+                for core_output_wire in core.outputs.values():
+                    if core_output_wire.id == output_wire.id:
+                        connections.append((core_id, f"out_{output_name}"))
 
         return connections
 
     def _extract_internal_connections(
         self,
-        all_nands: NandCollection,
+        all_cores: CoreCollection,
     ) -> List[InternalConnection]:
-        """Extract connections between NAND gates."""
+        """Extract connections between core gates."""
         connections = []
 
-        for source_id, source_nand in all_nands:
-            for source_output_wire in source_nand.outputs.values():
-                for destination_id, destination_nand in all_nands:
-                    for destination_input_wire in destination_nand.inputs.values():
+        for source_id, source_core in all_cores:
+            for source_output_wire in source_core.outputs.values():
+                for destination_id, destination_nand in all_cores:
+                    for destination_input_wire in destination_nand.inputs.values(): # only NAND gate have inputs
                         if destination_input_wire.id == source_output_wire.id:
                             connections.append((source_id, destination_id))
 
@@ -293,7 +301,7 @@ if __name__ == "__main__":
             circuit = library.get_circuit("ALU")
             graph_builder = FlattenedGraphBuilder(
                 circuit,
-                GraphOptions(is_nested=False, is_aligned=False, bold_io=True),
+                GraphOptions(is_nested=False, is_aligned=True, bold_io=True, try_hard=False),
             )
             graph = graph_builder.generate_graph()
             output_file = save_graph(graph, f"{circuit.name}_flattened_circuit", "svg")

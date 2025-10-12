@@ -56,7 +56,7 @@ class GraphOptions:
         max_depth: int = -1,
         try_hard: bool = False,
     ):
-        # 'compact' means that the NAND gates are not expanded,
+        # 'compact' means that the core gates are not expanded,
         # but just represented as a box.
         self.is_compact = is_compact
 
@@ -268,18 +268,18 @@ class NestedGraphBuilder:
         """Build all components in the circuit."""
         components = context.circuit.components
 
-        # Case 1: We're at a NAND gate leaf node and not using compact representation
+        # Case 1: We're at a core gate leaf node and not using compact representation
         if (
             len(components) == 0 and not self.options.is_compact
-        ):  # TODO ZERO AND ONE gates
-            self._build_nand_circuit(context)
+        ):
+            self._build_core_circuit(context, context.circuit.identifier)
             return
 
         # Process each component
         for component_id, component in components.items():
-            # Case 2: NAND gate with compact representation OR max depth reached
-            if (component.identifier == 0 and self.options.is_compact) or (
-                self.options.max_depth >= 0 and context.depth >= self.options.max_depth
+            # Case 2: Core gate with compact representation OR max depth reached
+            if (component.identifier in [0, 1, 2] and self.options.is_compact) or (
+                    0 <= self.options.max_depth <= context.depth
             ):
                 # Use simplified node representation
                 component_ports = self._build_simple_node(
@@ -294,10 +294,24 @@ class NestedGraphBuilder:
                 self._build_circuit_graph(component_context)
                 context.add_component_ports(component_id, component_context.port_nodes)
 
+    def _build_core_circuit(
+        self, context: CircuitBuildContext, identifier: CircuitId
+    ) -> None:
+        """Build a core gate circuit with connections between ports.
+        """
+        match identifier:
+            case 0:
+                self._build_nand_circuit(context)
+            case 1:
+                self._build_zero_circuit(context)
+            case 2:
+                self._build_one_circuit(context)
+
+
     def _build_nand_circuit(self, context: CircuitBuildContext) -> None:
-        """Build a NAND gate circuit with connections between ports."""
         key = f"{context.prefix}_nand"
-        self.node_builder.create_nand_node(context.graph, key)  #
+
+        self.node_builder.create_nand_node(context.graph, key)
 
         # Connect the NAND gate to its ports
         ports = list(context.port_nodes.values())
@@ -306,6 +320,22 @@ class NestedGraphBuilder:
         context.graph.add_edge(pydot.Edge(b[0], key))
         context.graph.add_edge(pydot.Edge(key, out[0]))
 
+    def _build_zero_circuit(self, context: CircuitBuildContext) -> None:
+        key = f"{context.prefix}_zero"
+
+        self.node_builder.create_zero_node(context.graph, key)
+
+        ports = list(context.port_nodes.values())
+        context.graph.add_edge(pydot.Edge(key, ports[0][0]))
+
+    def _build_one_circuit(self, context: CircuitBuildContext) -> None:
+        key = f"{context.prefix}_one"
+
+        self.node_builder.create_one_node(context.graph, key)
+
+        ports = list(context.port_nodes.values())
+        context.graph.add_edge(pydot.Edge(key, ports[0][0]))
+
     def _build_simple_node(
         self,
         context: CircuitBuildContext,
@@ -313,15 +343,19 @@ class NestedGraphBuilder:
         component_id: CircuitId,
     ) -> Dict[InputId, Tuple[str, str]]:
         """Build a simplified node for a circuit component
-        (used for NAND gates or max depth)."""
+        (used for core gates or max depth)."""
         key = f"{context.prefix}_comp_{component_id}"
 
         # Create appropriate node based on circuit type
-        if circuit.identifier == 0:  # NAND gate
-            self.node_builder.create_nand_node(context.graph, key)
-        # TODO ZERO AND ONE gates
-        else:  # Other circuit types
-            self.node_builder.create_circuit_node(context.graph, circuit, key)
+        match circuit.identifier:
+            case 0:
+                self.node_builder.create_nand_node(context.graph, key)
+            case 1:
+                self.node_builder.create_zero_node(context.graph, key)
+            case 2:
+                self.node_builder.create_one_node(context.graph, key)
+            case _:
+                self.node_builder.create_circuit_node(context.graph, circuit, key)
 
         # All ports map to the same node
         node_ports = dict.fromkeys(
@@ -452,7 +486,7 @@ def generate_graph(circuit: Circuit, options: GraphOptions) -> pydot.Dot:
             circuit.outputs[new_id] = circuit.outputs.pop(k)
             circuit.outputs_names[new_id] = circuit.outputs_names.pop(k)
         for component in circuit.components.values():
-            if component.identifier != 0:
+            if component.identifier not in [0, 1, 2]:
                 component.identifier = f"{component.identifier}_{next(counter)}"
             make_unique(component)
 
@@ -493,9 +527,9 @@ if __name__ == "__main__":
                 circuit,
                 GraphOptions(
                     is_compact=True,
-                    is_aligned=False,
+                    is_aligned=True,
                     bold_io=True,
-                    max_depth=1,
+                    max_depth=-1,
                     try_hard=True,
                 ),
             )

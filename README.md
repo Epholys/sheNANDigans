@@ -74,13 +74,15 @@ save_graph(graph, "half_adder", "svg")
 
 ## Encoding size performance
 
-`PlaygroundCircuitBuilder` contains (almost) all basic logic gates, and adders up to 8 bits, and is encoded into *262 bytes* using the default encoder, and **78 bytes** using the bit packed version!
+`PlaygroundCircuitBuilder` contains (almost) all basic logic gates, and adders up to 8 bits, and is encoded into *262 bytes (TODO * 2 ????) *\* using the default encoder, and **78 bytes** using the bit packed version!
 
 These 78 bytes can't be compressed further using either the zlib or lzma library, so that's pretty good!
 
 nand2tetris's first two projects, which contains a lot of basic logic gates (including Mux and DMux), numeric operations, and culminates into a complete ALU, can be encoded into only **1169 bytes**!
 
 Unfortunately, the lzma library can compress to 1067 bytes. It's only a ≈9% reduction, but it's still frustrating! 
+
+\* The default decoder use int numbers. There are considerd to be encoded into 16 bits.
 
 ## What's next?
 
@@ -97,3 +99,5 @@ If you want to see french rambling, look at the `scratchpad*.md` files, there's 
 ## What's this "archive" directory?
 
 Digital hoarding is a serious illness. I can't delete the dark past...
+
+TODO : precise ZERO and ONE ?

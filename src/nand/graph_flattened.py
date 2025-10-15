@@ -170,7 +170,7 @@ class FlattenedGraphBuilder:
         """Extract connections from core gates to circuit outputs."""
         connections = []
 
-        for output_name, output_wire in circuit.outputs.items():
+        for output_name, output_wire in self.circuit.outputs.items():
             for core_id, core in all_cores:
                 for core_output_wire in core.outputs.values():
                     if core_output_wire.id == output_wire.id:
@@ -224,7 +224,7 @@ class FlattenedGraphBuilder:
         """Add output nodes to the graph and return their IDs."""
         output_nodes = []
 
-        for output_name in circuit.outputs.keys():
+        for output_name in self.circuit.outputs.keys():
             node_id = f"out_{output_name}"
             output_nodes.append(node_id)
 

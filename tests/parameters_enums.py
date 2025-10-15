@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Any
 
+from nand.FlattenedCircuitBuilder import FlattenedHackALUBuilder, FlattenedPlaygroundCircuitBuilder
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_decoder import DefaultDecoder
@@ -48,6 +49,8 @@ class Project(Enum):
 
     PLAYGROUND = "playground"
     NAND2TETRIS_HACK = "nand2tetris_hack"
+    PLAYGROUND_FLATTENED = "playground_flattened"
+    NAND2TETRIS_HACK_FLATTENED = "nand2tetris_hack_flattened"
 
     def get_builder(self):
         match self:
@@ -55,6 +58,10 @@ class Project(Enum):
                 return PlaygroundCircuitBuilder()
             case Project.NAND2TETRIS_HACK:
                 return HackALUBuilder()
+            case Project.PLAYGROUND_FLATTENED:
+                return FlattenedPlaygroundCircuitBuilder()
+            case Project.NAND2TETRIS_HACK_FLATTENED:
+                return FlattenedHackALUBuilder()
             case _:
                 raise ValueError("Unknown Project.")
 

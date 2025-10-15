@@ -1,7 +1,9 @@
-from bitarray import bitarray
+from copy import copy
+
 
 from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
+from nand.circuit_encoder import BitArrayLike
 from nand.decoded_circuit import (
     ConnectionParameters,
     DecodedCircuit,
@@ -32,13 +34,17 @@ class DefaultDecoder(CircuitDecoder):
             data: The bitarray containing the encoded circuit library.
         """
         self.library = CircuitLibrary()
+        self.data: list[int] = []
+        self.circuit = Circuit(-1)
         self._build_core_gates(self.library)
         self.idx = 3  # Start after core gates
 
-    def decode(self, data: bitarray) -> CircuitLibrary:
+    def decode(self, data: BitArrayLike) -> CircuitLibrary:
         """Decode the data into circuits."""
-        self.data = list(data.tobytes())
+        if not isinstance(data, list):
+            raise TypeError("The data must be a list of integers.")
 
+        self.data = copy(data)
         while len(self.data) != 0:
             # The index is used as the identifier of the circuit
             # The current circuit being decoded

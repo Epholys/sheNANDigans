@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from bitarray import bitarray
 
 from nand.circuit import Circuit, Wire
 from nand.circuit_builder import CircuitLibrary
+from nand.circuit_encoder import BitArrayLike
 
 
 class CircuitDecoder(ABC):
     @abstractmethod
-    def decode(self, data: bitarray) -> CircuitLibrary:
+    def decode(self, data: BitArrayLike) -> CircuitLibrary:
         pass
 
     def _build_core_gates(self, library: CircuitLibrary):

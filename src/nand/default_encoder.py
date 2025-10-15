@@ -1,6 +1,5 @@
 from typing import List
 
-from bitarray import bitarray
 
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
@@ -30,8 +29,10 @@ class DefaultEncoder(CircuitEncoder):
 
     def __init__(self):
         super().__init__()
+        self.library: CircuitDict = {}
+        self.encoding: List[int] = []
 
-    def encode(self, library: CircuitLibrary) -> bitarray:
+    def encode(self, library: CircuitLibrary) -> list[int]:
         """
         library = [circuit_1, circuit_2, ...]
 
@@ -48,10 +49,7 @@ class DefaultEncoder(CircuitEncoder):
 
             self._encode_circuit(circuit)
 
-        bit_encoding = bitarray()
-        for i in self.encoding:
-            bit_encoding.frombytes(i.to_bytes(1))
-        return bit_encoding
+        return self.encoding
 
     def _encode_circuit(self, circuit: Circuit):
         """

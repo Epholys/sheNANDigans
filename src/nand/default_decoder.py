@@ -35,7 +35,7 @@ class DefaultDecoder(CircuitDecoder):
         """
         self.library = CircuitLibrary()
         self.data: list[int] = []
-        self.circuit = Circuit(-1)
+        self.circuit = DecodedCircuit(-1)
         self._build_core_gates(self.library)
         self.idx = 3  # Start after core gates
 

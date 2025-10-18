@@ -180,6 +180,7 @@ class BitPackedEncoder(CircuitEncoder):
         bit_encoding.extend(
             int2bitlist_with_offset(max_outputs_bitlength, core_bitlength)
         )
+        print(f"core bl = {core_bitlength} ; circuit bl = {self.circuits_bitlength} ; comp bl = {max_components_bitlength} ; in bl = {max_inputs_bitlength} ; out bl = {max_outputs_bitlength}")
 
         # Finally encode the data. The raw encoding contains the integers values to
         # encode into bits, and the bit length if it was known, or a placeholder
@@ -187,14 +188,17 @@ class BitPackedEncoder(CircuitEncoder):
         for data, bitlength in self.int_encoding:
             match bitlength:
                 case Placeholder.COMPONENTS:
+                    print(f"n component = {data} encoded in {max_components_bitlength} bits")
                     bit_encoding.extend(
                         int2bitlist_with_offset(data, max_components_bitlength)
                     )
                 case Placeholder.INPUTS:
+                    print(f"n inputs = {data} encoded in {max_inputs_bitlength} bits")
                     bit_encoding.extend(
                         int2bitlist_with_offset(data, max_inputs_bitlength)
                     )
                 case Placeholder.OUTPUTS:
+                    print(f"n outputs = {data} encoded in {max_outputs_bitlength} bits")
                     bit_encoding.extend(
                         int2bitlist_with_offset(data, max_outputs_bitlength)
                     )
@@ -202,7 +206,7 @@ class BitPackedEncoder(CircuitEncoder):
                     bit_encoding.extend(int2bitlist(data, bitlength))
                 case _:
                     raise ValueError("Unknown bitlength type.")
-
+            
         return bit_encoding
 
     def _encode_circuit(self, circuit: Circuit):

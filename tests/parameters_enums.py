@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from nand.FlattenedCircuitBuilder import FlattenedHackALUBuilder, FlattenedPlaygroundCircuitBuilder
+from nand.flattened_circuit_builder import FlattenedHackALUBuilder, FlattenedPlaygroundCircuitBuilder
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_decoder import DefaultDecoder

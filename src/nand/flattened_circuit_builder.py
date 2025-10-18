@@ -12,8 +12,8 @@ class FlattenedCircuitBuilder(CircuitBuilder):
         self.builder = builder
 
     def build_circuits(self):
-        base64_library = self.builder().build_circuits()
-        for circuit in base64_library.get_all_circuits().values():
+        library = self.builder().build_circuits()
+        for circuit in library.get_all_circuits().values():
             self.library.add_circuit(flatten_circuit(circuit))
         return self.library
 

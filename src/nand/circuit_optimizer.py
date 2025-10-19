@@ -93,7 +93,7 @@ def optimize(circuit: Circuit):
         than 'SimulatorDebug'! It becomes better for bigger circuit.
     """
     # Base case: empty circuit requires no optimization
-    if not circuit.components or circuit.identifier == 0:
+    if not circuit.components or circuit.identifier == 0: # TODO ZERO AND ONE ?
         return
 
     # First recursively optimize all sub-components

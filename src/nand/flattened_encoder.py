@@ -76,7 +76,7 @@ class FlattenedEncoder(BitPackedEncoder):
         for _, circuit in library.get_all_circuits().items():
             flattened_library.add_circuit(flatten_circuit(circuit))
 
-        return super().encode(library)
+        return super().encode(flattened_library)
 
     def _encode_circuit(self, circuit: Circuit):
         """

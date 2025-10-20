@@ -23,6 +23,7 @@ class CircuitLibrary:
 
         self._circuits[circuit.identifier] = circuit
 
+    # TODO get → copy
     def get_circuit(self, identifier: CircuitId) -> Circuit:
         if not self.has_circuit(identifier):
             raise ValueError(f"Circuit {identifier} does not exist")

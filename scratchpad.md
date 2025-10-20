@@ -7,6 +7,19 @@
 
 # DOING
 
+- Auto debug print de ce que je fais manuellement dans les xxx_decode
+- Bit Packed Encoder
+  - wiring : `_encode_component_wiring(): self.int_encoding.append((outputs.index(wire.id), metadata.outputs_bitlength))` débile !
+    `output_bl` est le bl *du circuit*, pas du composant !
+    donc d/encode avec le bl du #output du composant
+- Rolling Encoder
+  - S'inspirer du failed FlattenedEncoder avec le rolling component bitlength
+    - Bug fix **à tester** : encodage non pas l'index du composant, mais du rolling count - 1
+      C'était dans le cas où les composants ne sont pas dans l'ordre "correct" et ils apparaissent "dans le désordre"
+      pour le rolling. Exemple : ZERO/ONE pour Inc16
+  - check d'autres circuits (adder16 ce serait bien)
+  - tester le rolling input
+
 # Planning
 
 [ ] Projet

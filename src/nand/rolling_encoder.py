@@ -345,9 +345,9 @@ class RollingEncoder(CircuitEncoder):
             if wire.id in outputs:
                 self._update_rolling_bl(idx, metadata)
                 print(
-                    f"encoding wiring : from component {sub_component.name} with idx {idx} in {metadata.component_rolling_bitlength} bits"
+                    f"encoding wiring : from component {sub_component.name} with idx {idx} and rolling count -1 {metadata.component_rolling_count - 1} in {metadata.component_rolling_bitlength} bits"
                 )
-                self.int_encoding.append((idx, metadata.component_rolling_bitlength))
+                self.int_encoding.append((metadata.component_rolling_count - 1, metadata.component_rolling_bitlength))
                 print(
                     f"encoding wiring : from component {sub_component.name} output of idx {outputs.index(wire.id)} in {metadata.outputs_bitlength} bits"
                 )

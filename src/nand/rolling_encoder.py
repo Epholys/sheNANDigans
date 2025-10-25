@@ -94,6 +94,7 @@ class RollingEncoder(CircuitEncoder):
         Orchestrates the encoding process.
         """
         self.library = library.get_all_circuits()
+        
         # See comment for 'max_*_bitlength' variables for explanation.
         self.circuits_bitlength: int = bitlength_with_offset(len(self.library))
 
@@ -345,7 +346,7 @@ class RollingEncoder(CircuitEncoder):
             if wire.id in outputs:
                 self._update_rolling_bl(idx, metadata)
                 print(
-                    f"encoding wiring : from component {sub_component.name} with idx {idx} and rolling count -1 {metadata.component_rolling_count - 1} in {metadata.component_rolling_bitlength} bits"
+                    f"encoding wiring : from component {sub_component.name} with idx {idx} and 'rolling count -1' {metadata.component_rolling_count - 1} in {metadata.component_rolling_bitlength} bits"
                 )
                 self.int_encoding.append((metadata.component_rolling_count - 1, metadata.component_rolling_bitlength))
                 print(
@@ -380,7 +381,7 @@ class RollingEncoder(CircuitEncoder):
         print("- bl by one -")
         print("check if component rolling count is at its limit")
         bl =  bitlength_with_offset(metadata.component_rolling_count + 1)
-        print(f"bl: {bl} <- rolling count +1 (={metadata.component_rolling_count + 1})")
+        print(f"bl: {bl} = rolling count +1 (={metadata.component_rolling_count + 1})")
         if bl > metadata.component_rolling_bitlength:
             print("bl > comp bl, set")
             metadata.component_rolling_bitlength = bl

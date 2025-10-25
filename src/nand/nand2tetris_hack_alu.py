@@ -432,7 +432,7 @@ class HackALUBuilder(CircuitBuilder):
 
         self.library.add_circuit(inc16)
 
-    def add_zero16(self):
+    def add_zero16(self): # TODO WTF ?
         zero16 = Circuit("Zero16")
 
         zero16.add_component("ZERO", self.library.get_circuit(1))
@@ -442,7 +442,7 @@ class HackALUBuilder(CircuitBuilder):
 
         self.library.add_circuit(zero16)
 
-    def add_one16(self):
+    def add_one16(self): # TODO WTF ?
         one16 = Circuit("One16")
 
         one16.add_component("ONE", self.library.get_circuit(2))
@@ -455,14 +455,14 @@ class HackALUBuilder(CircuitBuilder):
     def add_alu(self):
         alu = Circuit("ALU")
 
-        alu.add_component("Zero16", self.library.get_circuit("Zero16"))
-        alu.add_component("One16", self.library.get_circuit("One16"))
         alu.add_component("Not16X", self.library.get_circuit("NOT16"))
+        alu.add_component("Zero16", self.library.get_circuit("Zero16")) # TODO WTF ?
+        alu.add_component("One16", self.library.get_circuit("One16")) # TODO WTF ?
         alu.add_component("Not16Y", self.library.get_circuit("NOT16"))
         alu.add_component("MuxX", self.library.get_circuit("Mux4Way16"))
         alu.add_component("MuxY", self.library.get_circuit("Mux4Way16"))
-        alu.add_component("Add16", self.library.get_circuit("Add16"))
         alu.add_component("And16", self.library.get_circuit("AND16"))
+        alu.add_component("Add16", self.library.get_circuit("Add16"))
         alu.add_component("MuxF", self.library.get_circuit("Mux16"))
         alu.add_component("NotOut", self.library.get_circuit("NOT16"))
         alu.add_component("MuxOut", self.library.get_circuit("Mux16"))

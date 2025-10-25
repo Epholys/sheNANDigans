@@ -1,3 +1,4 @@
+
 from bitarray import bitarray
 
 from nand.bit_packed_encoder import bitlength_with_offset
@@ -105,7 +106,6 @@ class BitPackedDecoder(CircuitDecoder):
         self.circuit.outputs_count = read_bits_with_offset(
             self.data, self.max_outputs_bitlength
         )
-        self.outputs_bitlength = bitlength_with_offset(self.circuit.outputs_count)
 
     def _decode_component(self, component_idx: int):
         """Decode the component_idx-th component of the circuit."""
@@ -201,6 +201,8 @@ class BitPackedDecoder(CircuitDecoder):
                 f"(there is {self.circuit.components_count} components)."
             )
 
-        source_output_idx = read_bits(self.data, self.outputs_bitlength)
+        component = self.circuit.components[source_idx]
+        component_outputs_bitlength = bitlength_with_offset(len(component.outputs))
+        source_output_idx = read_bits(self.data, component_outputs_bitlength)
 
         return (source_idx, source_output_idx)

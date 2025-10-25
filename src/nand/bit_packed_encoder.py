@@ -330,7 +330,7 @@ class BitPackedEncoder(CircuitEncoder):
             if wire.id in outputs:
                 self.int_encoding.append((idx, metadata.components_bitlength))
                 self.int_encoding.append(
-                    (outputs.index(wire.id), metadata.outputs_bitlength)
+                    (outputs.index(wire.id), bitlength_with_offset(len(sub_component.outputs)))
                 )
                 return
         raise ValueError(f"Wire {wire.id} not found in any sub_component outputs")

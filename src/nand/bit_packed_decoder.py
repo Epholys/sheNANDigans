@@ -201,8 +201,9 @@ class BitPackedDecoder(CircuitDecoder):
                 f"(there is {self.circuit.components_count} components)."
             )
 
+        # TODO explain
         component = self.circuit.components[source_idx]
         component_outputs_bitlength = bitlength_with_offset(len(component.outputs))
         source_output_idx = read_bits(self.data, component_outputs_bitlength)
 
-        return (source_idx, source_output_idx)
+        return source_idx, source_output_idx

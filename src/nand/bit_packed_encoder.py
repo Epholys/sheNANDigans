@@ -52,7 +52,7 @@ class BitPackedEncoder(CircuitEncoder):
     It's really minor gains, but we're here to encode in the smallest amount of bits
     possible!
 
-    These levels allows to have pretty big numbers for the elements. The third
+    These levels allow to have pretty big numbers for the elements. The third
     level (first decoded), can be at most 4 ('11'), so the second level can be at
     most 16 ('1111' : 4 bits), so the max number of circuits, components, inputs,
     and outputs is 65'536 ('1111111111111111' : 16 bits).

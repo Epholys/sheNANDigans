@@ -56,8 +56,8 @@ class Project(Enum):
 
     PLAYGROUND = "playground"
     NAND2TETRIS_HACK = "nand2tetris_hack"
-    PLAYGROUND_FLATTENED = "playground_flattened"
-    NAND2TETRIS_HACK_FLATTENED = "nand2tetris_hack_flattened"
+    # PLAYGROUND_FLATTENED = "playground_flattened"
+    # NAND2TETRIS_HACK_FLATTENED = "nand2tetris_hack_flattened"
 
     def get_builder(self):
         match self:

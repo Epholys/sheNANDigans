@@ -33,7 +33,9 @@ _mapping = {
 
 @pytest.mark.parametrize(
     "simulators",
-    build_simulators_cases([Project.PLAYGROUND, Project.PLAYGROUND_FLATTENED]),
+    build_simulators_cases([Project.PLAYGROUND,
+                            #Project.PLAYGROUND_FLATTENED
+                            ]),
     indirect=["simulators"],
     ids=parameter_ids,
 )

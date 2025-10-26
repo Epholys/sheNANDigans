@@ -416,9 +416,9 @@ class HackALUBuilder(CircuitBuilder):
     def add_inc16(self):
         inc16 = Circuit("Inc16")
 
+        inc16.add_component("Add16", self.library.get_circuit("Add16"))
         inc16.add_component("ZERO", self.library.get_circuit_from_idx(1))
         inc16.add_component("ONE", self.library.get_circuit_from_idx(2))
-        inc16.add_component("Add16", self.library.get_circuit("Add16"))
 
         for i in range(16):
             inc16.connect_input(f"IN_{i}", "Add16", f"A_{i}")
@@ -467,7 +467,6 @@ class HackALUBuilder(CircuitBuilder):
         alu.add_component("NotOut", self.library.get_circuit("NOT16"))
         alu.add_component("MuxOut", self.library.get_circuit("Mux16"))
         alu.add_component("OR16Way", self.library.get_circuit("OR16Way"))
-        alu.add_component("NOT", self.library.get_circuit("NOT"))
 
         for i in range(16):
             alu.connect_input(f"X_{i}", "Not16X", f"IN_{i}")

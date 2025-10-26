@@ -14,11 +14,14 @@ class SimulatorFast(Simulator):
     # TODO optimize() : mark circuit as optimized to avoid repetition?
     """
 
-    def __init__(self, circuit: Circuit):
+    def __init__(self, circuit: Circuit, already_optimized=False):
         super().__init__(circuit)
 
         # Optimize the circuit to put it in a topological order.
-        optimize(self._circuit)
+        if not already_optimized:
+            self._circuit = optimize(self._circuit)[0]
+        else:
+            self._circuit = circuit
 
         convert_wires(self._circuit, OptimizationLevel.FAST)
 

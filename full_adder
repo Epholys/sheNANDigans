@@ -1,0 +1,101 @@
+10
+11 01 10 00
+---
+NOT
+000 00 0
+-
+0000
+0 0
+0 0
+-
+0 0
+---
+AND
+100 10 0
+-NAND
+0000
+0 0
+0 1
+-NOT
+1100
+1 0 0
+-
+1 0
+---
+OR
+010 10 0
+-NAND_A
+0000
+0 0
+0 0
+-NAND_B
+0000
+0 1
+0 1
+-NAND_OUT
+0000
+1 0 0
+1 1 0
+-
+01 0
+---
+XOR
+110 10 0
+-A
+0000
+0 0
+0 1
+-B1
+0000
+0 0
+1 0 0
+-B2
+0000
+1 0 0
+0 1
+-OUT
+0000
+1 1  0
+1 01 0
+-
+11 0
+---
+Half-Adder
+100 10 1
+-XOR
+0110
+0 0
+0 1
+-AND
+0010
+0 0
+0 1
+-out
+0 0
+1 0
+---
+F-A
+001 01 1
+-XOR_ONE
+0110
+0 00
+0 10
+-AND_ONE
+0010
+0 00
+0 10
+-XOR_TWO
+0110
+1 0  0 <- XOR_ONE
+0 01  <- Cin
+-AND_TWO
+0010
+1 0  0 <- XOR_ONE
+0 01  <- Cin
+-OR
+1010
+1 1  0  <- AND_ONE
+1 01 0 <- AND_TWO /// PROBLèME ici ! Devrait être '1 11 0' SI on respecte l'ordre
+-out
+11  0 <- OR      /// PROBLèME ici ! Devrait être '1 001 0' SI on respecte l'ordre
+001 0 <- XOR_TWO /// PROBLèME ici ! Devrait être '1 01  0' SI on respecte l'ordre

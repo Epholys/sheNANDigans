@@ -1,7 +1,8 @@
+from copy import deepcopy
+
 import matplotlib.pyplot as plt
 from enum import Enum
 from dataclasses import dataclass
-from typing import List
 
 import networkx as nx
 
@@ -58,7 +59,7 @@ def _draw_sorted_graph(graph: nx.DiGraph, name: str):
     plt.show()
 
 
-def optimize(circuit: Circuit):
+def optimize(circuit: Circuit, multiple: bool = False) -> list[Circuit]:
     """Optimizes a circuit for efficient simulation by reordering its components.
     This optimization allows to simulate each component sequentially in a single pass.
 
@@ -92,19 +93,22 @@ def optimize(circuit: Circuit):
         - It's *so* inefficient that 'SimulatorFast' is often *slower*
         than 'SimulatorDebug'! It becomes better for bigger circuit.
     """
+    nx.config.backend_priority = ["parallel"]
+
     # Base case: empty circuit requires no optimization
-    if not circuit.components or circuit.identifier == 0: # TODO ZERO AND ONE ?
-        return
+    if not circuit.components or circuit.identifier == 0:
+        # TODO ZERO AND ONE ?
+        return [circuit]
 
     # First recursively optimize all sub-components
-    for component in circuit.components.values():
-        optimize(component)
+    for id_, component in circuit.components.items():
+        circuit.components[id_] = optimize(component)[0]
 
     # Build a directed graph representing component dependencies
     graph = build_dependency_graph(circuit)
 
     # Reorder the components to respect a topological order.
-    reorder_components(circuit, graph)
+    return reorder_components(circuit, graph, multiple)
 
 
 def build_dependency_graph(circuit: Circuit) -> nx.DiGraph:
@@ -141,7 +145,6 @@ def _add_input_edges(circuit: Circuit, graph: nx.DiGraph):
                         _Node(_NodeKind.COMPONENT, idx),
                     )
 
-
 def _add_outputs_edges(circuit: Circuit, graph: nx.DiGraph):
     """Add the edges to the circuit outputs."""
     for circuit_output in circuit.outputs.values():
@@ -170,7 +173,7 @@ def _add_components_edges(circuit: Circuit, graph: nx.DiGraph):
                         )
 
 
-def reorder_components(circuit: Circuit, graph: nx.DiGraph):
+def reorder_components(circuit: Circuit, graph: nx.DiGraph, multiple: bool = False) -> list[Circuit]:
     """Reorder the components of the circuit to respect a topological order.
 
     Doing so, a simple iteration over the components is enough to simulate it: no wire
@@ -181,16 +184,33 @@ def reorder_components(circuit: Circuit, graph: nx.DiGraph):
     # For example, if the circuit has 3 components and the sorted nodes has
     # these indices: [1, 0, 2], it means that the first two components must be swapped
     # to respect the topological order.
-    sorted_nodes: List[_Node] = list(nx.topological_sort(graph))
+    print("----"+circuit.name+"----")
+    if not multiple or len(graph.nodes) > 16:
+        sorts = [list(nx.topological_sort(graph))]
+    else:
+        print(f"start sorting {graph}")
+        sorts = list(nx.all_topological_sorts(graph))
+        print(len(sorts), flush=True)
 
-    # Extract the components index, removing the virtual component of circuit
-    # inputs and outputs.
-    sorted_component_idx = [node.idx for node in sorted_nodes if node.idx is not None]
+    circuits: list[Circuit] = []
+    for sort in sorts:
+        if not multiple:
+            working = circuit
+        else:
+            working = deepcopy(circuit)
 
-    # Get the current component, in the original order.
-    components = list(circuit.components.items())
+        # Extract the components index, removing the virtual component of circuit
+        # inputs and outputs.
+        sorted_component_idx = [node.idx for node in sort if node.idx is not None]
 
-    # Reorder the components.
-    circuit.components = {
-        components[idx][0]: components[idx][1] for idx in sorted_component_idx
-    }
+        # Get the current component, in the original order.
+        components = list(working.components.items())
+
+        # Reorder the components.
+        working.components = {
+            components[idx][0]: components[idx][1] for idx in sorted_component_idx
+        }
+
+        circuits.append(working)
+        
+    return circuits

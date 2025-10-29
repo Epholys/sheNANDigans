@@ -21,7 +21,7 @@ class SimulatorSpecs:
     optimization_level: OptimizationLevel
 
 
-def build_simulators_cases(project: Project):
+def build_simulators_cases(projects: list[Project]):
     """Build the parameters for the tests.
 
     The parameters are a combination of, BuildProcess, EncoderAlgorithm,
@@ -43,7 +43,8 @@ def build_simulators_cases(project: Project):
         )
         marks = [mark_debug, mark_reference]
         marks = [mark for mark in marks if mark is not None]
-        params.append(pytest.param((process, algo, project, opt), marks=marks))
+        for project in projects:
+            params.append(pytest.param((process, algo, project, opt), marks=marks))
     return params
 
 

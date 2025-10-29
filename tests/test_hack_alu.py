@@ -5,6 +5,7 @@ from typing import Callable
 import pytest
 
 from nand.simulator import Simulator
+from tests import test_nand2tetris_library
 from tests.numeric_operations import bools_to_int
 from tests.parameters_enums import Project, parameter_ids
 from tests.simulators_factory import build_simulators_cases
@@ -67,7 +68,7 @@ def simulate_operation(
     flags: list[bool],
     assertions: Callable[[list[bool], bool, bool, list[bool]], None],
 ) -> None:
-    alu = simulators[25]
+    alu = simulators[test_nand2tetris_library._mapping["ALU"]]
 
     for case in cases:
         case = case + flags

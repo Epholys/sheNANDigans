@@ -43,9 +43,7 @@ _mapping = {
     "FULL_ADDER": 20,
     "ADD16": 21,
     "INC16": 22,
-    "ZERO16": 23,
-    "ONE16": 24,
-    "ALU": 25,
+    "ALU": 23,
 }
 
 
@@ -254,23 +252,3 @@ class TestNand2TetrisLibrary:
                 operation=partial(truncated_increment, n_bits=n_bits),
             ),
         )
-
-    def test_zero16(self, simulators):
-        zero16 = simulators[_mapping["ZERO16"]]
-
-        result = zero16.simulate([])
-
-        if not result:
-            assert False, "Simulation Failed"
-
-        assert result == [False] * 16
-
-    def test_one16(self, simulators):
-        zero16 = simulators[_mapping["ONE16"]]
-
-        result = zero16.simulate([])
-
-        if not result:
-            assert False, "Simulation Failed"
-
-        assert result == [True] * 16

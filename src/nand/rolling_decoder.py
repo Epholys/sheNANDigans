@@ -1,4 +1,3 @@
-
 from bitarray import bitarray
 
 from nand.bit_packed_encoder import bitlength_with_offset
@@ -210,7 +209,9 @@ class RollingDecoder(CircuitDecoder):
             )
 
         source_output_idx = read_bits(self.data, self.outputs_bitlength)
-        print(f"source_output_idx = {source_output_idx} (decoded in {self.outputs_bitlength} bits)")
+        print(
+            f"source_output_idx = {source_output_idx} (decoded in {self.outputs_bitlength} bits)"
+        )
         print("-")
 
         return source_idx, source_output_idx

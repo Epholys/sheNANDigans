@@ -1,4 +1,3 @@
-
 from bitarray import bitarray
 
 from nand.bit_packed_encoder import BitPackedEncoder, EncodedCircuitMetadata
@@ -15,6 +14,7 @@ class _FlattenedEncodedCircuitMetadata(EncodedCircuitMetadata):
         self.rolling_nand_bitlength: int = 0
         self.nand_count: int = 0
         self.nand_idx_map: dict[CircuitId, int] = {}
+
 
 class FlattenedEncoder(BitPackedEncoder):
     """
@@ -112,7 +112,9 @@ class FlattenedEncoder(BitPackedEncoder):
 
         return metadata
 
-    def _encode_nands(self, circuit: Circuit, metadata: _FlattenedEncodedCircuitMetadata):
+    def _encode_nands(
+        self, circuit: Circuit, metadata: _FlattenedEncodedCircuitMetadata
+    ):
         """
         nands = [nand_0, nand_1, ..., nand_n]
         """
@@ -120,7 +122,10 @@ class FlattenedEncoder(BitPackedEncoder):
             self._encode_nand_inputs(nand, circuit, metadata)
 
     def _encode_nand_inputs(
-        self, nand: Circuit, circuit: Circuit, metadata: _FlattenedEncodedCircuitMetadata
+        self,
+        nand: Circuit,
+        circuit: Circuit,
+        metadata: _FlattenedEncodedCircuitMetadata,
     ):
         """
         inputs = [input_0, input_1, ..., input_n]
@@ -154,9 +159,11 @@ class FlattenedEncoder(BitPackedEncoder):
                     self.int_encoding.append((0, 1))
                 else:
                     print("zero one : encode input provenance as 00")
-                    self.int_encoding.append((0, 1)) # TODO one line ?
+                    self.int_encoding.append((0, 1))  # TODO one line ?
                     self.int_encoding.append((0, 1))
-                print(f"input encoding : input index : {circuit_input.index(wire.id)} , input_bl = {metadata.inputs_bitlength}")
+                print(
+                    f"input encoding : input index : {circuit_input.index(wire.id)} , input_bl = {metadata.inputs_bitlength}"
+                )
                 self.int_encoding.append(
                     (circuit_input.index(wire.id), metadata.inputs_bitlength)
                 )
@@ -164,27 +171,36 @@ class FlattenedEncoder(BitPackedEncoder):
                 # The provenance encoding is set in the method below
                 self._encode_nand_wiring(wire, circuit.components, metadata)
 
-    def _encode_nand_outputs(self, circuit: Circuit, metadata: _FlattenedEncodedCircuitMetadata):
+    def _encode_nand_outputs(
+        self, circuit: Circuit, metadata: _FlattenedEncodedCircuitMetadata
+    ):
         """
         outputs = [output_0, output_1, ..., output_n]
-        output = 
+        output =
         """
         print("--- nand output ---")
         for circuit_output in circuit.outputs.values():
-            #print(f"circuit output: {circuit_output.id}")
+            # print(f"circuit output: {circuit_output.id}")
             for key, component in circuit.components.items():
-                #print(f"try component key : {key}")
+                # print(f"try component key : {key}")
                 outputs = [wire.id for wire in component.outputs.values()]  # [0] ?
-                #print(f"component outputs : {outputs}")
+                # print(f"component outputs : {outputs}")
                 if circuit_output.id in outputs:
                     _update(key, metadata)
 
-                    print(f"output: nand of idx {metadata.nand_idx_map[key]} (in {metadata.rolling_nand_bitlength} bits)")
-                    self.int_encoding.append((metadata.nand_idx_map[key], metadata.rolling_nand_bitlength))
+                    print(
+                        f"output: nand of idx {metadata.nand_idx_map[key]} (in {metadata.rolling_nand_bitlength} bits)"
+                    )
+                    self.int_encoding.append(
+                        (metadata.nand_idx_map[key], metadata.rolling_nand_bitlength)
+                    )
                     return
 
     def _encode_nand_wiring(
-        self, wire: Wire, circuit_components: CircuitDict, metadata: _FlattenedEncodedCircuitMetadata
+        self,
+        wire: Wire,
+        circuit_components: CircuitDict,
+        metadata: _FlattenedEncodedCircuitMetadata,
     ):
         """
         wiring = [component_idx]
@@ -217,7 +233,9 @@ class FlattenedEncoder(BitPackedEncoder):
 
                 _update(key, metadata)
 
-                print(f"encoding append nand wiring : {metadata.nand_idx_map[key]} (in {metadata.rolling_nand_bitlength} bits)")
+                print(
+                    f"encoding append nand wiring : {metadata.nand_idx_map[key]} (in {metadata.rolling_nand_bitlength} bits)"
+                )
                 self.int_encoding.append(
                     (metadata.nand_idx_map[key], metadata.rolling_nand_bitlength)
                 )
@@ -228,7 +246,9 @@ class FlattenedEncoder(BitPackedEncoder):
 def _update(nand_component_id: CircuitId, metadata: _FlattenedEncodedCircuitMetadata):
     print("- update -")
     if nand_component_id not in metadata.nand_idx_map:
-        print(f"key {nand_component_id} not in map ; SET nand idx map [key] as {metadata.nand_count}")
+        print(
+            f"key {nand_component_id} not in map ; SET nand idx map [key] as {metadata.nand_count}"
+        )
         metadata.nand_idx_map[nand_component_id] = metadata.nand_count
         print("increment nand_count")
         metadata.nand_count += 1
@@ -237,6 +257,8 @@ def _update(nand_component_id: CircuitId, metadata: _FlattenedEncodedCircuitMeta
         )
         bl = bitlength_with_offset(metadata.nand_count)
         if bl > metadata.rolling_nand_bitlength:
-            print(f"nand count bl > rolling_nand_bl ({metadata.rolling_nand_bitlength}), set")
+            print(
+                f"nand count bl > rolling_nand_bl ({metadata.rolling_nand_bitlength}), set"
+            )
             metadata.rolling_nand_bitlength = bl
     print("- -")

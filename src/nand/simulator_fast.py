@@ -12,6 +12,7 @@ class SimulatorFast(Simulator):
     the simulation will produce wrong results.
 
     # TODO optimize() : mark circuit as optimized to avoid repetition?
+    # TODO : create a new SimulatorFlattened, or add flat to this SimulatorFast?
     """
 
     def __init__(self, circuit: Circuit):
@@ -25,7 +26,7 @@ class SimulatorFast(Simulator):
     def _simulate(self, circuit: Circuit):
         """Simulate the circuit.
 
-        The is a "fast" simulation, meaning it assumes the circuit is correct
+        This is a "fast" simulation, meaning it assumes the circuit is correct
         (no loop / missing connections / etc).
 
         Returns:

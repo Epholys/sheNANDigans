@@ -21,9 +21,7 @@ def compare_encoders(
     encoder_name_width = (
         max(len(encoder.__class__.__name__) for encoder in encoders) + 2
     )
-    library_name_width = (
-        max(len(library[1]) for library in libraries) + 2
-    )
+    library_name_width = max(len(library[1]) for library in libraries) + 2
     bit_width = max(len(str(s[2][0])) for s in encoding_stats)  # width for bit count
     max_len = max(s[2][0] for s in encoding_stats)
     max_len_width = 100
@@ -49,12 +47,17 @@ def _compute_stats(
         if isinstance(encoding, bitarray):
             length = len(encoding)
         elif isinstance(encoding, list):
-            length = len(encoding) * 16  # 16 bits per int TODO: for every new big circuit, test if it enough
+            length = (
+                len(encoding) * 16
+            )  # 16 bits per int TODO: for every new big circuit, test if it enough
+        print(encoding.to01())
 
         length_stats.append((encoder, library, length))
     length_stats.sort(key=lambda x: -x[2])
 
-    encoding_stats: List[Tuple[CircuitEncoder, Tuple[CircuitLibrary, str], EncodingStats]] = []
+    encoding_stats: List[
+        Tuple[CircuitEncoder, Tuple[CircuitLibrary, str], EncodingStats]
+    ] = []
     for encoder, library, length in length_stats:
         percentage = length / length_stats[0][2] * 100
         encoding_stats.append((encoder, library, (length, percentage)))

@@ -1,9 +1,9 @@
-
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bits_utils import bitlength_with_offset, read_bits
 from nand.circuit_encoder import BitArrayLike
 from nand.decoded_circuit import ConnectionParameters, DecodedCircuit, InputParameters
 from nand.circuit_library import CircuitLibrary
+
 
 class FlattenedDecodedCircuit(DecodedCircuit):
     def __init__(self):
@@ -12,6 +12,7 @@ class FlattenedDecodedCircuit(DecodedCircuit):
         self.rolling_nand_bitlength: int = 1
         self.nand_count: int = 1
         self.nand_idx_map: dict[int, int] = {}
+
 
 class FlattenedDecoder(BitPackedDecoder):
     """
@@ -73,13 +74,17 @@ class FlattenedDecoder(BitPackedDecoder):
                     elif second_provenance == 1:
                         self._decode_zero_one_provenance(input_idx, nand_idx)
                     else:
-                        raise ValueError(f"The second provenance for input {input_idx} of nand {nand_idx} "
-                                        "with zero_one_flag must be 0 (circuit input) or 1 (zero/one).")
+                        raise ValueError(
+                            f"The second provenance for input {input_idx} of nand {nand_idx} "
+                            "with zero_one_flag must be 0 (circuit input) or 1 (zero/one)."
+                        )
             elif first_provenance == 1:
                 self._decode_component_provenance(input_idx, nand_idx)
             else:
-                raise ValueError("The second provenance for input {input_idx} of nand {nand_idx} "
-                                 "must be 0 (circuit/zero/one input) or 1 (other nand).")
+                raise ValueError(
+                    "The second provenance for input {input_idx} of nand {nand_idx} "
+                    "must be 0 (circuit/zero/one input) or 1 (other nand)."
+                )
 
     def _decode_circuit_provenance(self, input_idx: int, component_idx: int):
         """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
@@ -101,14 +106,27 @@ class FlattenedDecoder(BitPackedDecoder):
     def _decode_zero_one_provenance(self, input_idx: int, nand_idx: int):
         third_provenance = self.data.pop(0)
         if third_provenance == 0:
-            if not any([component.identifier == 1 for component in self.circuit.components.values()]):
+            if not any(
+                [
+                    component.identifier == 1
+                    for component in self.circuit.components.values()
+                ]
+            ):
                 self.circuit.add_component(-1, self.library.get_circuit_from_idx(1))
-            self.circuit.stash_connection(ConnectionParameters(-1, 0, nand_idx, input_idx))
+            self.circuit.stash_connection(
+                ConnectionParameters(-1, 0, nand_idx, input_idx)
+            )
         elif third_provenance == 1:
-            if not any([component.identifier == 2 for component in self.circuit.components.values()]):
+            if not any(
+                [
+                    component.identifier == 2
+                    for component in self.circuit.components.values()
+                ]
+            ):
                 self.circuit.add_component(-2, self.library.get_circuit_from_idx(2))
-            self.circuit.stash_connection(ConnectionParameters(-2, 0, nand_idx, input_idx))
-
+            self.circuit.stash_connection(
+                ConnectionParameters(-2, 0, nand_idx, input_idx)
+            )
 
     def _decode_component_provenance(self, input_idx: int, component_idx: int):
         """Decode the 'input_idx'-th input of the 'component_idx'-th component of the
@@ -169,5 +187,3 @@ class FlattenedDecoder(BitPackedDecoder):
 
     def _update(self, source_idx: int):
         source_bitlength = bitlength_with_offset()
-
-

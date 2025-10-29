@@ -1,15 +1,13 @@
 from enum import Enum
 from typing import Any
 
-from nand.flattened_circuit_builder import FlattenedHackALUBuilder, FlattenedPlaygroundCircuitBuilder
 from nand.bit_packed_decoder import BitPackedDecoder
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_decoder import DefaultDecoder
 from nand.default_encoder import DefaultEncoder
+from nand.flattened_circuit_builder import FlattenedCircuitBuilder
 from nand.nand2tetris_hack_alu import HackALUBuilder
 from nand.playground_circuit_builder import PlaygroundCircuitBuilder
-from nand.rolling_decoder import RollingDecoder
-from nand.rolling_encoder import RollingEncoder
 
 
 class BuildProcess(Enum):
@@ -24,7 +22,6 @@ class EncoderAlgorithm(Enum):
 
     DEFAULT = "default"
     BIT_PACKED = "bit_packed"
-    ROLLING = "rolling"
 
     def get_encoder(self):
         # TODO : Type[] because non-stateless decoder, see other TODO
@@ -33,8 +30,6 @@ class EncoderAlgorithm(Enum):
                 return DefaultEncoder
             case EncoderAlgorithm.BIT_PACKED:
                 return BitPackedEncoder
-            case EncoderAlgorithm.ROLLING:
-                return RollingEncoder
             case _:
                 raise ValueError("Unknown EncoderType.")
 
@@ -45,8 +40,6 @@ class EncoderAlgorithm(Enum):
                 return DefaultDecoder
             case EncoderAlgorithm.BIT_PACKED:
                 return BitPackedDecoder
-            case EncoderAlgorithm.ROLLING:
-                return RollingDecoder
             case _:
                 raise ValueError("Unknown EncoderType.")
 
@@ -66,9 +59,9 @@ class Project(Enum):
             case Project.NAND2TETRIS_HACK:
                 return HackALUBuilder()
             case Project.PLAYGROUND_FLATTENED:
-                return FlattenedPlaygroundCircuitBuilder()
+                return FlattenedCircuitBuilder(PlaygroundCircuitBuilder)
             case Project.NAND2TETRIS_HACK_FLATTENED:
-                return FlattenedHackALUBuilder()
+                return FlattenedCircuitBuilder(HackALUBuilder)
             case _:
                 raise ValueError("Unknown Project.")
 

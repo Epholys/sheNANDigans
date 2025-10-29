@@ -81,6 +81,9 @@ class BitPackedEncoder(CircuitEncoder):
         # [data ; bitlength]
         self.int_encoding: List[Tuple[int, int | Placeholder]] = []
 
+        # See comment for 'max_*_bitlength' variables for explanation.
+        self.circuits_bitlength: int = -1
+
         # Variables to keep count of the maximum number of components, inputs, and
         # outputs in the library. They will be in the global header.
         self.max_components = 0
@@ -92,18 +95,20 @@ class BitPackedEncoder(CircuitEncoder):
         Orchestrates the encoding process.
         """
         self.library = library.get_all_circuits()
+        # Topological sort is necessary: the encoding necessitates that every component's dependencies are already
+        # defined when it's its turn to be encoded. It's a bit costly, but allows the circuit component definition
+        # to not have a strict order.
         for circuit in self.library.values():
             optimize(circuit)
 
-
-        # See comment for 'max_*_bitlength' variables for explanation.
-        self.circuits_bitlength: int = bitlength_with_offset(len(self.library))
+        self.circuits_bitlength = bitlength_with_offset(len(self.library))
 
         # Core encoding
         for circuit in self.library.values():
             # Core circuits are not encoded.
             match circuit.identifier:
                 case 0 | 1 | 2:
+                    # Ignore core circuits
                     continue
 
             self._encode_circuit(circuit)
@@ -185,7 +190,6 @@ class BitPackedEncoder(CircuitEncoder):
         bit_encoding.extend(
             int2bitlist_with_offset(max_outputs_bitlength, core_bitlength)
         )
-        print(f"core bl = {core_bitlength} ; circuit bl = {self.circuits_bitlength} ; comp bl = {max_components_bitlength} ; in bl = {max_inputs_bitlength} ; out bl = {max_outputs_bitlength}")
 
         # Finally encode the data. The raw encoding contains the integers values to
         # encode into bits, and the bit length if it was known, or a placeholder
@@ -193,17 +197,14 @@ class BitPackedEncoder(CircuitEncoder):
         for data, bitlength in self.int_encoding:
             match bitlength:
                 case Placeholder.COMPONENTS:
-                    print(f"n component = {data} encoded in {max_components_bitlength} bits")
                     bit_encoding.extend(
                         int2bitlist_with_offset(data, max_components_bitlength)
                     )
                 case Placeholder.INPUTS:
-                    print(f"n inputs = {data} encoded in {max_inputs_bitlength} bits")
                     bit_encoding.extend(
                         int2bitlist_with_offset(data, max_inputs_bitlength)
                     )
                 case Placeholder.OUTPUTS:
-                    print(f"n outputs = {data} encoded in {max_outputs_bitlength} bits")
                     bit_encoding.extend(
                         int2bitlist_with_offset(data, max_outputs_bitlength)
                     )
@@ -211,7 +212,7 @@ class BitPackedEncoder(CircuitEncoder):
                     bit_encoding.extend(int2bitlist(data, bitlength))
                 case _:
                     raise ValueError("Unknown bitlength type.")
-            
+
         return bit_encoding
 
     def _encode_circuit(self, circuit: Circuit):
@@ -293,7 +294,7 @@ class BitPackedEncoder(CircuitEncoder):
         'provenance' is an optimization trick. It allows for a specific input source
         (circuit input or component output) to be referred in only one bit. It works
         empirically if we consider that usually the number of inputs for a circuit is
-        greater than the number of input of any of its component.
+        greater than the number of input of its component.
 
         Note that there's a dual of provenance for the output, where we would encode the
         wiring "in reverse", starting from the outputs. This method will save bits only
@@ -303,23 +304,23 @@ class BitPackedEncoder(CircuitEncoder):
         circuit_input = [wire.id for wire in circuit.inputs.values()]
 
         # TODO "input" -> "wire"
-        for input in component.inputs.values():
-            if input.id in circuit_input:
+        for input_wire in component.inputs.values():
+            if input_wire.id in circuit_input:
                 self.int_encoding.append((0, 1))
                 self.int_encoding.append(
-                    (circuit_input.index(input.id), metadata.inputs_bitlength)
+                    (circuit_input.index(input_wire.id), metadata.inputs_bitlength)
                 )
             else:
                 self.int_encoding.append((1, 1))
-                self._encode_component_wiring(input, circuit.components, metadata)
+                self._encode_component_wiring(input_wire, circuit.components, metadata)
 
     def _encode_outputs(self, circuit: Circuit, metadata: EncodedCircuitMetadata):
         """
         outputs = [output_0, output_1, ..., output_n]
         output = wiring (see _encode_component_wiring())
         """
-        for output in circuit.outputs.values():
-            self._encode_component_wiring(output, circuit.components, metadata)
+        for output_wire in circuit.outputs.values():
+            self._encode_component_wiring(output_wire, circuit.components, metadata)
 
     def _encode_component_wiring(
         self, wire: Wire, components: CircuitDict, metadata: EncodedCircuitMetadata
@@ -335,7 +336,10 @@ class BitPackedEncoder(CircuitEncoder):
             if wire.id in outputs:
                 self.int_encoding.append((idx, metadata.components_bitlength))
                 self.int_encoding.append(
-                    (outputs.index(wire.id), bitlength_with_offset(len(sub_component.outputs)))
+                    (
+                        outputs.index(wire.id),
+                        bitlength_with_offset(len(sub_component.outputs)),
+                    )
                 )
                 return
         raise ValueError(f"Wire {wire.id} not found in any sub_component outputs")

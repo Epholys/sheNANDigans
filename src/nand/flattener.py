@@ -1,7 +1,7 @@
-
 from nand.circuit import Circuit, CircuitId
 
 type CoreCircuits = list[tuple[CircuitId, Circuit]]
+
 
 def flatten_circuit(circuit: Circuit) -> Circuit:
     """Extract all connections from and to circuit inputs/outputs and components'
@@ -15,6 +15,9 @@ def flatten_circuit(circuit: Circuit) -> Circuit:
     for identifier, core in all_cores:
         flattened_circuit.add_component(identifier, core)
 
+    # *WARNING*: the wires are shared between the circuit and its flattened version.
+    # It's not really a problem if one and the other are sequentially simulated, but *will* become a problem
+    # if I add parallelized tests.
     flattened_circuit.inputs = circuit.inputs
     flattened_circuit.inputs_names = circuit.inputs_names
     flattened_circuit.outputs = circuit.outputs
@@ -24,10 +27,12 @@ def flatten_circuit(circuit: Circuit) -> Circuit:
 
 
 def _explore_circuit_recursive(
-    circuit: Circuit,
-        counter: int = 0,
+    circuit: Circuit, counter: int = 0
 ) -> tuple[int, CoreCircuits]:
-    """Recursively explore the circuit to extract all core gates."""
+    """Recursively explore the circuit to extract all core gates.
+
+    The counter becomes the identifier of the circuit: it's a simple way to make it unique.
+    """
     all_cores: CoreCircuits = []
 
     # Process all components in this circuit

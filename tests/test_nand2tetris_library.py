@@ -43,15 +43,15 @@ _mapping = {
     "FULL_ADDER": 20,
     "ADD16": 21,
     "INC16": 22,
-    "ZERO16": 23,
-    "ONE16": 24,
-    "ALU": 25,
+    "ALU": 23,
 }
 
 
 @pytest.mark.parametrize(
     "simulators",
-    build_simulators_cases([Project.NAND2TETRIS_HACK, Project.NAND2TETRIS_HACK_FLATTENED]),
+    build_simulators_cases(
+        [Project.NAND2TETRIS_HACK, Project.NAND2TETRIS_HACK_FLATTENED]
+    ),
     indirect=["simulators"],
     ids=parameter_ids,
 )

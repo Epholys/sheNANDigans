@@ -57,6 +57,7 @@ class DecodedCircuit(Circuit):
 
     def stash_input(self, input: InputParameters):
         """Stash a circuit's input connection to apply it later."""
+        """Stash a circuit's input connection to apply it later."""
         self.stashed_inputs.append(input)
 
     def apply_inputs(self):

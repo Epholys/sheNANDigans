@@ -23,6 +23,7 @@ digital clay they were built of.
 # TODO: rewrite using networkx?
 # TODO: merge n-bits number inputs/outputs into single nodes
 
+
 @typing.no_type_check
 def _try_hard(graph: pydot.Graph):
     """Try hard to make a readable graph."""
@@ -140,7 +141,7 @@ class CircuitBuildContext:
     def add_subgraph_to_parent(self) -> None:
         """Add this context's graph to its parent graph."""
         if self.parent_context and self.graph != self.parent_context.graph:
-            self.parent_context.graph.add_subgraph(self.graph) # type: ignore
+            self.parent_context.graph.add_subgraph(self.graph)  # type: ignore
 
 
 class NestedGraphBuilder:
@@ -269,9 +270,7 @@ class NestedGraphBuilder:
         components = context.circuit.components
 
         # Case 1: We're at a core gate leaf node and not using compact representation
-        if (
-            len(components) == 0 and not self.options.is_compact
-        ):
+        if len(components) == 0 and not self.options.is_compact:
             self._build_core_circuit(context, context.circuit.identifier)
             return
 
@@ -279,7 +278,7 @@ class NestedGraphBuilder:
         for component_id, component in components.items():
             # Case 2: Core gate with compact representation OR max depth reached
             if (component.identifier in [0, 1, 2] and self.options.is_compact) or (
-                    0 <= self.options.max_depth <= context.depth
+                0 <= self.options.max_depth <= context.depth
             ):
                 # Use simplified node representation
                 component_ports = self._build_simple_node(
@@ -297,8 +296,7 @@ class NestedGraphBuilder:
     def _build_core_circuit(
         self, context: CircuitBuildContext, identifier: CircuitId
     ) -> None:
-        """Build a core gate circuit with connections between ports.
-        """
+        """Build a core gate circuit with connections between ports."""
         match identifier:
             case 0:
                 self._build_nand_circuit(context)
@@ -306,7 +304,6 @@ class NestedGraphBuilder:
                 self._build_zero_circuit(context)
             case 2:
                 self._build_one_circuit(context)
-
 
     def _build_nand_circuit(self, context: CircuitBuildContext) -> None:
         key = f"{context.prefix}_nand"
@@ -521,21 +518,19 @@ if __name__ == "__main__":
         # (default_round_trip, "default_round_trip"),
         # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
-        circuit = reference.get_circuit("ALU")
+        ref = reference.get_circuit_from_idx(25)
         try:
             graph = generate_graph(
-                circuit,
+                ref,
                 GraphOptions(
                     is_compact=True,
                     is_aligned=True,
                     bold_io=True,
-                    max_depth=-1,
-                    try_hard=True,
+                    max_depth=0,
+                    try_hard=False,
                 ),
             )
-            output_file = save_graph(
-                graph, f"{circuit.name}_{construction_type}_hack", "svg"
-            )
+            output_file = save_graph(graph, ref.name, "svg")
             print(f"Nested graph saved to {output_file}")
         except Exception as e:
-            print(f"Error building viz of circuit: {circuit.name}\n{e}")
+            print(f"Error building viz of circuit: {ref.name}\n{e}")

@@ -7,18 +7,6 @@
 
 # DOING
 
-- Auto debug print de ce que je fais manuellement dans les xxx_decode
-- Bit Packed Encoder
-  - wiring : `_encode_component_wiring(): self.int_encoding.append((outputs.index(wire.id), metadata.outputs_bitlength))` débile !
-    `output_bl` est le bl *du circuit*, pas du composant !
-    donc d/encode avec le bl du #output du composant
-- Rolling Encoder
-  - S'inspirer du failed FlattenedEncoder avec le rolling component bitlength
-    - Bug fix **à tester** : encodage non pas l'index du composant, mais du rolling count - 1
-      C'était dans le cas où les composants ne sont pas dans l'ordre "correct" et ils apparaissent "dans le désordre"
-      pour le rolling. Exemple : ZERO/ONE pour Inc16
-  - check d'autres circuits (adder16 ce serait bien)
-  - tester le rolling input
 
 # Planning
 
@@ -65,7 +53,7 @@
     [ ] Tests autos-autos : à partir d'un .nand, décoder les circuits, générer une table de véritée, round trip puis vérifier
 
 [O] Accélérer la simulation
-    [O] Rapidifié la simulation : Faire du profiling
+    [O] Rapidifier la simulation : Faire du profiling
         [X] Ordre topologique
         [X] Séparation en v.debug et v.fast :
             [X] Wire, Reset, & Simulation
@@ -102,22 +90,32 @@
                     [X] Tests auto
             [X] Réduction au niveau des bits
             [ ] Optimisation locale : les "sous-entendus". ex : "on sait que tel circuit a un seul out, donc pas besoin de préciser"
-            [ ] Optimisation "conditionnelle" :
-                - ex : si les inputs sont dans "l'ordre d'apparition", les coder comme 0 puis 00 01 puis 000 001 010 011 etc
-                - ex : si les outputs sont dans "l'ordre d'apparition", juste ne pas les mettre
-        [ ] Révolution encodage :
-            1. Applatir le circuit : full nand
+            [ ] Optimisation "conditionnelle" : "RollingEncoding". **TRÈS DIFFICILE** : hyper sensible à l'ordre de l'encoding.
+                  Peut-être qu'avoir un pré-traitement aiderait ? Voir la branche git dédiée.
+                - si les inputs sont dans "l'ordre d'apparition", les coder comme 0 puis 00 01 puis 000 001 010 011 etc
+                - si les composants sont dans "l'ordre d'apparition", les encoder comme ci-dessus
+                - si les outputs sont dans "l'ordre d'apparition", juste ne pas les mettre
+        [O] Révolution encodage : Ooooops, ça marche pas du tout :). L'ALU a tellement de NANDs que ça explose le nombre de bits
+              **PAR CONTRE** : bonne optimisation pour la vitesse de simulation !
+            1. Aplatir le circuit : full nand
             2. Tester l'encoding actuel dessus
             3. Optimiser pour du full nand
-            [ ] Implémentation de base
-            [ ] Implémentation bit-packed
+            [X] Implémentation de base
+            [X] Implémentation bit-packed
             [ ] Modification encoding : mettre les inputs en premier avec ordre d'apparition puis seulement compléter les nands restant avec index ?
-        [ ] Métadonnées optionnelles 
+        [ ] Ajouter des infos concernant les packs de bits en nombre
+              Ex : 16-bits adder : plutôt que de faire un `for i in range(16): add_input(A_i, B_i)`, avoir un truc comme `add_input(A, B)`
+            [ ] Modifier la structure de donnée de circuit. Peut-être pour In/Out ajouter la possibilité de mettre les Wires dans un bundle?
+            [ ] Réfléchir à une rétrocomp facile pour un impact minime sur le reste du code
+            [ ] Impacter
+            [ ] Réfléchir encodage
+    [ ] Métadonnées optionnelles 
     [O] Testing du nombre de bits des encodages
         [X] encoding_stats.py
         [ ] Tester comment la définition des circuits influence la taille de l'encoding (ex: or → or2way → or4way → or8way vs or8way direct)
         [ ] Avoir des fichiers .nand de tests variés et indique les bits perdus/économisés
     [ ] Rechercher dans la littérature et projets existants :
+        [ ] Checker pourquoi une compression de DefaultEncoder réduit de ouf et gagne haut la main vs mon BitPacked
         [ ] Check des codecs *dans ce domaine*
         [ ] *Algorithmes* de compression lossless classique : DEFLATE
         [ ] Lire https://solhsa.com/oldernews2025.html#ON-FILE-FORMATS (https://news.ycombinator.com/item?id=44049252) 

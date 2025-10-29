@@ -4,6 +4,7 @@ from nand.bit_packed_encoder import bitlength_with_offset
 from nand.bits_utils import read_bits, read_bits_with_offset
 from nand.circuit import Circuit
 from nand.circuit_decoder import CircuitDecoder
+from nand.circuit_encoder import BitArrayLike
 from nand.decoded_circuit import ConnectionParameters, DecodedCircuit, InputParameters
 from nand.circuit_library import CircuitLibrary
 
@@ -36,9 +37,12 @@ class BitPackedDecoder(CircuitDecoder):
         self._build_core_gates(self.library)
         self.idx = 3  # Start after core gates
 
-    def decode(self, data: bitarray) -> CircuitLibrary:
+    def decode(self, data: BitArrayLike) -> CircuitLibrary:
         """Decode the data into circuits."""
-        self.data = list(data.tolist())
+        if not isinstance(data, bitarray):
+            raise TypeError("The data must be a bitarray.")
+
+        self.data = list(data)
 
         self._decode_global_header()
         while len(self.data) > 0:

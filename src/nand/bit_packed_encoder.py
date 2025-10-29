@@ -7,6 +7,7 @@ from nand.bits_utils import bitlength_with_offset, int2bitlist, int2bitlist_with
 from nand.circuit import Circuit, CircuitDict, Wire
 from nand.circuit_encoder import CircuitEncoder
 from nand.circuit_builder import CircuitLibrary
+from nand.circuit_optimizer import optimize
 
 
 class EncodedCircuitMetadata:
@@ -91,8 +92,13 @@ class BitPackedEncoder(CircuitEncoder):
         Orchestrates the encoding process.
         """
         self.library = library.get_all_circuits()
-        # See comment for 'max_*_bitlength' variables for explanation.
-        self.circuits_bitlength: int = bitlength_with_offset(len(self.library))
+        # Topological sort is necessary: the encoding necessitates that every component's dependencies are already
+        # defined when it's its turn to be encoded. It's a bit costly, but allows the circuit component definition
+        # to not have a strict order.
+        for circuit in self.library.values():
+            optimize(circuit)
+
+        self.circuits_bitlength = bitlength_with_offset(len(self.library))
 
         # Core encoding
         for circuit in self.library.values():
@@ -326,7 +332,10 @@ class BitPackedEncoder(CircuitEncoder):
             if wire.id in outputs:
                 self.int_encoding.append((idx, metadata.components_bitlength))
                 self.int_encoding.append(
-                    (outputs.index(wire.id), metadata.outputs_bitlength)
+                    (
+                        outputs.index(wire.id),
+                        bitlength_with_offset(len(sub_component.outputs)),
+                    )
                 )
                 return
         raise ValueError(f"Wire {wire.id} not found in any sub_component outputs")

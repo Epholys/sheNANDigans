@@ -103,7 +103,6 @@ class BitPackedDecoder(CircuitDecoder):
         self.circuit.outputs_count = read_bits_with_offset(
             self.data, self.max_outputs_bitlength
         )
-        self.outputs_bitlength = bitlength_with_offset(self.circuit.outputs_count)
 
     def _decode_component(self, component_idx: int):
         """Decode the component_idx-th component of the circuit."""
@@ -199,6 +198,10 @@ class BitPackedDecoder(CircuitDecoder):
                 f"(there is {self.circuit.components_count} components)."
             )
 
-        source_output_idx = read_bits(self.data, self.outputs_bitlength)
+        # Little dance: we must know how many bits to read for the output index, which can be known only by getting
+        # the component information from the circuit.
+        component = self.circuit.components[source_idx]
+        component_outputs_bitlength = bitlength_with_offset(len(component.outputs))
+        source_output_idx = read_bits(self.data, component_outputs_bitlength)
 
-        return (source_idx, source_output_idx)
+        return source_idx, source_output_idx

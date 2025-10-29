@@ -42,3 +42,4 @@ class CircuitBuilder(ABC):
         self.add_nand()
         self.add_zero()
         self.add_one()
+        return self.library

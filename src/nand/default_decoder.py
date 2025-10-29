@@ -34,6 +34,8 @@ class DefaultDecoder(CircuitDecoder):
             data: The bitarray containing the encoded circuit library.
         """
         self.library = CircuitLibrary()
+        self.data: list[int] = []
+        self.circuit = DecodedCircuit(-1)
         self._build_core_gates(self.library)
         self.idx = 3  # Start after core gates
 

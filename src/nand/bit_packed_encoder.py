@@ -53,7 +53,7 @@ class BitPackedEncoder(CircuitEncoder):
     It's really minor gains, but we're here to encode in the smallest amount of bits
     possible!
 
-    These levels allows to have pretty big numbers for the elements. The third
+    These levels allow to have pretty big numbers for the elements. The third
     level (first decoded), can be at most 4 ('11'), so the second level can be at
     most 16 ('1111' : 4 bits), so the max number of circuits, components, inputs,
     and outputs is 65'536 ('1111111111111111' : 16 bits).
@@ -81,6 +81,9 @@ class BitPackedEncoder(CircuitEncoder):
         # [data ; bitlength]
         self.int_encoding: List[Tuple[int, int | Placeholder]] = []
 
+        # See comment for 'max_*_bitlength' variables for explanation.
+        self.circuits_bitlength: int = -1
+
         # Variables to keep count of the maximum number of components, inputs, and
         # outputs in the library. They will be in the global header.
         self.max_components = 0
@@ -105,6 +108,7 @@ class BitPackedEncoder(CircuitEncoder):
             # Core circuits are not encoded.
             match circuit.identifier:
                 case 0 | 1 | 2:
+                    # Ignore core circuits
                     continue
 
             self._encode_circuit(circuit)
@@ -290,7 +294,7 @@ class BitPackedEncoder(CircuitEncoder):
         'provenance' is an optimization trick. It allows for a specific input source
         (circuit input or component output) to be referred in only one bit. It works
         empirically if we consider that usually the number of inputs for a circuit is
-        greater than the number of input of any of its component.
+        greater than the number of input of its component.
 
         Note that there's a dual of provenance for the output, where we would encode the
         wiring "in reverse", starting from the outputs. This method will save bits only
@@ -300,23 +304,23 @@ class BitPackedEncoder(CircuitEncoder):
         circuit_input = [wire.id for wire in circuit.inputs.values()]
 
         # TODO "input" -> "wire"
-        for input in component.inputs.values():
-            if input.id in circuit_input:
+        for input_wire in component.inputs.values():
+            if input_wire.id in circuit_input:
                 self.int_encoding.append((0, 1))
                 self.int_encoding.append(
-                    (circuit_input.index(input.id), metadata.inputs_bitlength)
+                    (circuit_input.index(input_wire.id), metadata.inputs_bitlength)
                 )
             else:
                 self.int_encoding.append((1, 1))
-                self._encode_component_wiring(input, circuit.components, metadata)
+                self._encode_component_wiring(input_wire, circuit.components, metadata)
 
     def _encode_outputs(self, circuit: Circuit, metadata: EncodedCircuitMetadata):
         """
         outputs = [output_0, output_1, ..., output_n]
         output = wiring (see _encode_component_wiring())
         """
-        for output in circuit.outputs.values():
-            self._encode_component_wiring(output, circuit.components, metadata)
+        for output_wire in circuit.outputs.values():
+            self._encode_component_wiring(output_wire, circuit.components, metadata)
 
     def _encode_component_wiring(
         self, wire: Wire, components: CircuitDict, metadata: EncodedCircuitMetadata

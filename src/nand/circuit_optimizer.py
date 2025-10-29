@@ -91,12 +91,14 @@ def optimize(circuit: Circuit):
         identical circuit. Memoization would be a no-brainer.
         - It's *so* inefficient that 'SimulatorFast' is often *slower*
         than 'SimulatorDebug'! It becomes better for bigger circuit.
+    TODO help optimize():
+        modify the Circuit data structure to have the direction of the wire  N
     """
-    # Base case: empty circuit requires no optimization
-    if not circuit.components or circuit.identifier == 0:
+    # Base case: empty circuits requires no optimization
+    if not circuit.components:
         return
 
-    # First recursively optimize all sub-components
+    # First recursively optimize all subcomponents
     for component in circuit.components.values():
         optimize(component)
 

@@ -29,6 +29,8 @@ class DefaultEncoder(CircuitEncoder):
 
     def __init__(self):
         super().__init__()
+        self.library: CircuitDict = {}
+        self.encoding: List[int] = []
 
     def encode(self, library: CircuitLibrary) -> list[int]:
         """

@@ -4,10 +4,11 @@ from typing import List, Tuple
 from bitarray import bitarray
 
 from nand.bits_utils import bitlength_with_offset, int2bitlist, int2bitlist_with_offset
-from nand.circuit import Circuit, CircuitDict, Wire
+from nand.circuit import Circuit, CircuitDict
 from nand.circuit_encoder import CircuitEncoder
 from nand.circuit_builder import CircuitLibrary
 from nand.circuit_optimizer import optimize
+from nand.wire import Wire
 
 
 class EncodedCircuitMetadata:

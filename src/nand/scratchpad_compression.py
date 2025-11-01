@@ -1,14 +1,16 @@
+import struct
 from math import ceil, sqrt
 
 from nand.bit_packed_encoder import BitPackedEncoder
 from nand.default_encoder import DefaultEncoder
-from nand.nand2tetris_hack_alu import HackALUBuilder
 
 import zlib
 import lzma
 from PIL import Image
 import numpy as np
 
+from nand.nand2tetris_hack_alu import HackALUBuilder
+from nand.rolling_encoder import RollingEncoder
 
 builder = HackALUBuilder()
 builder.build_circuits()
@@ -16,23 +18,33 @@ library = builder.library
 
 default_encoded = DefaultEncoder().encode(library)
 bit_packed_encoded = BitPackedEncoder().encode(library)
-
+rolling_encoded = RollingEncoder().encode(library)
 
 bp_zip = zlib.compress(bit_packed_encoded.tobytes(), level=9, wbits=-15)
-de_zip = zlib.compress(default_encoded.tobytes(), level=9, wbits=-15)
+rolling_zip = zlib.compress(rolling_encoded.tobytes(), level=9, wbits=-15)
+
+de_data = struct.pack("<" + "H" * len(default_encoded), *default_encoded)
+de_zip = zlib.compress(de_data, level=9, wbits=-15)
+
+print(f"de sz = {len(default_encoded) * 2}")
+print(f"de zip sz = {len(de_zip)}")
+print()
 print(f"bp sz = {len(bit_packed_encoded.tobytes())}")
 print(f"bp zip sz = {len(bp_zip)}")
+print()
+print(f"rolling sz = {len(rolling_encoded.tobytes())}")
+print(f"rolling zip sz = {len(rolling_zip)}")
+
 
 # import gzip
 #
 # bp_gzip = gzip.compress(bit_packed_encoded.tobytes(), compresslevel=9)
-# de_gzip = gzip.compress(default_encoded.tobytes(), compresslevel=9)
+# de_gzip = gzip.compppress(default_encoded.tobytes(), compresslevel=9)
 #
 # import bz2
 #
 # bp_bzip2 = bz2.compress(bit_packed_encoded.tobytes(), compresslevel=9)
 # de_bzip2 = bz2.compress(default_encoded.tobytes(), compresslevel=9)
-
 
 
 filters = [
@@ -55,13 +67,22 @@ bp_lzma = lzma.compress(
     format=lzma.FORMAT_RAW,
     filters=filters,
 )
+rolling_lzma = lzma.compress(
+    rolling_encoded.tobytes(),
+    format=lzma.FORMAT_RAW,
+    filters=filters,
+)
 de_lzma = lzma.compress(
-    default_encoded.tobytes(),
+    de_data,
     format=lzma.FORMAT_RAW,
     filters=filters,
 )
 
+
+print()
+print(f"de lzma sz = {len(de_lzma)}")  # TODO : huh, de lzma < bp lzma
 print(f"bp lzma sz = {len(bp_lzma)}")
+print(f"rolling lzma sz = {len(rolling_lzma)}")
 
 # Using a more standard gray checkerboard, but you can change the colors
 CHECKER_COLOR_1 = (128, 128, 128, 255)  # Medium gray
@@ -218,6 +239,29 @@ def visualize_as_image(
     return img
 
 
+width = ceil(sqrt(len(de_data) * 8))
+scale = 10
+transparent = True
+visualize_as_image(
+    de_data,
+    mode="bw",
+    width=width,
+    scale=scale,
+    transparent=transparent,
+    background="checker",
+    save_path="de_def_sq.png",
+).show("de_raw")
+visualize_as_image(
+    de_lzma,
+    mode="bw",
+    width=width,
+    scale=scale,
+    transparent=transparent,
+    background="checker",
+    save_path="de_lzma_sq.png",
+).show("de lzma")
+
+
 width = ceil(sqrt(len(bit_packed_encoded.tobytes() * 8)))
 scale = 10
 transparent = True
@@ -237,8 +281,31 @@ visualize_as_image(
     scale=scale,
     transparent=transparent,
     background="checker",
-    save_path="bp_zip_sq.png",
+    save_path="bp_lzma_sq.png",
 ).show("bp lzma")
+
+width = ceil(sqrt(len(rolling_encoded.tobytes() * 8)))
+scale = 10
+transparent = True
+visualize_as_image(
+    rolling_encoded.tobytes(),
+    mode="bw",
+    width=width,
+    scale=scale,
+    transparent=transparent,
+    background="checker",
+    save_path="rolling_def_sq.png",
+).show("rolling_raw")
+visualize_as_image(
+    rolling_lzma,
+    mode="bw",
+    width=width,
+    scale=scale,
+    transparent=transparent,
+    background="checker",
+    save_path="rolling_lzma_sq.png",
+).show("rolling lzma")
+
 # print(len(bit_packed_encoded.tobytes()))
 # print()
 # print(len(bp_zip))

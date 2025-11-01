@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 
-from nand.circuit import Circuit, Wire
+from nand.circuit import Circuit
 from nand.circuit_builder import CircuitLibrary
 from nand.circuit_encoder import BitArrayLike
+from nand.wire import Wire
 
 
 class CircuitDecoder(ABC):

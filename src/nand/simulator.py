@@ -31,9 +31,16 @@ class Simulator(ABC):
         # Reset the wires.
         self._reset(self._circuit)
 
+        print(f"==simulate circuit {self._circuit.name}==")
+        print(f"components : {[comp.identifier for comp in self._circuit.components.values()]}")
+        print(f"circuit inputs: {self._circuit.get_input_wires()}")
+        print(f"simulation inputs: {inputs}")
+
         # Set the input values.
-        for wire, input in zip(self._circuit.inputs.values(), inputs):
-            wire.state = input
+        for wire, input_ in zip(self._circuit.get_input_wires(), inputs):
+            wire.state = input_
+
+        print(f"inputs are sets: {self._circuit.get_input_wires()}")
 
         # Simulate the circuit.
         if not self._simulate(self._circuit):
@@ -42,7 +49,7 @@ class Simulator(ABC):
         self._was_simulated = True
 
         # Return the output values.
-        return [bool(wire.state) for wire in list(self._circuit.outputs.values())]
+        return [bool(wire.state) for wire in list(self._circuit.get_output_wires())]
 
     @abstractmethod
     def _reset(self, circuit: Circuit):
@@ -56,20 +63,26 @@ class Simulator(ABC):
 
     def _simulate_nand(self, nand: Circuit):
         """Simulate the core NAND gate."""
-        inputs = list(nand.inputs.values())
+        inputs = nand.get_input_wires()
+        print(f"nand: {repr(nand)}")
+        print(f"nand inputs: {inputs}")
         a = inputs[0]
         b = inputs[1]
-        out = list(nand.outputs.values())[0]
+        out = nand.get_output_wires()[0]
+        print(f"out: {repr(out)}")
         out.state = not (a.state and b.state)
+        print(f"out.state: {repr(out.state)}")
+        print(nand.get_input_wires())
+        print(nand.get_output_wires())
 
     def _simulate_zero(self, zero: Circuit):
         """Simulate the core ZERO gate."""
-        out = list(zero.outputs.values())[0]
+        out = zero.get_output_wires()[0]
         out.state = False
 
     def _simulate_one(self, one: Circuit):
         """Simulate the core ONE gate."""
-        out = list(one.outputs.values())[0]
+        out = one.get_output_wires()[0]
         out.state = True
 
     def _simulate_core_gate(self, circuit: Circuit):

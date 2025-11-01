@@ -25,7 +25,7 @@ type CoreCollection = List[Tuple[str, Circuit]]
 
 
 @typing.no_type_check
-def _try_hard(graph: pydot.Graph): 
+def _try_hard(graph: pydot.Graph):
     """Try hard to make a readable graph."""
     # --- Global spacing ---
     graph.set_nodesep("1.0")  # default ~0.25 → spread siblings apart
@@ -77,7 +77,7 @@ def _explore_circuit_recursive(
         )
         if options.try_hard:
             _try_hard(current_graph)
-        parent_graph.add_subgraph(current_graph) # type: ignore
+        parent_graph.add_subgraph(current_graph)  # type: ignore
 
     all_cores: CoreCollection = []
 
@@ -158,7 +158,7 @@ class FlattenedGraphBuilder:
 
         for input_name, input_wire in self.circuit.inputs.items():
             for core_id, core in all_cores:
-                for nand_input_wire in core.inputs.values(): # only nand have inputs
+                for nand_input_wire in core.inputs.values():  # only nand have inputs
                     if nand_input_wire.id == input_wire.id:
                         connections.append((f"in_{input_name}", core_id))
 
@@ -170,7 +170,7 @@ class FlattenedGraphBuilder:
         """Extract connections from core gates to circuit outputs."""
         connections = []
 
-        for output_name, output_wire in circuit.outputs.items():
+        for output_name, output_wire in self.circuit.outputs.items():
             for core_id, core in all_cores:
                 for core_output_wire in core.outputs.values():
                     if core_output_wire.id == output_wire.id:
@@ -188,7 +188,9 @@ class FlattenedGraphBuilder:
         for source_id, source_core in all_cores:
             for source_output_wire in source_core.outputs.values():
                 for destination_id, destination_nand in all_cores:
-                    for destination_input_wire in destination_nand.inputs.values(): # only NAND gate have inputs
+                    for (
+                        destination_input_wire
+                    ) in destination_nand.inputs.values():  # only NAND gate have inputs
                         if destination_input_wire.id == source_output_wire.id:
                             connections.append((source_id, destination_id))
 
@@ -224,7 +226,7 @@ class FlattenedGraphBuilder:
         """Add output nodes to the graph and return their IDs."""
         output_nodes = []
 
-        for output_name in circuit.outputs.keys():
+        for output_name in self.circuit.outputs.keys():
             node_id = f"out_{output_name}"
             output_nodes.append(node_id)
 
@@ -298,10 +300,12 @@ if __name__ == "__main__":
         # (bit_packed_round_trip, "bit_packed_round_trip"),
     ]:
         try:
-            circuit = library.get_circuit("ALU")
+            circuit = library.get_circuit("XOR")
             graph_builder = FlattenedGraphBuilder(
                 circuit,
-                GraphOptions(is_nested=False, is_aligned=True, bold_io=True, try_hard=False),
+                GraphOptions(
+                    is_nested=False, is_aligned=True, bold_io=True, try_hard=False
+                ),
             )
             graph = graph_builder.generate_graph()
             output_file = save_graph(graph, f"{circuit.name}_flattened_circuit", "svg")

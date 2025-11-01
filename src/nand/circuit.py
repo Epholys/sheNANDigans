@@ -1,6 +1,5 @@
 from typing import Dict
 
-
 from nand.wire import Wire
 
 # Type aliasing definition. There is a lot of them, but it's easier when developing to
@@ -10,14 +9,15 @@ type CircuitId = _Id
 type InputId = _Id
 type OutputId = _Id
 type PortId = InputId | OutputId
-type InputWireDict = Dict[InputId, Wire]
+type InputWireDict = Dict[InputId, WireBundle]
 type InputNameDict = Dict[InputId, str]
-type OutputWireDict = Dict[OutputId, Wire]
+type OutputWireDict = Dict[OutputId, WireBundle]
 type OutputNameDict = Dict[OutputId, str]
 type PortWireDict = InputWireDict | OutputWireDict
 type PortNameDict = InputNameDict | OutputNameDict
 type CircuitDict = Dict[CircuitId, "Circuit"]
 
+from nand.wire_bundle import WireBundle
 
 class Circuit:
     """A digital circuit recursively composed of other circuits
@@ -48,12 +48,12 @@ class Circuit:
 
         inputs: Input wires of the circuit
 
-        inputs_name: Name of the inputs. Usually the same as the identifier, but useful
+        inputs_names: Name of the inputs. Usually the same as the identifier, but useful
                      for the graphs.
 
         outputs: Output wires of the circuit
 
-        outputs_name: Name of the inputs. Usually the same as the identifier, but useful
+        outputs_names: Name of the inputs. Usually the same as the identifier, but useful
                       for the graphs.
 
         components: Components of the circuit
@@ -70,17 +70,17 @@ class Circuit:
         self.outputs_names: OutputNameDict = {}
         self.components: CircuitDict = {}
 
-    def add_component(self, id: CircuitId, component: "Circuit"):
+    def add_component(self, id_: CircuitId, component: "Circuit"):
         """Add a component.
 
         Args:
-            id: Identifier of the component.
+            id_: Identifier of the component.
             component: The component itself.
         """
-        self.components[id] = component
+        self.components[id_] = component
 
     def connect_input(
-        self, input_id: InputId, target_id: CircuitId, target_input_id: InputId
+        self, input_id: InputId, target_id: CircuitId, target_input_id: InputId, bundle_size: int = 1
     ):
         """Connect an input wire to a component's input port.
 
@@ -93,7 +93,7 @@ class Circuit:
             target_input_id: Identifier of the input port on the target component
 
         Raises:
-            ValueError: If the target or its input doesn't exists
+            ValueError: If the target or its input doesn't exist
         """
         if target_id not in self.components:
             raise ValueError(f"The component {target_id} does not exist.")
@@ -105,7 +105,9 @@ class Circuit:
             )
 
         if input_id not in self.inputs:
-            self.inputs[input_id] = Wire()
+            print(f"new input {input_id}")
+            self.inputs[input_id] = WireBundle(bundle_size)
+            print(f"bundle wires: {self.inputs[input_id].wires}")
             self.inputs_names[input_id] = str(input_id)
 
         # The assignment ordering dance is necessary. Setting 'input' as the
@@ -150,6 +152,7 @@ class Circuit:
 
         # Contrary to the connection of an input, connecting an output is
         # straightforward: the circuit's output can only come from a single component.
+        print(f"set out from {source.outputs[source_output_id].id} : {[repr(wire) for wire in source.outputs[source_output_id].wires]}")
         self.outputs[output_id] = source.outputs[source_output_id]
         self.outputs_names[output_id] = str(output_id)
 
@@ -206,7 +209,7 @@ class Circuit:
         self._propagate_wire_update(target, old_wire, wire)
 
     def _propagate_wire_update(
-        self, component: "Circuit", old_wire: Wire, new_wire: Wire
+        self, component: "Circuit", old_wire: WireBundle, new_wire: WireBundle
     ):
         """Recursively update all matching wire references in a component hierarchy.
 
@@ -227,6 +230,12 @@ class Circuit:
                 wire_dict.update(updates)
                 self._propagate_wire_update(sub_components, old_wire, new_wire)
 
+    def get_input_wires(self)-> list[Wire]:
+        return [wire for bundle in self.inputs.values() for wire in bundle.wires]
+
+    def get_output_wires(self)-> list[Wire]:
+        return [wire for bundle in self.outputs.values() for wire in bundle.wires]
+
     def __str__(self, indent: int = 0):
         """Human-readable string representation of the Circuit with clear indentation.
         Shows basic information about the circuit structure in a compact format.
@@ -237,7 +246,7 @@ class Circuit:
         indent_str = " " * indent
 
         # Format input wires
-        inputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.inputs.items())
+        inputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.inputs.items())  # TODO : __str__() for bundle
 
         # Format output wires
         outputs_str = ", ".join(f"{k}: {v.id}" for k, v in self.outputs.items())
@@ -272,14 +281,14 @@ class Circuit:
 
         # Format input wires
         inputs_str = ", ".join(
-            f'{k} ("{self.inputs_names[k]}"): {repr(wire)}'
-            for k, wire in self.inputs.items()
+            f'{k} ("{self.inputs_names[k]}"): {bundle.id}: {[repr(wire) for wire in bundle.wires]}'
+            for k, bundle in self.inputs.items()
         )
 
         # Format output wires
         outputs_str = ", ".join(
-            f'{k} ("{self.outputs_names[k]}"): {repr(wire)}'
-            for k, wire in self.outputs.items()
+            f'{k} ("{self.outputs_names[k]}"): {bundle.id}: {[repr(wire) for wire in bundle.wires]}'
+            for k, bundle in self.outputs.items()
         )
 
         representation = (

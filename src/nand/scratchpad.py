@@ -11,7 +11,6 @@ builder = PlaygroundCircuitBuilder()
 builder.build_circuits()
 library = builder.library
 
-
 def build_half_adder(library):
     half_adder = Circuit("Half-Adder")
 
@@ -28,13 +27,17 @@ def build_half_adder(library):
 
     return half_adder
 
-
 half_adder = build_half_adder(library)
+
+print(f"half_adder: {repr(half_adder)}")
+
 simulator = build_simulator(
     half_adder, OptimizationLevel.FAST
 )  # Automatically optimized
 result = simulator.simulate([True, False])
+print(result)
 assert result == [False, True]  # 1 + 0 = 01
+
 
 builder = HackALUBuilder()
 builder.build_circuits()
